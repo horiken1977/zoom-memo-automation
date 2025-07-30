@@ -1,0 +1,9 @@
+{
+  "lastBackup": "2025-07-30T13:22:14.122Z",
+  "backupCount": 2,
+  "autoUpdateDocs": true,
+  "retentionDays": 30,
+  "extractFeatures": true,
+  "extractEnvironment": true,
+  "extractTests": true
+}
