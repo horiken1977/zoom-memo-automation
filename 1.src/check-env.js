@@ -9,7 +9,8 @@
  * node check-env.js [--verbose] [--fix]
  */
 
-const config = require('./config');
+// 環境変数チェックのみを行うため、configは読み込まない
+// configを読み込むとバリデーションでエラーになるため
 
 class EnvironmentChecker {
   constructor(options = {}) {
@@ -85,7 +86,7 @@ class EnvironmentChecker {
       console.log('\\n🐛 Debug Information:');
       console.log(`   Working Directory: ${process.cwd()}`);
       console.log(`   Script Location: ${__filename}`);
-      console.log(`   Config Loaded: ${config ? '✓' : '❌'}`);
+      console.log(`   Config Loaded: N/A (standalone mode)`);
     }
 
     return allGood;

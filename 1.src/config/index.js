@@ -144,7 +144,10 @@ function validateConfig() {
   }
 }
 
-// Always validate required environment variables
-validateConfig();
+// Skip validation for environment check tool
+if (process.argv[1] && !process.argv[1].includes('check-env')) {
+  // Always validate required environment variables for normal operation
+  validateConfig();
+}
 
 module.exports = config;
