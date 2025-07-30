@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機能設計書 - Zoom Memo Automation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .nav {
+            background: #667eea;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+        
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .function-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .function-card h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-planned { background: #ffc107; }
+        .status-development { background: #007bff; }
+        .status-completed { background: #28a745; }
+        .status-testing { background: #fd7e14; }
+        
+        .requirement-list {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .last-updated {
+            text-align: right;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 機能設計書</h1>
+            <p>Zoom Memo Automation システム</p>
+        </div>
+        
+        <div class="nav">
+            <a href="index.html">🏠 ダッシュボード</a>
+            <a href="environment-design.html">🏗️ 環境設計書</a>
+            <a href="test-specification.html">🧪 テスト仕様書</a>
+            <a href="claude.md">💬 対話記録</a>
+        </div>
+        
+        <div class="section">
+            <h2>1. システム概要</h2>
+            <p>Zoom Memo Automationは、Zoomミーティングの内容を自動的に記録・整理し、議事録を生成するシステムです。</p>
+            
+            <div class="requirement-list">
+                <h4>主要目標</h4>
+                <ul>
+                    <li>Zoomミーティングの自動録音・録画</li>
+                    <li>音声からテキストへの変換（STT: Speech-to-Text）</li>
+                    <li>AIによる議事録の自動生成</li>
+                    <li>参加者への自動配信</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>2. 機能一覧</h2>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-planned"></span>F001: Zoom連携機能</h3>
+                <p><strong>説明:</strong> ZoomのWebhookを利用してミーティングの開始・終了を検知し、自動的に録音・録画を開始する機能</p>
+                <p><strong>優先度:</strong> 高</p>
+                <p><strong>状態:</strong> 計画中</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>入力</td>
+                        <td>Zoom Webhook イベント</td>
+                    </tr>
+                    <tr>
+                        <td>出力</td>
+                        <td>録音・録画データ</td>
+                    </tr>
+                    <tr>
+                        <td>処理</td>
+                        <td>ミーティング検知、録音開始、メタデータ保存</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-planned"></span>F002: 音声認識機能</h3>
+                <p><strong>説明:</strong> 録音された音声データを高精度でテキストに変換する機能</p>
+                <p><strong>優先度:</strong> 高</p>
+                <p><strong>状態:</strong> 計画中</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>入力</td>
+                        <td>音声ファイル（MP3/WAV/M4A）</td>
+                    </tr>
+                    <tr>
+                        <td>出力</td>
+                        <td>テキストデータ（JSON形式）</td>
+                    </tr>
+                    <tr>
+                        <td>API</td>
+                        <td>OpenAI Whisper API / Google Speech-to-Text</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-planned"></span>F003: 議事録生成機能</h3>
+                <p><strong>説明:</strong> 変換されたテキストをAIで解析し、構造化された議事録を自動生成する機能</p>
+                <p><strong>優先度:</strong> 高</p>
+                <p><strong>状態:</strong> 計画中</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>入力</td>
+                        <td>会議テキストデータ、参加者情報</td>
+                    </tr>
+                    <tr>
+                        <td>出力</td>
+                        <td>構造化議事録（Markdown/HTML）</td>
+                    </tr>
+                    <tr>
+                        <td>処理</td>
+                        <td>要約生成、アクションアイテム抽出、発言者識別</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-planned"></span>F004: 配信機能</h3>
+                <p><strong>説明:</strong> 生成された議事録を参加者に自動配信する機能</p>
+                <p><strong>優先度:</strong> 中</p>
+                <p><strong>状態:</strong> 計画中</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>配信方法</td>
+                        <td>Email、Slack、Teams</td>
+                    </tr>
+                    <tr>
+                        <td>配信タイミング</td>
+                        <td>ミーティング終了後30分以内</td>
+                    </tr>
+                    <tr>
+                        <td>形式</td>
+                        <td>PDF、HTML、Markdown</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>3. 非機能要件</h2>
+            
+            <h3>性能要件</h3>
+            <ul>
+                <li>音声認識処理時間: 録音時間の1/4以下</li>
+                <li>議事録生成時間: 5分以内</li>
+                <li>同時処理可能ミーティング数: 10セッション</li>
+            </ul>
+            
+            <h3>セキュリティ要件</h3>
+            <ul>
+                <li>録音データの暗号化保存</li>
+                <li>アクセス権限の管理</li>
+                <li>GDPR準拠のデータ処理</li>
+            </ul>
+            
+            <h3>可用性要件</h3>
+            <ul>
+                <li>稼働率: 99.5%以上</li>
+                <li>障害復旧時間: 30分以内</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>4. 技術要件</h2>
+            
+            <h3>開発技術スタック</h3>
+            <ul>
+                <li><strong>フロントエンド:</strong> Next.js, React, TypeScript</li>
+                <li><strong>バックエンド:</strong> Node.js, Express</li>
+                <li><strong>データベース:</strong> PostgreSQL, Redis</li>
+                <li><strong>AI/ML:</strong> OpenAI API, Whisper</li>
+                <li><strong>インフラ:</strong> Vercel, AWS S3</li>
+            </ul>
+        </div>
+        
+        <div class="last-updated">
+            最終更新: <span id="lastUpdated"></span> | 
+            自動更新: <span id="autoUpdate">有効</span>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
+        
+        // 自動更新チェック（Claude対話記録から機能追加を検知）
+        function checkForUpdates() {
+            // 実装予定: claude.mdファイルを解析して新機能を自動検出
+            console.log('機能設計書の自動更新チェック');
+        }
+        
+        setInterval(checkForUpdates, 300000); // 5分毎
+    </script>
+</body>
+</html>

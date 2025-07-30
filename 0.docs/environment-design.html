@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>環境設計書 - Zoom Memo Automation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #28a745;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .nav {
+            background: #28a745;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+        
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 10px;
+        }
+        
+        .environment-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .environment-card h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        
+        .architecture-diagram {
+            background: #e7f3ff;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        
+        .folder-structure {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .tech-item {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .status-configured { background: #d4edda; color: #155724; }
+        .status-pending { background: #f8d7da; color: #721c24; }
+        .status-progress { background: #d1ecf1; color: #0c5460; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #28a745;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .last-updated {
+            text-align: right;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ 環境設計書</h1>
+            <p>Zoom Memo Automation システム環境構成</p>
+        </div>
+        
+        <div class="nav">
+            <a href="index.html">🏠 ダッシュボード</a>
+            <a href="functional-design.html">📋 機能設計書</a>
+            <a href="test-specification.html">🧪 テスト仕様書</a>
+            <a href="claude.md">💬 対話記録</a>
+        </div>
+        
+        <div class="section">
+            <h2>1. プロジェクト構成</h2>
+            
+            <h3>フォルダ構造</h3>
+            <div class="folder-structure">
+zoom-memo-automation/
+├── 0.docs/                             # ドキュメント用フォルダ
+│   ├── index.html                      # 開発ダッシュボード
+│   ├── functional-design.html          # 機能設計書
+│   ├── environment-design.html         # 環境設計書（本ファイル）
+│   ├── test-specification.html         # テスト仕様書
+│   └── claude.md                       # Claude Code対話記録
+│
+├── 1.src/                              # プログラムソース用フォルダ
+│   ├── components/                     # Reactコンポーネント
+│   ├── pages/                          # Next.jsページ
+│   ├── api/                           # APIエンドポイント
+│   ├── lib/                           # ユーティリティライブラリ
+│   ├── types/                         # TypeScript型定義
+│   └── styles/                        # スタイルシート
+│
+├── 2.tests/                           # テスト関連
+│   ├── data/                          # テストデータ
+│   │   ├── audio-samples/             # 音声テストファイル
+│   │   ├── mock-responses/            # モックAPIレスポンス
+│   │   └── test-configs/              # テスト設定ファイル
+│   └── tools/                         # テストツール類
+│       ├── test-runners/              # テスト実行スクリプト
+│       ├── mocks/                     # モックサーバー
+│       └── automation/                # 自動テストスクリプト
+│
+├── 3.operations/                      # 運用関連の仕組み
+│   ├── src/                          # 運用スクリプト
+│   │   ├── chat-backup.js            # Claude対話記録バックアップ
+│   │   ├── monitor.js                # システム監視
+│   │   └── deploy.js                 # デプロイメント
+│   ├── configs/                      # 設定ファイル
+│   └── logs/                         # ログファイル
+│
+├── package.json                       # Node.js依存関係
+├── tsconfig.json                      # TypeScript設定
+├── next.config.js                     # Next.js設定
+├── vercel.json                        # Vercel設定
+└── README.md                          # プロジェクト説明
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>2. システム構成図</h2>
+            
+            <div class="architecture-diagram">
+                [ユーザー] ← → [Next.js Frontend (Vercel)]
+                              ↓
+                [API Gateway] ← → [Node.js Backend (Vercel Functions)]
+                              ↓
+                [External APIs]
+                - Zoom Webhook
+                - OpenAI Whisper
+                - Email/Slack APIs
+                              ↓
+                [Storage]
+                - AWS S3 (音声ファイル)
+                - Vercel KV (メタデータ)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>3. 開発環境</h2>
+            
+            <div class="environment-card">
+                <h3>ローカル開発環境 <span class="status-badge status-configured">設定済み</span></h3>
+                
+                <h4>技術スタック</h4>
+                <div class="tech-stack">
+                    <div class="tech-item">
+                        <strong>Node.js</strong><br>
+                        v18.x LTS
+                    </div>
+                    <div class="tech-item">
+                        <strong>Next.js</strong><br>
+                        v14.x
+                    </div>
+                    <div class="tech-item">
+                        <strong>TypeScript</strong><br>
+                        v5.x
+                    </div>
+                    <div class="tech-item">
+                        <strong>React</strong><br>
+                        v18.x
+                    </div>
+                </div>
+                
+                <h4>開発ツール</h4>
+                <table>
+                    <tr>
+                        <th>ツール</th>
+                        <th>用途</th>
+                        <th>状態</th>
+                    </tr>
+                    <tr>
+                        <td>Claude Code</td>
+                        <td>AI開発支援</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>Git</td>
+                        <td>バージョン管理</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>ESLint</td>
+                        <td>コード品質</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>Prettier</td>
+                        <td>コード整形</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>4. 本番環境</h2>
+            
+            <div class="environment-card">
+                <h3>Vercel デプロイメント <span class="status-badge status-progress">準備中</span></h3>
+                
+                <h4>設定項目</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>設定値</th>
+                        <th>状態</th>
+                    </tr>
+                    <tr>
+                        <td>プロジェクト名</td>
+                        <td>zoom-memo-automation</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>フレームワーク</td>
+                        <td>Next.js</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>Node.js バージョン</td>
+                        <td>18.x</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>ビルドコマンド</td>
+                        <td>npm run build</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                </table>
+                
+                <h4>環境変数</h4>
+                <table>
+                    <tr>
+                        <th>変数名</th>
+                        <th>説明</th>
+                        <th>状態</th>
+                    </tr>
+                    <tr>
+                        <td>OPENAI_API_KEY</td>
+                        <td>OpenAI API キー</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>ZOOM_WEBHOOK_SECRET</td>
+                        <td>Zoom Webhook 検証用シークレット</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>AWS_ACCESS_KEY_ID</td>
+                        <td>AWS S3 アクセスキー</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>DATABASE_URL</td>
+                        <td>データベース接続URL</td>
+                        <td><span class="status-badge status-pending">未設定</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>5. 外部サービス連携</h2>
+            
+            <div class="environment-card">
+                <h3>Zoom Platform <span class="status-badge status-pending">未設定</span></h3>
+                <ul>
+                    <li>Zoom Webhook エンドポイント設定</li>
+                    <li>OAuth アプリケーション登録</li>
+                    <li>Recording API 権限設定</li>
+                </ul>
+            </div>
+            
+            <div class="environment-card">
+                <h3>OpenAI Platform <span class="status-badge status-pending">未設定</span></h3>
+                <ul>
+                    <li>API キー取得</li>
+                    <li>Whisper API 利用設定</li>
+                    <li>GPT API 利用設定</li>
+                </ul>
+            </div>
+            
+            <div class="environment-card">
+                <h3>AWS Services <span class="status-badge status-pending">未設定</span></h3>
+                <ul>
+                    <li>S3 バケット作成（音声ファイル保存用）</li>
+                    <li>IAM ユーザー作成</li>
+                    <li>CloudFront CDN 設定</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>6. CI/CD パイプライン</h2>
+            
+            <h3>GitHub Actions <span class="status-badge status-pending">未設定</span></h3>
+            <table>
+                <tr>
+                    <th>ワークフロー</th>
+                    <th>トリガー</th>
+                    <th>処理内容</th>
+                </tr>
+                <tr>
+                    <td>テスト実行</td>
+                    <td>Pull Request</td>
+                    <td>ユニットテスト、統合テスト実行</td>
+                </tr>
+                <tr>
+                    <td>ビルド確認</td>
+                    <td>Push to main</td>
+                    <td>ビルド成功確認</td>
+                </tr>
+                <tr>
+                    <td>デプロイ</td>
+                    <td>タグ作成</td>
+                    <td>Vercel自動デプロイ</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>7. 監視・ログ</h2>
+            
+            <h3>システム監視 <span class="status-badge status-progress">準備中</span></h3>
+            <ul>
+                <li>Vercel Analytics による性能監視</li>
+                <li>エラー監視（Sentry連携予定）</li>
+                <li>アップタイム監視</li>
+            </ul>
+            
+            <h3>ログ管理</h3>
+            <ul>
+                <li>アプリケーションログ: Vercel Functions ログ</li>
+                <li>アクセスログ: Vercel Analytics</li>
+                <li>エラーログ: Console出力</li>
+            </ul>
+        </div>
+        
+        <div class="last-updated">
+            最終更新: <span id="lastUpdated"></span> | 
+            自動更新: <span id="autoUpdate">有効</span>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
+        
+        // 自動更新チェック（Claude対話記録から環境変更を検知）
+        function checkEnvironmentUpdates() {
+            // 実装予定: claude.mdファイルを解析して環境変更を自動検出
+            console.log('環境設計書の自動更新チェック');
+        }
+        
+        setInterval(checkEnvironmentUpdates, 300000); // 5分毎
+    </script>
+</body>
+</html>
