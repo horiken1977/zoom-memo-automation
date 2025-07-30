@@ -64,8 +64,9 @@ jobs:
           }
         "
 
-    - name: Run health check (if secrets available)
-      if: ${{ secrets.ZOOM_API_KEY != '' && secrets.GOOGLE_AI_API_KEY != '' && secrets.SLACK_BOT_TOKEN != '' }}
+    - name: Run health check
+      if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      continue-on-error: true
       env:
         NODE_ENV: production
         ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
@@ -80,19 +81,27 @@ jobs:
         timeout 30s npm run start -- --health-check || true
 
     - name: Check required secrets status
+      env:
+        ZOOM_KEY_SET: ${{ secrets.ZOOM_API_KEY != '' }}
+        ZOOM_SECRET_SET: ${{ secrets.ZOOM_API_SECRET != '' }}
+        ZOOM_ACCOUNT_SET: ${{ secrets.ZOOM_ACCOUNT_ID != '' }}
+        GOOGLE_KEY_SET: ${{ secrets.GOOGLE_AI_API_KEY != '' }}
+        SLACK_TOKEN_SET: ${{ secrets.SLACK_BOT_TOKEN != '' }}
+        SLACK_CHANNEL_SET: ${{ secrets.SLACK_CHANNEL_ID != '' }}
+        SLACK_SIGNING_SET: ${{ secrets.SLACK_SIGNING_SECRET != '' }}
       run: |
         echo "📋 Required Secrets Status:"
-        echo "ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY != '' && '✅ Set' || '❌ Missing' }}"
-        echo "ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET != '' && '✅ Set' || '❌ Missing' }}"
-        echo "ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID != '' && '✅ Set' || '❌ Missing' }}"
-        echo "GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY != '' && '✅ Set' || '❌ Missing' }}"
-        echo "SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN != '' && '✅ Set' || '❌ Missing' }}"
-        echo "SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID != '' && '✅ Set' || '❌ Missing' }}"
-        echo "SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET != '' && '✅ Set' || '❌ Missing' }}"
+        [[ "$ZOOM_KEY_SET" == "true" ]] && echo "ZOOM_API_KEY: ✅ Set" || echo "ZOOM_API_KEY: ❌ Missing"
+        [[ "$ZOOM_SECRET_SET" == "true" ]] && echo "ZOOM_API_SECRET: ✅ Set" || echo "ZOOM_API_SECRET: ❌ Missing"
+        [[ "$ZOOM_ACCOUNT_SET" == "true" ]] && echo "ZOOM_ACCOUNT_ID: ✅ Set" || echo "ZOOM_ACCOUNT_ID: ❌ Missing"
+        [[ "$GOOGLE_KEY_SET" == "true" ]] && echo "GOOGLE_AI_API_KEY: ✅ Set" || echo "GOOGLE_AI_API_KEY: ❌ Missing"
+        [[ "$SLACK_TOKEN_SET" == "true" ]] && echo "SLACK_BOT_TOKEN: ✅ Set" || echo "SLACK_BOT_TOKEN: ❌ Missing"
+        [[ "$SLACK_CHANNEL_SET" == "true" ]] && echo "SLACK_CHANNEL_ID: ✅ Set" || echo "SLACK_CHANNEL_ID: ❌ Missing"
+        [[ "$SLACK_SIGNING_SET" == "true" ]] && echo "SLACK_SIGNING_SECRET: ✅ Set" || echo "SLACK_SIGNING_SECRET: ❌ Missing"
         
-        if [[ "${{ secrets.ZOOM_API_KEY }}" == "" ]] || \
-           [[ "${{ secrets.GOOGLE_AI_API_KEY }}" == "" ]] || \
-           [[ "${{ secrets.SLACK_BOT_TOKEN }}" == "" ]]; then
+        if [[ "$ZOOM_KEY_SET" != "true" ]] || \
+           [[ "$GOOGLE_KEY_SET" != "true" ]] || \
+           [[ "$SLACK_TOKEN_SET" != "true" ]]; then
           echo ""
           echo "⚠️  Some required secrets are missing."
           echo "Please add them in Repository Settings > Secrets and variables > Actions"
