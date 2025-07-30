@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Load .env file only in development environment
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 const config = {
   // Server Configuration
@@ -97,27 +100,51 @@ const config = {
   }
 };
 
-// Validation
+// Environment variable validation
 function validateConfig() {
   const requiredEnvVars = [
-    'ZOOM_API_KEY',
-    'ZOOM_API_SECRET', 
-    'ZOOM_ACCOUNT_ID',
-    'GOOGLE_AI_API_KEY',
-    'SLACK_BOT_TOKEN',
-    'SLACK_CHANNEL_ID'
+    { key: 'ZOOM_API_KEY', description: 'Zoom API Key from Zoom Marketplace' },
+    { key: 'ZOOM_API_SECRET', description: 'Zoom API Secret from Zoom Marketplace' },
+    { key: 'ZOOM_ACCOUNT_ID', description: 'Zoom Account ID from Zoom Marketplace' },
+    { key: 'GOOGLE_AI_API_KEY', description: 'Google AI API Key from Google AI Studio' },
+    { key: 'SLACK_BOT_TOKEN', description: 'Slack Bot Token (starts with xoxb-)' },
+    { key: 'SLACK_CHANNEL_ID', description: 'Slack Channel ID (starts with C)' }
   ];
   
-  const missing = requiredEnvVars.filter(key => !process.env[key]);
+  const missing = requiredEnvVars.filter(envVar => !process.env[envVar.key]);
   
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    console.error('❌ Missing required environment variables:');
+    missing.forEach(envVar => {
+      console.error(`   • ${envVar.key}: ${envVar.description}`);
+    });
+    console.error('\n📖 Setup Guide:');
+    console.error('   Local: Copy .env.example to .env and fill in values');
+    console.error('   GitHub: Add to Repository Secrets');
+    console.error('   Vercel: Add to Project Environment Variables');
+    
+    throw new Error(`Missing ${missing.length} required environment variable(s)`);
+  }
+  
+  // Additional validation for specific formats
+  const validationErrors = [];
+  
+  if (process.env.SLACK_BOT_TOKEN && !process.env.SLACK_BOT_TOKEN.startsWith('xoxb-')) {
+    validationErrors.push('SLACK_BOT_TOKEN must start with "xoxb-"');
+  }
+  
+  if (process.env.SLACK_CHANNEL_ID && !process.env.SLACK_CHANNEL_ID.startsWith('C')) {
+    validationErrors.push('SLACK_CHANNEL_ID must start with "C"');
+  }
+  
+  if (validationErrors.length > 0) {
+    console.error('❌ Environment variable format errors:');
+    validationErrors.forEach(error => console.error(`   • ${error}`));
+    throw new Error(`Invalid environment variable format(s)`);
   }
 }
 
-// Only validate in production
-if (config.nodeEnv === 'production') {
-  validateConfig();
-}
+// Always validate required environment variables
+validateConfig();
 
 module.exports = config;

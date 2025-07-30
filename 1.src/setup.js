@@ -23,6 +23,10 @@ class SetupWizard {
 
   async run() {
     console.log('🚀 Zoom Memo Automation セットアップウィザード\\n');
+    console.log('⚠️  注意: このツールはローカル開発用の.envファイルを作成します。');
+    console.log('📝 本番環境では以下の環境変数設定を使用してください:');
+    console.log('   • GitHub: Repository Secrets');
+    console.log('   • Vercel: Project Environment Variables\\n');
     
     try {
       await this.collectZoomConfig();

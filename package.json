@@ -9,7 +9,9 @@
     "test": "jest",
     "monitor": "node 3.operations/src/monitor.js",
     "backup": "node 3.operations/src/chat-backup.js",
-    "setup": "node 1.src/setup.js"
+    "setup": "node 1.src/setup.js",
+    "check-env": "node 1.src/check-env.js",
+    "check-env:verbose": "node 1.src/check-env.js --verbose"
   },
   "keywords": [
     "zoom",

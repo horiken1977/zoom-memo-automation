@@ -110,6 +110,12 @@ docker run -d \
 環境変数設定後、システムをテストしてください：
 
 ```bash
+# 環境変数チェック（設定確認）
+npm run check-env
+
+# 詳細な環境変数チェック
+npm run check-env:verbose
+
 # ヘルスチェック（全APIの接続確認）
 npm run start -- --health-check
 
@@ -143,6 +149,11 @@ nohup npm start > system.log 2>&1 &
 ### コマンドライン
 
 ```bash
+# 環境変数・設定
+npm run check-env                  # 環境変数設定チェック
+npm run check-env:verbose         # 詳細な環境変数チェック
+npm run setup                      # 対話式セットアップ（ローカル用）
+
 # 基本コマンド
 npm start                          # 定期監視開始
 npm run start -- --once           # 一回だけ実行

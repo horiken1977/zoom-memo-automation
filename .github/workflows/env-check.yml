@@ -1,0 +1,111 @@
+name: Environment Variables Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  env-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Check environment variables format
+      env:
+        NODE_ENV: production
+        ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
+        ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET }}
+        ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+      run: |
+        echo "🔍 Checking environment variables..."
+        npm run check-env:verbose
+
+    - name: Test configuration loading
+      env:
+        NODE_ENV: production
+        ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
+        ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET }}
+        ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+      run: |
+        echo "🧪 Testing configuration loading..."
+        node -e "
+          try {
+            const config = require('./1.src/config');
+            console.log('✅ Configuration loaded successfully');
+            console.log('Environment:', config.nodeEnv);
+            console.log('Zoom API configured:', !!config.zoom.apiKey);
+            console.log('Google AI configured:', !!config.googleAI.apiKey);
+            console.log('Slack configured:', !!config.slack.botToken);
+          } catch (error) {
+            console.error('❌ Configuration loading failed:', error.message);
+            process.exit(1);
+          }
+        "
+
+    - name: Run health check (if secrets available)
+      if: ${{ secrets.ZOOM_API_KEY != '' && secrets.GOOGLE_AI_API_KEY != '' && secrets.SLACK_BOT_TOKEN != '' }}
+      env:
+        NODE_ENV: production
+        ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
+        ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET }}
+        ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
+      run: |
+        echo "🩺 Running health check with real APIs..."
+        timeout 30s npm run start -- --health-check || true
+
+    - name: Check required secrets status
+      run: |
+        echo "📋 Required Secrets Status:"
+        echo "ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY != '' && '✅ Set' || '❌ Missing' }}"
+        echo "ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET != '' && '✅ Set' || '❌ Missing' }}"
+        echo "ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID != '' && '✅ Set' || '❌ Missing' }}"
+        echo "GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY != '' && '✅ Set' || '❌ Missing' }}"
+        echo "SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN != '' && '✅ Set' || '❌ Missing' }}"
+        echo "SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID != '' && '✅ Set' || '❌ Missing' }}"
+        echo "SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET != '' && '✅ Set' || '❌ Missing' }}"
+        
+        if [[ "${{ secrets.ZOOM_API_KEY }}" == "" ]] || \
+           [[ "${{ secrets.GOOGLE_AI_API_KEY }}" == "" ]] || \
+           [[ "${{ secrets.SLACK_BOT_TOKEN }}" == "" ]]; then
+          echo ""
+          echo "⚠️  Some required secrets are missing."
+          echo "Please add them in Repository Settings > Secrets and variables > Actions"
+          echo ""
+          echo "Required secrets:"
+          echo "- ZOOM_API_KEY"
+          echo "- ZOOM_API_SECRET" 
+          echo "- ZOOM_ACCOUNT_ID"
+          echo "- GOOGLE_AI_API_KEY"
+          echo "- SLACK_BOT_TOKEN"
+          echo "- SLACK_CHANNEL_ID"
+          echo "- SLACK_SIGNING_SECRET"
+        else
+          echo ""
+          echo "✅ All required secrets are configured!"
+        fi
