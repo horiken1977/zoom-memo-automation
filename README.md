@@ -33,49 +33,90 @@ Zoomクラウド録画を自動で監視し、Google AIで文字起こし・要�
 npm install
 ```
 
-### 2. 設定
+### 2. API設定（事前準備）
 
-```bash
-# セットアップウィザードを実行
-npm run setup
-```
-
-または手動で `.env` ファイルを作成：
-
-```bash
-cp .env.example .env
-# .env ファイルを編集して必要な情報を入力
-```
-
-### 3. API設定
+APIキーとアクセストークンを取得してください。**これらの機密情報は環境変数として設定し、コードには含めません。**
 
 #### Zoom API
 1. [Zoom Marketplace](https://marketplace.zoom.us) にアクセス
 2. 「Develop > Build App」から Server-to-Server OAuth アプリを作成
-3. API Key, API Secret, Account ID を取得
+3. 以下の情報を取得：
+   - `ZOOM_API_KEY`
+   - `ZOOM_API_SECRET` 
+   - `ZOOM_ACCOUNT_ID`
 
 #### Google AI API  
 1. [Google AI Studio](https://aistudio.google.com) にアクセス
-2. APIキーを生成
+2. APIキーを生成：
+   - `GOOGLE_AI_API_KEY`
 
 #### Slack API
 1. [Slack API](https://api.slack.com/apps) でBotアプリを作成
-2. Bot Token, Channel ID, Signing Secret を取得
+2. 以下の情報を取得：
+   - `SLACK_BOT_TOKEN` (xoxb-で始まるトークン)
+   - `SLACK_CHANNEL_ID` (Cで始まるチャンネルID)
+   - `SLACK_SIGNING_SECRET`
 3. 必要な権限を付与：
    - `chat:write`
    - `files:write`
    - `channels:read`
 
+### 3. 環境変数の設定
+
+**重要**: APIキーやトークンは絶対にコードにハードコーディングせず、環境変数で管理してください。
+
+#### ローカル開発環境
+```bash
+# .envファイルを作成（ローカル開発のみ）
+cp .env.example .env
+# .envファイルを編集して取得したAPIキーを設定
+
+# または対話式セットアップ
+npm run setup
+```
+
+#### GitHub環境（GitHub Actions用）
+1. GitHubリポジトリの「Settings」→「Secrets and variables」→「Actions」へ移動
+2. 「New repository secret」で以下の環境変数を追加：
+   - `ZOOM_API_KEY`
+   - `ZOOM_API_SECRET`
+   - `ZOOM_ACCOUNT_ID`
+   - `GOOGLE_AI_API_KEY`
+   - `SLACK_BOT_TOKEN`
+   - `SLACK_CHANNEL_ID`
+   - `SLACK_SIGNING_SECRET`
+
+#### Vercel環境（本番デプロイ用）
+1. Vercelダッシュボードでプロジェクトを選択
+2. 「Settings」→「Environment Variables」へ移動
+3. 上記と同じ環境変数を追加（Production、Preview、Development環境それぞれに設定）
+
+#### Docker/コンテナ環境
+```bash
+# 環境変数ファイルを作成
+docker run -d \
+  -e ZOOM_API_KEY=your_key \
+  -e ZOOM_API_SECRET=your_secret \
+  -e ZOOM_ACCOUNT_ID=your_account_id \
+  -e GOOGLE_AI_API_KEY=your_key \
+  -e SLACK_BOT_TOKEN=your_token \
+  -e SLACK_CHANNEL_ID=your_channel_id \
+  -e SLACK_SIGNING_SECRET=your_secret \
+  zoom-memo-automation
+```
+
 ### 4. 動作確認
 
+環境変数設定後、システムをテストしてください：
+
 ```bash
-# ヘルスチェック
+# ヘルスチェック（全APIの接続確認）
 npm run start -- --health-check
 
-# Slack統合テスト
+# Slack統合テスト（通知テスト）
 npm run start -- --test-slack
 
-# 一回だけ実行（テスト用）
+# 一回だけ実行（録画処理テスト）
 npm run start -- --once
 ```
 
@@ -139,18 +180,54 @@ zoom-memo-automation/
 
 ## ⚙️ 設定項目
 
-### 主要な環境変数
+### 環境変数一覧
 
-| 変数名 | 説明 | 必須 |
-|--------|------|------|
-| `ZOOM_API_KEY` | Zoom API キー | ✅ |
-| `ZOOM_API_SECRET` | Zoom API シークレット | ✅ |
-| `ZOOM_ACCOUNT_ID` | Zoom アカウント ID | ✅ |
-| `GOOGLE_AI_API_KEY` | Google AI API キー | ✅ |
-| `SLACK_BOT_TOKEN` | Slack Bot トークン | ✅ |
-| `SLACK_CHANNEL_ID` | Slack チャンネル ID | ✅ |
-| `CHECK_INTERVAL_MINUTES` | チェック間隔（分） | - |
-| `LOG_LEVEL` | ログレベル | - |
+**セキュリティ重要**: 以下の環境変数は必ずGitHub SecretsやVercel Environment Variablesで管理してください。
+
+| 変数名 | 説明 | 必須 | 設定場所 |
+|--------|------|------|----------|
+| `ZOOM_API_KEY` | Zoom API キー | ✅ | GitHub Secrets / Vercel |
+| `ZOOM_API_SECRET` | Zoom API シークレット | ✅ | GitHub Secrets / Vercel |
+| `ZOOM_ACCOUNT_ID` | Zoom アカウント ID | ✅ | GitHub Secrets / Vercel |
+| `GOOGLE_AI_API_KEY` | Google AI API キー | ✅ | GitHub Secrets / Vercel |
+| `SLACK_BOT_TOKEN` | Slack Bot トークン | ✅ | GitHub Secrets / Vercel |
+| `SLACK_CHANNEL_ID` | Slack チャンネル ID | ✅ | GitHub Secrets / Vercel |
+| `SLACK_SIGNING_SECRET` | Slack署名シークレット | ✅ | GitHub Secrets / Vercel |
+| `CHECK_INTERVAL_MINUTES` | チェック間隔（分） | - | 設定ファイル |
+| `LOG_LEVEL` | ログレベル | - | 設定ファイル |
+
+### デプロイ時の注意事項
+
+#### GitHub Actions
+- リポジトリ設定でSecretsを追加
+- ワークフローファイルで `secrets.VARIABLE_NAME` として参照
+
+#### Vercel
+- プロジェクト設定で環境変数を追加
+- Production/Preview/Development環境それぞれに設定
+- 自動デプロイ時に環境変数が反映される
+
+## 🔒 セキュリティ重要事項
+
+### 環境変数管理の重要性
+
+**⚠️ 絶対に守ってください**：
+- APIキーやトークンをコードに直接記述しない
+- `.env`ファイルを`.gitignore`に追加（既に設定済み）
+- 本番環境ではGitHub SecretsやVercel Environment Variablesを使用
+- 開発チーム内でもAPIキーの共有は最小限に
+
+### 権限管理
+
+- **Zoom API**: 必要最小限の権限のみ付与
+- **Google AI API**: 使用量制限を設定
+- **Slack Bot**: 必要なチャンネルのみアクセス可能
+
+### ログ・データ管理
+
+- 録画ファイルは処理後自動削除
+- ログファイルに機密情報を出力しない
+- 文字起こし結果の保存期間を設定
 
 ## 🚨 トラブルシューティング
 
