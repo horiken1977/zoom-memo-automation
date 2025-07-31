@@ -3,11 +3,6 @@
   "buildCommand": "echo 'No build required'",
   "outputDirectory": ".",
   "installCommand": "npm install",
-  "functions": {
-    "2.tests/api/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/",
