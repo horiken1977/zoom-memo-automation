@@ -5,6 +5,18 @@ Zoomクラウド録画を自動で監視し、Google AIで文字起こし・要�
 ## 📅 最終更新
 - 2025年7月31日: Vercel自動デプロイ設定完了・GitHub Pages公開
 
+## 🚀 メインサイト
+
+**完全なドキュメントとダッシュボードは以下のVercelサイトでご確認ください：**
+
+### [**🌟 Zoom Memo Automation - メインサイト**](https://zoom-memo-automation.vercel.app/)
+
+---
+
+**GitHub Pagesは無効化されています。上記Vercelサイトをご利用ください。**
+
+---
+
 ## 🌟 機能
 
 ### 1. 📹 Zoomクラウド録画監視
@@ -94,20 +106,6 @@ npm run setup
 2. 「Settings」→「Environment Variables」へ移動
 3. 上記と同じ環境変数を追加（Production、Preview、Development環境それぞれに設定）
 
-#### Docker/コンテナ環境
-```bash
-# 環境変数ファイルを作成
-docker run -d \
-  -e ZOOM_API_KEY=your_key \
-  -e ZOOM_API_SECRET=your_secret \
-  -e ZOOM_ACCOUNT_ID=your_account_id \
-  -e GOOGLE_AI_API_KEY=your_key \
-  -e SLACK_BOT_TOKEN=your_token \
-  -e SLACK_CHANNEL_ID=your_channel_id \
-  -e SLACK_SIGNING_SECRET=your_secret \
-  zoom-memo-automation
-```
-
 ### 4. 動作確認
 
 環境変数設定後、システムをテストしてください：
@@ -141,11 +139,13 @@ nohup npm start > system.log 2>&1 &
 
 ## 📖 詳細ドキュメント
 
-- **[開発ダッシュボード](0.docs/index.html)** - プロジェクト進捗・全体概要
-- **[機能設計書](0.docs/functional-design.html)** - 詳細機能仕様
-- **[環境設計書](0.docs/environment-design.html)** - システム構成・デプロイ
-- **[テスト仕様書](0.docs/test-specification.html)** - テスト計画・自動化
-- **[対話記録](0.docs/claude.md)** - 開発履歴・変更記録
+**📱 メインサイト**: https://zoom-memo-automation.vercel.app/
+
+- **[開発ダッシュボード](https://zoom-memo-automation.vercel.app/)** - プロジェクト進捗・全体概要
+- **[機能設計書](https://zoom-memo-automation.vercel.app/functional-design.html)** - 詳細機能仕様
+- **[環境設計書](https://zoom-memo-automation.vercel.app/environment-design.html)** - システム構成・デプロイ
+- **[テスト仕様書](https://zoom-memo-automation.vercel.app/test-specification.html)** - テスト計画・自動化
+- **[対話記録](https://zoom-memo-automation.vercel.app/claude.md)** - 開発履歴・変更記録
 
 ## 🛠️ 使用方法
 
