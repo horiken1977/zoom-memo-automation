@@ -3,31 +3,13 @@ theme: jekyll-theme-minimal
 title: Zoom Memo Automation
 description: Automated Zoom meeting transcription and summary system with Slack integration
 
-# Exclude files and directories from Jekyll build
-exclude:
-  - node_modules/
-  - package.json
-  - package-lock.json
-  - README.md
-  - .env.example
-  - .gitignore
-  - 1.src/
-  - 2.tests/
-  - 3.operations/
-  - recordings/
-  - tmp/
-  - vercel.json
-  - .github/
-  - .vercel/
-
-# Include documentation directory
-include:
-  - 0.docs/
-
+# Disable Jekyll features that cause build errors
+sass:
+  style: compressed
+  
 # Base URL for GitHub Pages
 baseurl: /zoom-memo-automation
 
-# Plugins
+# Minimal plugins
 plugins:
-  - jekyll-relative-links
   - jekyll-seo-tag

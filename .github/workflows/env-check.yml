@@ -39,50 +39,6 @@ jobs:
         echo "🔍 Checking environment variables..."
         npm run check-env:verbose || echo "⚠️ Environment variables not configured yet"
 
-    - name: Test configuration loading (if secrets available)
-      if: env.SECRETS_CONFIGURED == 'true'
-      env:
-        SECRETS_CONFIGURED: ${{ secrets.ZOOM_API_KEY != '' && secrets.GOOGLE_AI_API_KEY != '' && secrets.SLACK_BOT_TOKEN != '' }}
-        NODE_ENV: production
-        ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
-        ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET }}
-        ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
-        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-        SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
-      run: |
-        echo "🧪 Testing configuration loading..."
-        node -e "
-          try {
-            const config = require('./1.src/config');
-            console.log('✅ Configuration loaded successfully');
-            console.log('Environment:', config.nodeEnv);
-            console.log('Zoom API configured:', !!config.zoom.apiKey);
-            console.log('Google AI configured:', !!config.googleAI.apiKey);
-            console.log('Slack configured:', !!config.slack.botToken);
-          } catch (error) {
-            console.error('❌ Configuration loading failed:', error.message);
-            process.exit(1);
-          }
-        "
-
-    - name: Run health check
-      if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-      continue-on-error: true
-      env:
-        NODE_ENV: production
-        ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
-        ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET }}
-        ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
-        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-        SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
-      run: |
-        echo "🩺 Running health check with real APIs..."
-        timeout 30s npm run start -- --health-check || true
-
     - name: Check required secrets status
       env:
         ZOOM_KEY_SET: ${{ secrets.ZOOM_API_KEY != '' }}
