@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Test files
+2.tests/
+*.test.js
+
+# Development files
+.env
+.env.local
+.env.development
+
+# Git
+.git/
+.gitignore
+
+# Documentation source
+docs/
+.github/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Recording files (large files)
+recordings/

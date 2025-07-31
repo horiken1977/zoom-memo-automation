@@ -1,55 +1,53 @@
 {
   "version": 2,
   "name": "zoom-memo-automation",
-  "builds": [
-    {
-      "src": "1.src/**/*",
-      "use": "@vercel/static"
-    }
-  ],
+  "buildCommand": "echo 'No build required'",
+  "outputDirectory": ".",
+  "installCommand": "npm install",
   "routes": [
     {
       "src": "/",
       "dest": "/0.docs/index.html"
     },
     {
-      "src": "/docs/(.*)",
-      "dest": "/0.docs/$1"
+      "src": "/dashboard",
+      "dest": "/0.docs/dashboard.html"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/1.src/api/$1"
+      "src": "/functional-design",
+      "dest": "/0.docs/functional-design.html"
+    },
+    {
+      "src": "/environment-design",
+      "dest": "/0.docs/environment-design.html"
+    },
+    {
+      "src": "/test-specifications",
+      "dest": "/0.docs/test-specifications.html"
     },
     {
       "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/0.docs/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/0.docs/(.*)",
+      "source": "/(.*)",
       "headers": [
         {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
         }
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/0.docs/index.html"
-    }
-  ],
-  "functions": {
-    "1.src/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   },
@@ -57,5 +55,6 @@
     "env": {
       "NODE_ENV": "production"
     }
-  }
+  },
+  "framework": null
 }
