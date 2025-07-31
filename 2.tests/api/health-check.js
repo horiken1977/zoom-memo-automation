@@ -95,7 +95,57 @@ export default async function handler(req, res) {
       }
 
       const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-latest' });
+      
+      // Auto-select best available model
+      let model;
+      let selectedModel;
+      
+      try {
+        // Try to list available models first
+        const models = await genAI.listModels();
+        const availableModels = models.map(model => model.name.replace('models/', ''));
+        
+        // Preferred models in order of preference
+        const preferredModels = [
+          'gemini-1.5-pro-latest',
+          'gemini-1.5-pro',
+          'gemini-pro-latest', 
+          'gemini-pro',
+          'gemini-1.0-pro-latest',
+          'gemini-1.0-pro'
+        ];
+
+        for (const preferredModel of preferredModels) {
+          if (availableModels.includes(preferredModel)) {
+            selectedModel = preferredModel;
+            break;
+          }
+        }
+
+        if (!selectedModel && availableModels.length > 0) {
+          selectedModel = availableModels[0];
+        }
+      } catch (listError) {
+        // Fallback to predefined models if listing fails
+        const fallbackModels = ['gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
+        
+        for (const fallbackModel of fallbackModels) {
+          try {
+            const testModel = genAI.getGenerativeModel({ model: fallbackModel });
+            await testModel.generateContent('test');
+            selectedModel = fallbackModel;
+            break;
+          } catch (error) {
+            continue;
+          }
+        }
+      }
+
+      if (!selectedModel) {
+        throw new Error('No available Gemini model found');
+      }
+
+      model = genAI.getGenerativeModel({ model: selectedModel });
       
       const testPrompt = "Hello! Please respond with exactly: 'Google AI API connection test successful'";
       const result = await model.generateContent(testPrompt);
@@ -105,7 +155,7 @@ export default async function handler(req, res) {
       testResults.tests.google_ai = {
         status: 'success',
         message: '✅ Google AI API connection successful',
-        model: 'gemini-1.5-pro-latest',
+        selected_model: selectedModel,
         test_response: text.trim(),
         response_length: text.length
       };
