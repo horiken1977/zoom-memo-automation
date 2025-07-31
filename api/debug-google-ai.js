@@ -56,25 +56,73 @@ export default async function handler(req, res) {
       });
     }
 
-    // Step 3: Get model
+    // Step 3: Auto-select best available model
     debugInfo.debug_steps.push({
       step: 3,
-      description: 'Get Gemini model',
-      model_name: 'gemini-1.5-pro-latest',
+      description: 'Auto-select best available Gemini model',
       status: 'attempting'
     });
 
     let model;
+    let selectedModel;
     try {
-      model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-latest' });
+      // Try to list available models first
+      try {
+        const models = await genAI.listModels();
+        const availableModels = models.map(model => model.name.replace('models/', ''));
+        
+        debugInfo.debug_steps[2].available_models = availableModels;
+        
+        // Preferred models in order of preference
+        const preferredModels = [
+          'gemini-1.5-pro-latest',
+          'gemini-1.5-pro',
+          'gemini-pro-latest', 
+          'gemini-pro',
+          'gemini-1.0-pro-latest',
+          'gemini-1.0-pro'
+        ];
+
+        for (const preferredModel of preferredModels) {
+          if (availableModels.includes(preferredModel)) {
+            selectedModel = preferredModel;
+            break;
+          }
+        }
+
+        if (!selectedModel && availableModels.length > 0) {
+          selectedModel = availableModels[0];
+        }
+      } catch (listError) {
+        // Fallback to predefined models if listing fails
+        const fallbackModels = ['gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
+        
+        for (const fallbackModel of fallbackModels) {
+          try {
+            const testModel = genAI.getGenerativeModel({ model: fallbackModel });
+            await testModel.generateContent('test');
+            selectedModel = fallbackModel;
+            break;
+          } catch (error) {
+            continue;
+          }
+        }
+      }
+
+      if (!selectedModel) {
+        throw new Error('No available Gemini model found');
+      }
+
+      model = genAI.getGenerativeModel({ model: selectedModel });
       debugInfo.debug_steps[2].status = 'success';
-      debugInfo.debug_steps[2].message = 'Model instance created successfully';
+      debugInfo.debug_steps[2].selected_model = selectedModel;
+      debugInfo.debug_steps[2].message = `Auto-selected model: ${selectedModel}`;
     } catch (error) {
       debugInfo.debug_steps[2].status = 'error';
       debugInfo.debug_steps[2].error = error.message;
       return res.status(500).json({
         ...debugInfo,
-        error: 'Failed to get Gemini model'
+        error: 'Failed to auto-select Gemini model'
       });
     }
 
@@ -104,6 +152,7 @@ export default async function handler(req, res) {
         ...debugInfo,
         status: 'success',
         message: '✅ Google AI API is working correctly',
+        selected_model: selectedModel,
         final_response: text.trim()
       });
 

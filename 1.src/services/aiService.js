@@ -7,7 +7,102 @@ const logger = require('../utils/logger');
 class AIService {
   constructor() {
     this.genAI = new GoogleGenerativeAI(config.googleAI.apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: config.googleAI.model });
+    this.model = null;
+    this.selectedModel = null;
+    this.availableModels = null;
+  }
+
+  /**
+   * 利用可能なモデルを取得して最適なモデルを自動選択
+   */
+  async initializeModel() {
+    try {
+      // 既に初期化済みの場合はスキップ
+      if (this.model && this.selectedModel) {
+        return this.selectedModel;
+      }
+
+      // 手動でモデルが指定されている場合
+      if (config.googleAI.model !== 'auto') {
+        this.selectedModel = config.googleAI.model;
+        this.model = this.genAI.getGenerativeModel({ model: this.selectedModel });
+        logger.info(`Using manually specified model: ${this.selectedModel}`);
+        return this.selectedModel;
+      }
+
+      // 自動選択モード：利用可能なモデルをリスト取得
+      logger.info('Auto-selecting best available Gemini model...');
+      
+      try {
+        // List available models
+        const models = await this.genAI.listModels();
+        this.availableModels = models.map(model => model.name.replace('models/', ''));
+        
+        logger.info(`Available models: ${this.availableModels.join(', ')}`);
+        
+        // 優先順位に基づいて最適なモデルを選択
+        const preferredModels = [
+          'gemini-1.5-pro-latest',
+          'gemini-1.5-pro',
+          'gemini-pro-latest', 
+          'gemini-pro',
+          'gemini-1.0-pro-latest',
+          'gemini-1.0-pro'
+        ];
+
+        for (const preferredModel of preferredModels) {
+          if (this.availableModels.includes(preferredModel)) {
+            this.selectedModel = preferredModel;
+            break;
+          }
+        }
+
+        // 見つからない場合は最初の利用可能なモデルを使用
+        if (!this.selectedModel && this.availableModels.length > 0) {
+          this.selectedModel = this.availableModels[0];
+        }
+
+      } catch (listError) {
+        logger.warn('Failed to list models, using fallback selection:', listError.message);
+        
+        // モデルリスト取得に失敗した場合は、フォールバック順で試行
+        for (const fallbackModel of config.googleAI.fallbackModels) {
+          try {
+            const testModel = this.genAI.getGenerativeModel({ model: fallbackModel });
+            // 簡単なテストを実行してモデルが利用可能か確認
+            await testModel.generateContent('test');
+            this.selectedModel = fallbackModel;
+            break;
+          } catch (error) {
+            logger.debug(`Model ${fallbackModel} not available:`, error.message);
+            continue;
+          }
+        }
+      }
+
+      if (!this.selectedModel) {
+        throw new Error('No available Gemini model found');
+      }
+
+      this.model = this.genAI.getGenerativeModel({ model: this.selectedModel });
+      logger.info(`Selected Gemini model: ${this.selectedModel}`);
+      
+      return this.selectedModel;
+
+    } catch (error) {
+      logger.error('Failed to initialize Gemini model:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * モデルが初期化されていることを確認
+   */
+  async ensureModelInitialized() {
+    if (!this.model) {
+      await this.initializeModel();
+    }
+    return this.model;
   }
 
   /**
@@ -15,6 +110,9 @@ class AIService {
    */
   async transcribeAudio(audioFilePath, meetingInfo) {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       logger.info(`Starting transcription for: ${audioFilePath}`);
 
       // ファイルの存在確認
@@ -59,7 +157,7 @@ class AIService {
         prompt
       ]);
 
-      const response = await result.response;
+      const response = result.response;
       const transcription = response.text();
 
       logger.info(`Transcription completed for meeting: ${meetingInfo.topic}`);
@@ -70,7 +168,7 @@ class AIService {
         filePath: audioFilePath,
         timestamp: new Date().toISOString(),
         audioLength: stats.size,
-        model: config.googleAI.model
+        model: this.selectedModel
       };
 
     } catch (error) {
@@ -116,6 +214,9 @@ ${config.prompts.transcription.userPrompt}
    */
   async generateSummary(transcriptionResult) {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       logger.info(`Generating summary for meeting: ${transcriptionResult.meetingInfo.topic}`);
 
       const prompt = config.prompts.summary.userPrompt.replace(
@@ -128,7 +229,7 @@ ${config.prompts.transcription.userPrompt}
         prompt
       ]);
 
-      const response = await result.response;
+      const response = result.response;
       const summary = response.text();
 
       logger.info(`Summary generated for meeting: ${transcriptionResult.meetingInfo.topic}`);
@@ -152,12 +253,15 @@ ${config.prompts.transcription.userPrompt}
    */
   async processWithCustomPrompt(content, customPrompt) {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       const result = await this.model.generateContent([
         customPrompt,
         content
       ]);
 
-      const response = await result.response;
+      const response = result.response;
       return response.text();
 
     } catch (error) {
@@ -171,6 +275,9 @@ ${config.prompts.transcription.userPrompt}
    */
   async extractParticipants(transcription) {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       const prompt = `以下の会議の文字起こしから参加者情報を抽出してください。
 
 出力形式（JSON）:
@@ -189,7 +296,7 @@ ${config.prompts.transcription.userPrompt}
 ${transcription}`;
 
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       
       // JSONをパース
       const participantsData = JSON.parse(response.text());
@@ -207,6 +314,9 @@ ${transcription}`;
    */
   async extractActionItems(transcription) {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       const prompt = `以下の会議の文字起こしからアクションアイテム（宿題・次のアクション）を抽出してください。
 
 出力形式（JSON）:
@@ -226,7 +336,7 @@ ${transcription}`;
 ${transcription}`;
 
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       
       const actionData = JSON.parse(response.text());
       
@@ -243,6 +353,9 @@ ${transcription}`;
    */
   async extractDecisions(transcription) {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       const prompt = `以下の会議の文字起こしから決定事項を抽出してください。
 
 出力形式（JSON）:
@@ -261,7 +374,7 @@ ${transcription}`;
 ${transcription}`;
 
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       
       const decisionData = JSON.parse(response.text());
       
@@ -322,13 +435,16 @@ ${transcription}`;
    */
   async healthCheck() {
     try {
+      // モデルの初期化を確認
+      await this.ensureModelInitialized();
+      
       const testPrompt = "Hello, please respond with 'AI service is healthy'";
       const result = await this.model.generateContent(testPrompt);
-      const response = await result.response;
+      const response = result.response;
       
       return {
         status: 'healthy',
-        model: config.googleAI.model,
+        model: this.selectedModel,
         response: response.text()
       };
     } catch (error) {

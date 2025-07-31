@@ -1,0 +1,124 @@
+{
+  "test_configuration": {
+    "version": "1.0.0",
+    "created": "2025-07-31",
+    "environment": "production",
+    "target_url": "https://zoom-memo-automation.vercel.app/",
+    "description": "Test configuration for Zoom Memo Automation production environment"
+  },
+  "test_phases": [
+    {
+      "phase": 1,
+      "name": "Unit Tests",
+      "description": "Individual component testing",
+      "estimated_duration": "30 minutes",
+      "tests": [
+        {
+          "id": "ENV_001",
+          "name": "Environment Variables Check",
+          "description": "Verify all required environment variables are set",
+          "priority": "high",
+          "required_vars": [
+            "ZOOM_API_KEY",
+            "ZOOM_API_SECRET", 
+            "ZOOM_ACCOUNT_ID",
+            "GOOGLE_AI_API_KEY",
+            "SLACK_BOT_TOKEN",
+            "SLACK_CHANNEL_ID",
+            "SLACK_SIGNING_SECRET"
+          ]
+        },
+        {
+          "id": "API_001",
+          "name": "Zoom API Connection Test",
+          "description": "Test OAuth authentication with Zoom API",
+          "priority": "high",
+          "endpoint": "https://zoom.us/oauth/token"
+        },
+        {
+          "id": "API_002", 
+          "name": "Google AI API Connection Test",
+          "description": "Test connection to Google Generative AI",
+          "priority": "high",
+          "model": "gemini-1.5-pro-latest"
+        },
+        {
+          "id": "API_003",
+          "name": "Slack API Connection Test", 
+          "description": "Test Slack bot authentication",
+          "priority": "high",
+          "endpoint": "https://slack.com/api/auth.test"
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Integration Tests",
+      "description": "Component interaction testing",
+      "estimated_duration": "45 minutes",
+      "tests": [
+        {
+          "id": "INT_001",
+          "name": "Health Check Test",
+          "description": "Comprehensive system health verification",
+          "priority": "high"
+        },
+        {
+          "id": "INT_002",
+          "name": "Transcription Test",
+          "description": "Test audio file transcription with Google AI",
+          "priority": "medium",
+          "requires_sample_audio": true
+        },
+        {
+          "id": "INT_003",
+          "name": "Summary Generation Test",
+          "description": "Test meeting summary generation",
+          "priority": "medium"
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "End-to-End Tests",
+      "description": "Complete workflow testing",
+      "estimated_duration": "60 minutes",
+      "tests": [
+        {
+          "id": "E2E_001",
+          "name": "Manual Recording Processing",
+          "description": "Test complete recording processing workflow",
+          "priority": "high",
+          "requires_zoom_recording": true
+        },
+        {
+          "id": "E2E_002",
+          "name": "Periodic Monitoring Test",
+          "description": "Test scheduled monitoring functionality",
+          "priority": "medium",
+          "duration": "10 minutes"
+        },
+        {
+          "id": "E2E_003",
+          "name": "Error Handling Test",
+          "description": "Test system behavior under error conditions",
+          "priority": "low"
+        }
+      ]
+    }
+  ],
+  "test_data": {
+    "sample_urls": {
+      "production_site": "https://zoom-memo-automation.vercel.app/",
+      "github_pages": "https://horiken1977.github.io/zoom-memo-automation/",
+      "repository": "https://github.com/horiken1977/zoom-memo-automation"
+    },
+    "expected_responses": {
+      "health_check": {
+        "zoom": "Connected",
+        "google_ai": "Connected", 
+        "slack": "Connected"
+      }
+    }
+  }
+}

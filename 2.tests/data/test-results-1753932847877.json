@@ -1,0 +1,54 @@
+{
+  "timestamp": "2025-07-31T03:34:07.520Z",
+  "environment": "production",
+  "tests": {
+    "environment": {
+      "status": "passed",
+      "timestamp": "2025-07-31T03:34:07.877Z"
+    },
+    "api_connections": {
+      "status": "info",
+      "timestamp": "2025-07-31T03:34:07.877Z",
+      "details": {
+        "timestamp": "2025-07-31T03:34:07.877Z",
+        "tests": {
+          "zoom": {
+            "status": "info",
+            "message": "📋 Zoom API test requires actual credentials in production environment",
+            "test_steps": [
+              "Verify ZOOM_API_KEY is set in Vercel environment variables",
+              "Verify ZOOM_API_SECRET is set in Vercel environment variables",
+              "Verify ZOOM_ACCOUNT_ID is set in Vercel environment variables",
+              "Test OAuth token generation with actual credentials"
+            ]
+          },
+          "google_ai": {
+            "status": "info",
+            "message": "📋 Google AI API test requires actual credentials in production environment",
+            "test_steps": [
+              "Verify GOOGLE_AI_API_KEY is set in Vercel environment variables",
+              "Test Gemini 1.5 Pro model access",
+              "Verify text generation functionality"
+            ]
+          },
+          "slack": {
+            "status": "info",
+            "message": "📋 Slack API test requires actual credentials in production environment",
+            "test_steps": [
+              "Verify SLACK_BOT_TOKEN is set in Vercel environment variables",
+              "Verify SLACK_CHANNEL_ID is set in Vercel environment variables",
+              "Test auth.test API endpoint",
+              "Test message posting functionality"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "summary": {
+    "total_tests": 2,
+    "passed_tests": 1,
+    "failed_tests": 1,
+    "success_rate": "50.0%"
+  }
+}
