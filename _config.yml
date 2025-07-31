@@ -18,6 +18,11 @@ exclude:
   - tmp/
   - vercel.json
   - .github/
+  - .vercel/
+
+# Include documentation directory
+include:
+  - 0.docs/
 
 # Base URL for GitHub Pages
 baseurl: /zoom-memo-automation
