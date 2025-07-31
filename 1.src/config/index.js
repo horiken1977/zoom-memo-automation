@@ -20,7 +20,7 @@ const config = {
   googleAI: {
     apiKey: process.env.GOOGLE_AI_API_KEY,
     model: process.env.GOOGLE_AI_MODEL || 'auto', // 'auto' for automatic latest model selection
-    fallbackModels: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'] // Updated fallback order with working model first
+    fallbackModels: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'] // Updated with Gemini 2.x priority
   },
   
   // Slack Configuration

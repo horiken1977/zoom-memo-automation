@@ -40,8 +40,11 @@ class AIService {
         
         logger.info(`Available models: ${this.availableModels.join(', ')}`);
         
-        // 優先順位に基づいて最適なモデルを選択
+        // 優先順位に基づいて最適なモデルを選択（Gemini 2.x系を最優先）
         const preferredModels = [
+          'gemini-2.5-pro',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
           'gemini-1.5-pro-latest',
           'gemini-1.5-pro',
           'gemini-pro-latest', 

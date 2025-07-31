@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-07-31T05:22:03.177Z",
+  "environment": "production",
+  "base_url": "https://zoom-memo-automation.vercel.app",
+  "tests": {
+    "health_check": {
+      "timestamp": "2025-07-31T05:22:34.928Z",
+      "environment": "production",
+      "vercel_region": "iad1",
+      "tests": {
+        "environment": {
+          "status": "success",
+          "message": "✅ All environment variables set",
+          "checks": {
+            "ZOOM_API_KEY": true,
+            "ZOOM_API_SECRET": true,
+            "ZOOM_ACCOUNT_ID": true,
+            "GOOGLE_AI_API_KEY": true,
+            "SLACK_BOT_TOKEN": true,
+            "SLACK_CHANNEL_ID": true,
+            "SLACK_SIGNING_SECRET": true
+          }
+        },
+        "zoom": {
+          "status": "success",
+          "message": "✅ Zoom API authentication successful",
+          "token_type": "bearer",
+          "expires_in": 3599
+        },
+        "google_ai": {
+          "status": "error",
+          "message": "❌ Google AI API connection failed",
+          "error": "No available Gemini model found"
+        },
+        "slack": {
+          "status": "success",
+          "message": "✅ Slack API connection successful",
+          "user": "meeting_memo_post",
+          "team": "グロースＸ",
+          "url": "https://cs-s547178.slack.com/"
+        }
+      },
+      "summary": {
+        "overall_status": "partial_failure",
+        "total_tests": 4,
+        "successful_tests": 3,
+        "failed_tests": 1,
+        "success_rate": "75.0%"
+      }
+    },
+    "slack_notification": {
+      "timestamp": "2025-07-31T05:22:36.680Z",
+      "test_type": "slack_notification",
+      "environment": "production",
+      "status": "success",
+      "message": "✅ Slack test notification sent successfully",
+      "slack_response": {
+        "channel": "C02NWP1EANS",
+        "message_ts": "1753939356.897579",
+        "permalink": "https://slack.com/archives/C02NWP1EANS/p1753939356897579"
+      }
+    }
+  },
+  "summary": {
+    "total_tests": 2,
+    "successful_tests": 1,
+    "failed_tests": 1,
+    "success_rate": "50.0%",
+    "overall_status": "partial_failure"
+  }
+}

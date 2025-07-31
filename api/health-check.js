@@ -105,8 +105,11 @@ export default async function handler(req, res) {
         const models = await genAI.listModels();
         const availableModels = models.map(model => model.name.replace('models/', ''));
         
-        // Preferred models in order of preference
+        // Preferred models in order of preference (Gemini 2.x priority)
         const preferredModels = [
+          'gemini-2.5-pro',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
           'gemini-1.5-pro-latest',
           'gemini-1.5-pro',
           'gemini-pro-latest', 
@@ -126,8 +129,8 @@ export default async function handler(req, res) {
           selectedModel = availableModels[0];
         }
       } catch (listError) {
-        // Fallback to predefined models if listing fails
-        const fallbackModels = ['gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
+        // Fallback to predefined models if listing fails (Gemini 2.x priority)
+        const fallbackModels = ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
         
         for (const fallbackModel of fallbackModels) {
           try {
