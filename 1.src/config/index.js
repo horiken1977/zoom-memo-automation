@@ -48,7 +48,7 @@ const config = {
   
   // Monitoring Settings
   monitoring: {
-    checkIntervalMinutes: parseInt(process.env.CHECK_INTERVAL_MINUTES) || 30,
+    checkIntervalMinutes: parseInt(process.env.CHECK_INTERVAL_MINUTES) || 120, // Default 2 hours for testing
     retentionDays: parseInt(process.env.RETENTION_DAYS) || 30
   },
   
