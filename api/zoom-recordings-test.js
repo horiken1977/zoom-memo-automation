@@ -1,6 +1,7 @@
 // Zoom録画監視テスト用APIエンドポイント
-const ZoomService = require('../1.src/services/zoomService');
-const logger = require('../1.src/utils/logger');
+
+// モジュールの動的インポート
+let ZoomService, logger;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -8,6 +9,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 動的インポート
+    if (!ZoomService) {
+      ZoomService = require('../1.src/services/zoomService');
+    }
+    if (!logger) {
+      logger = require('../1.src/utils/logger');
+    }
+    
     logger.info('🔍 Zoom録画監視テスト開始');
     
     const zoomService = new ZoomService();
