@@ -10,7 +10,7 @@
     },
     {
       "source": "/dashboard",
-      "destination": "/0.docs/dashboard.html"
+      "destination": "/0.docs/index.html"
     },
     {
       "source": "/functional-design",
@@ -22,7 +22,7 @@
     },
     {
       "source": "/test-specifications",
-      "destination": "/0.docs/test-specifications.html"
+      "destination": "/0.docs/test-specification.html"
     }
   ],
   "headers": [

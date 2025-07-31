@@ -21,7 +21,7 @@ title: Zoom Memo Automation
 - [ダッシュボード](../0.docs/dashboard.html) - システム概要とリアルタイム状態
 - [機能設計書](../0.docs/functional-design.html) - 詳細な機能仕様
 - [環境設計書](../0.docs/environment-design.html) - システム構成と設定
-- [テスト仕様書](../0.docs/test-specifications.html) - テスト計画と手順
+- [テスト仕様書](../0.docs/test-specification.html) - テスト計画と手順
 
 ## セットアップ
 
