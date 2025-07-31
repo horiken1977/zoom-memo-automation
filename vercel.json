@@ -43,10 +43,6 @@
     {
       "source": "/claude.md",
       "destination": "/0.docs/claude.md"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/2.tests/api/$1"
     }
   ],
   "headers": [

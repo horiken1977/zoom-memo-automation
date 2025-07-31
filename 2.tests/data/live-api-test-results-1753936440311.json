@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-07-31T04:33:29.607Z",
+  "environment": "production",
+  "base_url": "https://zoom-memo-automation.vercel.app",
+  "tests": {
+    "health_check": {
+      "status": "error",
+      "status_code": 404,
+      "error": "The page could not be found\n\nNOT_FOUND\n\nhnd1::sbzhw-1753936439835-f69f1b5f214b\n"
+    },
+    "slack_notification": {
+      "status": "error",
+      "error": "Unexpected token 'T', \"The page c\"... is not valid JSON"
+    }
+  },
+  "summary": {
+    "total_tests": 2,
+    "successful_tests": 0,
+    "failed_tests": 2,
+    "success_rate": "0.0%",
+    "overall_status": "partial_failure"
+  }
+}
