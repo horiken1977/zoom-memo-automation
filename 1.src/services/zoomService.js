@@ -131,37 +131,6 @@ class ZoomService {
     }
   }
 
-  /**
-   * 録画ファイルをダウンロード
-   */
-  async downloadRecording(downloadUrl, filePath) {
-    try {
-      const headers = await this.getAuthHeaders();
-      
-      const response = await axios({
-        method: 'GET',
-        url: downloadUrl,
-        headers,
-        responseType: 'stream'
-      });
-
-      const fs = require('fs-extra');
-      const writer = fs.createWriteStream(filePath);
-      
-      response.data.pipe(writer);
-
-      return new Promise((resolve, reject) => {
-        writer.on('finish', () => {
-          logger.info(`Recording downloaded successfully: ${filePath}`);
-          resolve(filePath);
-        });
-        writer.on('error', reject);
-      });
-    } catch (error) {
-      logger.error('Failed to download recording:', error.response?.data || error.message);
-      throw error;
-    }
-  }
 
   /**
    * 新しい録画を監視
@@ -213,50 +182,116 @@ class ZoomService {
   }
 
   /**
-   * 録画の文字起こし用音声を取得
+   * 録画ファイル（音声・動画）をダウンロード
    */
-  async getTranscribableAudio(recording) {
+  async downloadRecording(recording) {
     try {
-      // 音声ファイルを優先、なければ動画ファイル
-      const audioFile = recording.recordingFiles.find(file => 
-        file.fileType === 'M4A' || file.recordingType === 'audio_only'
-      );
-      
-      const targetFile = audioFile || recording.recordingFiles.find(file => 
-        file.fileType === 'MP4'
-      );
-
-      if (!targetFile) {
-        throw new Error('No suitable audio/video file found for transcription');
-      }
-
-      // ファイルをダウンロード
       const fs = require('fs-extra');
       const path = require('path');
       
       await fs.ensureDir(config.recording.downloadPath);
-      
-      const fileName = `${recording.meetingId}_${targetFile.id}.${targetFile.fileType.toLowerCase()}`;
-      const filePath = path.join(config.recording.downloadPath, fileName);
 
-      await this.downloadRecording(targetFile.downloadUrl, filePath);
+      // 音声ファイルを優先してダウンロード
+      const audioFile = recording.recordingFiles.find(file => 
+        file.fileType === 'M4A' || file.recordingType === 'audio_only'
+      );
+      
+      // 動画ファイルを検索（Slack共有とGoogle Drive保存用）
+      const videoFile = recording.recordingFiles.find(file => 
+        file.fileType === 'MP4' && (file.recordingType === 'shared_screen_with_speaker_view' || file.recordingType === 'speaker_view')
+      );
+
+      if (!audioFile && !videoFile) {
+        throw new Error('No suitable audio or video file found for processing');
+      }
+
+      let audioFilePath = null;
+      let videoFilePath = null;
+
+      // 音声ファイルのダウンロード（文字起こし用）
+      if (audioFile) {
+        const audioFileName = `${recording.meetingId}_${audioFile.id}.${audioFile.fileType.toLowerCase()}`;
+        audioFilePath = path.join(config.recording.downloadPath, audioFileName);
+        await this.downloadRecordingFile(audioFile.downloadUrl, audioFilePath);
+        logger.info(`Audio file downloaded: ${audioFileName}`);
+      }
+
+      // 動画ファイルのダウンロード（Google Drive保存用）
+      if (videoFile) {
+        const videoFileName = `${recording.meetingId}_${videoFile.id}.${videoFile.fileType.toLowerCase()}`;
+        videoFilePath = path.join(config.recording.downloadPath, videoFileName);
+        await this.downloadRecordingFile(videoFile.downloadUrl, videoFilePath);
+        logger.info(`Video file downloaded: ${videoFileName}`);
+      }
+
+      // 音声ファイルがない場合は動画ファイルを音声ファイルとしても使用
+      if (!audioFilePath && videoFilePath) {
+        audioFilePath = videoFilePath;
+      }
 
       return {
-        filePath,
-        fileType: targetFile.fileType,
-        fileSize: targetFile.fileSize,
+        audioFilePath: audioFilePath,
+        videoFilePath: videoFilePath,
         meetingInfo: {
           id: recording.meetingId,
           topic: recording.topic,
           startTime: recording.startTime,
           duration: recording.duration,
-          hostName: recording.hostName
+          hostName: recording.hostName,
+          participantCount: recording.participants?.length || 0,
+          originalFileName: videoFile?.fileType || audioFile?.fileType
         }
       };
     } catch (error) {
-      logger.error('Failed to get transcribable audio:', error.message);
+      logger.error('Failed to download recording:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * 個別録画ファイルをダウンロード
+   */
+  async downloadRecordingFile(downloadUrl, filePath) {
+    try {
+      const headers = await this.getAuthHeaders();
+      
+      const response = await axios({
+        method: 'GET',
+        url: downloadUrl,
+        headers,
+        responseType: 'stream'
+      });
+
+      const fs = require('fs-extra');
+      const writer = fs.createWriteStream(filePath);
+      
+      response.data.pipe(writer);
+
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+          logger.fileOperation('download', filePath, true, 0);
+          resolve(filePath);
+        });
+        writer.on('error', reject);
+      });
+    } catch (error) {
+      logger.error('Failed to download recording file:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 録画の文字起こし用音声を取得（下位互換性のため残す）
+   * @deprecated downloadRecording を使用してください
+   */
+  async getTranscribableAudio(recording) {
+    logger.warn('getTranscribableAudio is deprecated. Use downloadRecording instead.');
+    const result = await this.downloadRecording(recording);
+    return {
+      filePath: result.audioFilePath,
+      fileType: 'audio',
+      meetingInfo: result.meetingInfo
+    };
   }
 
   /**

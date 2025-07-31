@@ -9,12 +9,14 @@ const logger = require('./utils/logger');
 const ZoomService = require('./services/zoomService');
 const AIService = require('./services/aiService');
 const SlackService = require('./services/slackService');
+const GoogleDriveService = require('./services/googleDriveService');
 
 class ZoomMemoAutomation {
   constructor() {
     this.zoomService = new ZoomService();
     this.aiService = new AIService();
     this.slackService = new SlackService();
+    this.googleDriveService = new GoogleDriveService();
     
     this.lastCheckFile = path.join(__dirname, '..', '3.operations', 'configs', 'last-check.json');
     this.isProcessing = false;
@@ -91,24 +93,27 @@ class ZoomMemoAutomation {
     const healthResults = await Promise.allSettled([
       this.zoomService.healthCheck(),
       this.aiService.healthCheck(),
-      this.slackService.healthCheck()
+      this.slackService.healthCheck(),
+      this.googleDriveService.healthCheck()
     ]);
 
-    const [zoomHealth, aiHealth, slackHealth] = healthResults.map(result => 
+    const [zoomHealth, aiHealth, slackHealth, driveHealth] = healthResults.map(result => 
       result.status === 'fulfilled' ? result.value : { status: 'unhealthy', error: result.reason.message }
     );
 
     logger.info('Health check results:', {
       zoom: zoomHealth.status,
       ai: aiHealth.status,
-      slack: slackHealth.status
+      slack: slackHealth.status,
+      googleDrive: driveHealth.status
     });
 
-    if (zoomHealth.status === 'unhealthy' || aiHealth.status === 'unhealthy' || slackHealth.status === 'unhealthy') {
+    if (zoomHealth.status === 'unhealthy' || aiHealth.status === 'unhealthy' || 
+        slackHealth.status === 'unhealthy' || driveHealth.status === 'unhealthy') {
       logger.warn('Some services are unhealthy. System may not function properly.');
     }
 
-    return { zoom: zoomHealth, ai: aiHealth, slack: slackHealth };
+    return { zoom: zoomHealth, ai: aiHealth, slack: slackHealth, googleDrive: driveHealth };
   }
 
   async processNewRecordings() {
@@ -167,26 +172,33 @@ class ZoomMemoAutomation {
       const processingMessageTs = await this.slackService.sendProcessingNotification(recording);
 
       // 1. 録画ファイルをダウンロード
-      logger.info(`Downloading audio for meeting: ${recording.topic}`);
-      const audioInfo = await this.zoomService.getTranscribableAudio(recording);
+      logger.info(`Downloading recording for meeting: ${recording.topic}`);
+      const recordingInfo = await this.zoomService.downloadRecording(recording);
 
-      // 2. 文字起こし実行
-      logger.info(`Starting transcription for: ${recording.topic}`);
+      // 2. 文字起こしと分析実行
+      logger.info(`Starting transcription and analysis for: ${recording.topic}`);
       const transcriptionResult = await this.aiService.transcribeAudio(
-        audioInfo.filePath, 
-        audioInfo.meetingInfo
+        recordingInfo.audioFilePath, 
+        recordingInfo.meetingInfo
       );
 
       // 3. 包括的な分析実行
       logger.info(`Analyzing meeting content: ${recording.topic}`);
       const analysisResult = await this.aiService.analyzeComprehensively(transcriptionResult);
 
-      // 4. Slackに要約送信
-      logger.info(`Sending summary to Slack: ${recording.topic}`);
-      await this.slackService.sendMeetingSummary(analysisResult);
+      // 4. Google Driveに録画保存
+      logger.info(`Saving recording to Google Drive: ${recording.topic}`);
+      const driveResult = await this.googleDriveService.saveRecording(
+        recordingInfo.videoFilePath || recordingInfo.audioFilePath,
+        recordingInfo.meetingInfo
+      );
 
-      // 5. 一時ファイルのクリーンアップ
-      await this.cleanupTempFiles(audioInfo.filePath);
+      // 5. Slackに要約と録画リンクを送信
+      logger.info(`Sending summary and recording link to Slack: ${recording.topic}`);
+      await this.slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult);
+
+      // 6. 一時ファイルのクリーンアップ
+      await this.cleanupTempFiles([recordingInfo.audioFilePath, recordingInfo.videoFilePath]);
 
       const processingTime = Math.round((Date.now() - startTime) / 1000);
       logger.meetingComplete(recording, processingTime);
@@ -197,14 +209,20 @@ class ZoomMemoAutomation {
     }
   }
 
-  async cleanupTempFiles(filePath) {
-    try {
-      if (await fs.pathExists(filePath)) {
-        await fs.remove(filePath);
-        logger.fileOperation('delete', filePath, true, 0);
+  async cleanupTempFiles(filePaths) {
+    const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
+    
+    for (const filePath of paths) {
+      if (!filePath) continue;
+      
+      try {
+        if (await fs.pathExists(filePath)) {
+          await fs.remove(filePath);
+          logger.fileOperation('delete', filePath, true, 0);
+        }
+      } catch (error) {
+        logger.error(`Failed to cleanup temp file ${filePath}:`, error.message);
       }
-    } catch (error) {
-      logger.error(`Failed to cleanup temp file ${filePath}:`, error.message);
     }
   }
 

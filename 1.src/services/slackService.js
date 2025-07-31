@@ -9,10 +9,19 @@ class SlackService {
   }
 
   /**
-   * 会議要約をSlackに送信
+   * 会議要約をSlackに送信（従来版・互換性維持）
    */
   async sendMeetingSummary(analysisResult) {
     try {
+      // Slack通知が無効化されている場合はログ出力のみ
+      if (config.development.disableSlackNotifications) {
+        logger.info(`Slack notifications disabled - would send meeting summary: ${analysisResult.meetingInfo.topic}`);
+        return { 
+          ts: 'disabled',
+          message: 'Slack notifications are disabled in development mode'
+        };
+      }
+
       logger.info(`Sending meeting summary to Slack: ${analysisResult.meetingInfo.topic}`);
 
       // Slack ブロック形式で整理されたメッセージを作成
@@ -194,6 +203,12 @@ class SlackService {
    */
   async sendTranscriptionFile(analysisResult) {
     try {
+      // Slack通知が無効化されている場合はログ出力のみ
+      if (config.development.disableSlackNotifications) {
+        logger.info(`Slack notifications disabled - would send transcription file for: ${analysisResult.meetingInfo.topic}`);
+        return;
+      }
+
       const filename = `${analysisResult.meetingInfo.topic}_${new Date(analysisResult.meetingInfo.startTime).toISOString().split('T')[0]}.txt`;
       
       const fileContent = `会議文字起こし
@@ -232,6 +247,12 @@ ${analysisResult.transcription}
    */
   async sendErrorNotification(error, context = '') {
     try {
+      // Slack通知が無効化されている場合はログ出力のみ
+      if (config.development.disableSlackNotifications) {
+        logger.info(`Slack notifications disabled - would send error notification: ${error.message}`);
+        return { message: 'Error notification disabled in development mode' };
+      }
+
       const blocks = [
         {
           type: "header",
@@ -285,6 +306,12 @@ ${analysisResult.transcription}
    */
   async sendProcessingNotification(meetingInfo) {
     try {
+      // Slack通知が無効化されている場合はログ出力のみ
+      if (config.development.disableSlackNotifications) {
+        logger.info(`Slack notifications disabled - would send processing notification: ${meetingInfo.topic}`);
+        return 'disabled';
+      }
+
       const blocks = [
         {
           type: "section",
@@ -323,6 +350,15 @@ ${analysisResult.transcription}
    */
   async sendTestMessage() {
     try {
+      // Slack通知が無効化されている場合はログ出力のみ
+      if (config.development.disableSlackNotifications) {
+        logger.info('Slack notifications disabled - would send test message');
+        return { 
+          ts: 'disabled',
+          message: 'Test message disabled in development mode'
+        };
+      }
+
       const result = await this.client.chat.postMessage({
         channel: this.channelId,
         text: '🤖 Zoom Memo Automation システムのテストメッセージです。',
@@ -353,6 +389,150 @@ ${analysisResult.transcription}
       logger.error('Failed to send test message to Slack:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * 会議要約と録画リンクをSlackに送信
+   */
+  async sendMeetingSummaryWithRecording(analysisResult, driveResult) {
+    try {
+      // Slack通知が無効化されている場合はログ出力のみ
+      if (config.development.disableSlackNotifications) {
+        logger.info(`Slack notifications disabled - would send meeting summary with recording: ${analysisResult.meetingInfo.topic}`);
+        logger.info(`Recording would be shared at: ${driveResult.viewLink}`);
+        return { 
+          ts: 'disabled',
+          message: 'Meeting summary with recording disabled in development mode'
+        };
+      }
+
+      logger.info(`Sending meeting summary with recording link to Slack: ${analysisResult.meetingInfo.topic}`);
+
+      // Slack ブロック形式で整理されたメッセージを作成（録画リンク付き）
+      const blocks = this.buildSummaryBlocksWithRecording(analysisResult, driveResult);
+
+      const result = await this.client.chat.postMessage({
+        channel: this.channelId,
+        blocks: blocks,
+        text: `会議要約と録画: ${analysisResult.meetingInfo.topic}`, // フォールバック用テキスト
+        unfurl_links: false,
+        unfurl_media: false
+      });
+
+      logger.info(`Meeting summary with recording link sent to Slack successfully: ${result.ts}`);
+
+      // ファイルとして文字起こし全文も送信（必要に応じて）
+      if (analysisResult.transcription && analysisResult.transcription.length > 0) {
+        await this.sendTranscriptionFile(analysisResult);
+      }
+
+      return result;
+
+    } catch (error) {
+      logger.error('Failed to send meeting summary with recording to Slack:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 録画リンク付き要約用のSlackブロックを構築
+   */
+  buildSummaryBlocksWithRecording(analysisResult, driveResult) {
+    const { meetingInfo, summary, participants, actionItems, decisions } = analysisResult;
+    
+    const blocks = [];
+
+    // ヘッダー（録画リンク付き）
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `📋 ${meetingInfo.topic}`
+      }
+    });
+
+    // 録画リンクセクション
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `🎥 *録画ファイル:* <${driveResult.viewLink}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath}\n⏱️ *開催日時:* ${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}\n🕐 *時間:* ${meetingInfo.duration}分`
+      }
+    });
+
+    blocks.push({ type: "divider" });
+
+    // 要約セクション
+    if (summary) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*📝 会議要約*\n${summary}`
+        }
+      });
+    }
+
+    // 参加者情報
+    if (participants && participants.length > 0) {
+      const participantList = participants.map(p => 
+        `• ${p.name}${p.role ? ` (${p.role})` : ''}`
+      ).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*👥 参加者*\n${participantList}`
+        }
+      });
+    }
+
+    // 決定事項
+    if (decisions && decisions.length > 0) {
+      const decisionList = decisions.map((decision, index) => 
+        `${index + 1}. ${decision.decision}`
+      ).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*✅ 決定事項*\n${decisionList}`
+        }
+      });
+    }
+
+    // アクションアイテム
+    if (actionItems && actionItems.length > 0) {
+      const actionList = actionItems.map((action, index) => {
+        let line = `${index + 1}. ${action.task}`;
+        if (action.assignee) line += ` (担当: ${action.assignee})`;
+        if (action.dueDate) line += ` [期限: ${action.dueDate}]`;
+        return line;
+      }).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*📋 Next Action*\n${actionList}`
+        }
+      });
+    }
+
+    // フッター
+    blocks.push({
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `🤖 自動生成 | 📅 ${new Date().toLocaleString('ja-JP')} | 📊 処理時間: ${driveResult.uploadTime || 0}秒`
+        }
+      ]
+    });
+
+    return blocks;
   }
 
   /**

@@ -210,6 +210,27 @@ zoom-memo-automation/
 | `CHECK_INTERVAL_MINUTES` | チェック間隔（分） | - | 設定ファイル |
 | `LOG_LEVEL` | ログレベル | - | 設定ファイル |
 
+### 開発モード設定
+
+#### Slack通知の制御
+テスト時にSlack通知を止めるには、以下の環境変数を設定：
+
+```bash
+# Slack通知を無効化（テスト時）
+DISABLE_SLACK_NOTIFICATIONS=true
+
+# 開発モードでは自動的に無効化
+NODE_ENV=development
+```
+
+| 変数名 | 説明 | デフォルト |
+|--------|------|-----------|
+| `DISABLE_SLACK_NOTIFICATIONS` | Slack通知を無効化 | `false` |
+| `ENABLE_TEST_MODE` | テストモード有効化 | `false` |
+| `DRY_RUN` | ドライラン（実際の処理をスキップ） | `false` |
+
+**注意**: `NODE_ENV=development` が設定されている場合、Slack通知は自動的に無効化されます。
+
 ### デプロイ時の注意事項
 
 #### GitHub Actions

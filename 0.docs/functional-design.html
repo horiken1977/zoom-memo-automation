@@ -147,27 +147,50 @@
         
         <div class="section">
             <h2>1. システム概要</h2>
-            <p>Zoom Memo Automationは、Zoomミーティングの内容を自動的に記録・整理し、議事録を生成するシステムです。</p>
+            <p>Zoom Memo Automationは、Zoomクラウド録画を定期監視し、新しい録画を検知すると自動で文字起こし・要約を生成し、Google Driveに保存してSlackに通知するシステムです。</p>
             
             <div class="requirement-list">
-                <h4>主要目標</h4>
-                <ul>
-                    <li>Zoomミーティングの自動録音・録画</li>
-                    <li>音声からテキストへの変換（STT: Speech-to-Text）</li>
-                    <li>AIによる議事録の自動生成</li>
-                    <li>参加者への自動配信</li>
-                </ul>
+                <h4>🔄 システム処理フロー</h4>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; margin: 15px 0;">
+                    <strong>【定期監視サイクル】</strong><br/>
+                    ⏰ 30分間隔でZoom Cloud Recording APIを監視<br/>
+                    <br/>
+                    <strong>【新録画検知時の自動処理】</strong><br/>
+                    1️⃣ 📥 <strong>録画ダウンロード</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 音声ファイル（M4A）をダウンロード<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 動画ファイル（MP4）をダウンロード<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 会議メタデータを取得<br/>
+                    <br/>
+                    2️⃣ 🤖 <strong>AI文字起こし・要約生成</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• Google Gemini 2.5 Proで音声をテキスト化<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 構造化された議事録を自動生成<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 参加者・決定事項・アクションアイテムを抽出<br/>
+                    <br/>
+                    3️⃣ ☁️ <strong>Google Drive保存</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 録画ファイルを年/月フォルダ構造で保存<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 組織内共有リンクを生成<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 適切なファイル名・説明を自動設定<br/>
+                    <br/>
+                    4️⃣ 💬 <strong>Slack通知</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 議事録要約をリッチメッセージで投稿<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• Google Drive録画リンクを添付<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 文字起こし全文をファイル添付<br/>
+                    <br/>
+                    5️⃣ 🗑️ <strong>クリーンアップ</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 一時ダウンロードファイルを削除<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 処理完了ログを記録
+                </div>
             </div>
         </div>
         
         <div class="section">
-            <h2>2. 機能一覧</h2>
+            <h2>2. コア機能</h2>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-planned"></span>F001: Zoom連携機能</h3>
-                <p><strong>説明:</strong> ZoomのWebhookを利用してミーティングの開始・終了を検知し、自動的に録音・録画を開始する機能</p>
-                <p><strong>優先度:</strong> 高</p>
-                <p><strong>状態:</strong> 計画中</p>
+                <h3><span class="status-indicator status-completed"></span>C001: 定期監視システム</h3>
+                <p><strong>説明:</strong> 30分間隔でZoom Cloud Recording APIを監視し、新しい録画を自動検知する基盤機能</p>
+                <p><strong>実装場所:</strong> 1.src/index.js（メインループ）</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
                 
                 <h4>詳細仕様</h4>
                 <table>
@@ -176,25 +199,29 @@
                         <th>内容</th>
                     </tr>
                     <tr>
-                        <td>入力</td>
-                        <td>Zoom Webhook イベント</td>
+                        <td>監視間隔</td>
+                        <td>30分間隔（設定可能）</td>
                     </tr>
                     <tr>
-                        <td>出力</td>
-                        <td>録音・録画データ</td>
+                        <td>検知対象</td>
+                        <td>過去24時間以内の新規録画</td>
                     </tr>
                     <tr>
-                        <td>処理</td>
-                        <td>ミーティング検知、録音開始、メタデータ保存</td>
+                        <td>認証方式</td>
+                        <td>Server-to-Server OAuth 2.0</td>
+                    </tr>
+                    <tr>
+                        <td>エラーハンドリング</td>
+                        <td>リトライ機能、Slack通知</td>
                     </tr>
                 </table>
             </div>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-planned"></span>F002: 音声認識機能</h3>
-                <p><strong>説明:</strong> 録音された音声データを高精度でテキストに変換する機能</p>
-                <p><strong>優先度:</strong> 高</p>
-                <p><strong>状態:</strong> 計画中</p>
+                <h3><span class="status-indicator status-completed"></span>C002: 録画ダウンロード機能</h3>
+                <p><strong>説明:</strong> 検知された録画ファイル（音声・動画）を一時フォルダにダウンロードする機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/zoomService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
                 
                 <h4>詳細仕様</h4>
                 <table>
@@ -203,25 +230,29 @@
                         <th>内容</th>
                     </tr>
                     <tr>
-                        <td>入力</td>
-                        <td>音声ファイル（MP3/WAV/M4A）</td>
+                        <td>ダウンロード対象</td>
+                        <td>音声ファイル（M4A）、動画ファイル（MP4）</td>
                     </tr>
                     <tr>
-                        <td>出力</td>
-                        <td>テキストデータ（JSON形式）</td>
+                        <td>保存先</td>
+                        <td>./recordings（一時フォルダ）</td>
                     </tr>
                     <tr>
-                        <td>API</td>
-                        <td>OpenAI Whisper API / Google Speech-to-Text</td>
+                        <td>メタデータ取得</td>
+                        <td>会議名、開始日時、参加者、時間</td>
+                    </tr>
+                    <tr>
+                        <td>ファイル管理</td>
+                        <td>処理完了後自動削除</td>
                     </tr>
                 </table>
             </div>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-planned"></span>F003: 議事録生成機能</h3>
-                <p><strong>説明:</strong> 変換されたテキストをAIで解析し、構造化された議事録を自動生成する機能</p>
-                <p><strong>優先度:</strong> 高</p>
-                <p><strong>状態:</strong> 計画中</p>
+                <h3><span class="status-indicator status-completed"></span>C003: AI文字起こし機能</h3>
+                <p><strong>説明:</strong> ダウンロードした音声ファイルをGoogle Gemini APIで高精度テキストに変換する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/aiService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（動的モデル選択対応）</p>
                 
                 <h4>詳細仕様</h4>
                 <table>
@@ -230,25 +261,29 @@
                         <th>内容</th>
                     </tr>
                     <tr>
-                        <td>入力</td>
-                        <td>会議テキストデータ、参加者情報</td>
+                        <td>対象ファイル</td>
+                        <td>M4A音声ファイル（優先）、MP4動画ファイル</td>
                     </tr>
                     <tr>
-                        <td>出力</td>
-                        <td>構造化議事録（Markdown/HTML）</td>
+                        <td>使用モデル</td>
+                        <td>Gemini 2.5 Pro → 2.0 Flash → 1.5 Flash（自動フォールバック）</td>
                     </tr>
                     <tr>
-                        <td>処理</td>
-                        <td>要約生成、アクションアイテム抽出、発言者識別</td>
+                        <td>出力形式</td>
+                        <td>日本語テキスト（話者識別付き）</td>
+                    </tr>
+                    <tr>
+                        <td>プロンプト</td>
+                        <td>システム・ユーザープロンプトによる精度向上</td>
                     </tr>
                 </table>
             </div>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-planned"></span>F004: 配信機能</h3>
-                <p><strong>説明:</strong> 生成された議事録を参加者に自動配信する機能</p>
-                <p><strong>優先度:</strong> 中</p>
-                <p><strong>状態:</strong> 計画中</p>
+                <h3><span class="status-indicator status-completed"></span>C004: AI議事録生成機能</h3>
+                <p><strong>説明:</strong> 文字起こしテキストを解析し、構造化された議事録を自動生成する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/aiService.js（analyzeComprehensively）</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
                 
                 <h4>詳細仕様</h4>
                 <table>
@@ -257,74 +292,273 @@
                         <th>内容</th>
                     </tr>
                     <tr>
-                        <td>配信方法</td>
-                        <td>Email、Slack、Teams</td>
+                        <td>入力データ</td>
+                        <td>文字起こしテキスト + 会議メタデータ</td>
                     </tr>
                     <tr>
-                        <td>配信タイミング</td>
-                        <td>ミーティング終了後30分以内</td>
+                        <td>出力構造</td>
+                        <td>基本情報、議論内容、決定事項、Next Action & Due Date</td>
+                    </tr>
+                    <tr>
+                        <td>抽出項目</td>
+                        <td>参加者、アクションアイテム（担当者・期限付き）、決定事項</td>
                     </tr>
                     <tr>
                         <td>形式</td>
-                        <td>PDF、HTML、Markdown</td>
+                        <td>Markdown構造化文書</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-development"></span>C005: Google Drive保存機能</h3>
+                <p><strong>説明:</strong> 録画ファイルをGoogle Driveの組織フォルダに自動保存し、共有リンクを生成する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/googleDriveService.js</p>
+                <p><strong>状態:</strong> 🔄 実装済み（認証設定待ち）</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>保存対象</td>
+                        <td>MP4動画ファイル、M4A音声ファイル</td>
+                    </tr>
+                    <tr>
+                        <td>フォルダ構造</td>
+                        <td>Zoom_Recordings/2025/07/会議名_日付.mp4</td>
+                    </tr>
+                    <tr>
+                        <td>共有設定</td>
+                        <td>組織ドメイン内で視聴可能リンク生成</td>
+                    </tr>
+                    <tr>
+                        <td>認証方式</td>
+                        <td>Google Cloud サービスアカウント</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>C006: Slack統合機能</h3>
+                <p><strong>説明:</strong> 議事録要約とGoogle Drive録画リンクをSlackチャンネルに自動投稿する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/slackService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（通知制御機能付き）</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>メッセージ形式</td>
+                        <td>Slackブロック形式（ヘッダー、基本情報、要約、リンク）</td>
+                    </tr>
+                    <tr>
+                        <td>投稿内容</td>
+                        <td>会議要約、録画リンク、参加者、決定事項、Next Action</td>
+                    </tr>
+                    <tr>
+                        <td>添付ファイル</td>
+                        <td>文字起こし全文（TXTファイル）</td>
+                    </tr>
+                    <tr>
+                        <td>制御機能</td>
+                        <td>開発モード時の通知無効化（DISABLE_SLACK_NOTIFICATIONS）</td>
                     </tr>
                 </table>
             </div>
         </div>
         
         <div class="section">
-            <h2>3. 非機能要件</h2>
+            <h2>3. 支援・運用機能</h2>
             
-            <h3>性能要件</h3>
-            <ul>
-                <li>音声認識処理時間: 録音時間の1/4以下</li>
-                <li>議事録生成時間: 5分以内</li>
-                <li>同時処理可能ミーティング数: 10セッション</li>
-            </ul>
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S001: エラーハンドリング・通知システム</h3>
+                <p><strong>説明:</strong> 処理中のエラーを自動検知し、Slackにエラー通知を送信する機能</p>
+                <p><strong>実装場所:</strong> 1.src/utils/logger.js、1.src/services/slackService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>対象エラー</td>
+                        <td>API接続エラー、ファイル処理エラー、AI処理エラー</td>
+                    </tr>
+                    <tr>
+                        <td>通知形式</td>
+                        <td>Slackエラーメッセージ（エラー内容・コンテキスト付き）</td>
+                    </tr>
+                    <tr>
+                        <td>ログ記録</td>
+                        <td>3.operations/logs/app.log（Winston使用）</td>
+                    </tr>
+                </table>
+            </div>
             
-            <h3>セキュリティ要件</h3>
-            <ul>
-                <li>録音データの暗号化保存</li>
-                <li>アクセス権限の管理</li>
-                <li>GDPR準拠のデータ処理</li>
-            </ul>
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S002: ヘルスチェック機能</h3>
+                <p><strong>説明:</strong> 全外部API（Zoom・Gemini・Slack・Google Drive）の接続状況をチェックする機能</p>
+                <p><strong>実装場所:</strong> api/health-check.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>チェック対象</td>
+                        <td>Zoom API、Google AI API、Slack API、Google Drive API</td>
+                    </tr>
+                    <tr>
+                        <td>実行方法</td>
+                        <td>手動実行（GET /api/health-check）</td>
+                    </tr>
+                    <tr>
+                        <td>応答形式</td>
+                        <td>JSON（各サービスの状態・レスポンス時間）</td>
+                    </tr>
+                </table>
+            </div>
             
-            <h3>可用性要件</h3>
-            <ul>
-                <li>稼働率: 99.5%以上</li>
-                <li>障害復旧時間: 30分以内</li>
-            </ul>
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S003: Claude対話記録システム</h3>
+                <p><strong>説明:</strong> 開発過程のClaude Codeとの対話を記録し、設計書を自動更新するシステム</p>
+                <p><strong>実装場所:</strong> 3.operations/ClaudeScriptLogging/</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>記録方式</td>
+                        <td>手動記録（save-conversation.js）+ 自動監視（claude-monitor）</td>
+                    </tr>
+                    <tr>
+                        <td>保存先</td>
+                        <td>0.docs/claude.md（要約）、詳細ログ</td>
+                    </tr>
+                    <tr>
+                        <td>自動更新</td>
+                        <td>設計書HTML最終更新日時の自動反映</td>
+                    </tr>
+                </table>
+            </div>
         </div>
         
         <div class="section">
-            <h2>4. 技術要件</h2>
+            <h2>4. システム仕様</h2>
             
-            <h3>開発技術スタック</h3>
-            <ul>
-                <li><strong>フロントエンド:</strong> Next.js, React, TypeScript</li>
-                <li><strong>バックエンド:</strong> Node.js, Express</li>
-                <li><strong>データベース:</strong> PostgreSQL, Redis</li>
-                <li><strong>AI/ML:</strong> OpenAI API, Whisper</li>
-                <li><strong>インフラ:</strong> Vercel, AWS S3</li>
-            </ul>
+            <h3>📊 実行モードとパフォーマンス</h3>
+            <div class="function-card">
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>仕様</th>
+                        <th>実測値</th>
+                    </tr>
+                    <tr>
+                        <td>監視間隔</td>
+                        <td>30分間隔（設定可能）</td>
+                        <td>設定通り動作</td>
+                    </tr>
+                    <tr>
+                        <td>処理対象期間</td>
+                        <td>過去24時間以内の録画</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>音声認識処理時間</td>
+                        <td>録音時間に依存</td>
+                        <td>要測定</td>
+                    </tr>
+                    <tr>
+                        <td>同時処理可能数</td>
+                        <td>1セッション（順次処理）</td>
+                        <td>実装済み</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <h3>🔐 セキュリティ・プライバシー</h3>
+            <div class="function-card">
+                <ul>
+                    <li>✅ <strong>API認証トークン管理:</strong> 環境変数による安全な管理</li>
+                    <li>✅ <strong>一時ファイル削除:</strong> 処理完了後の自動クリーンアップ</li>
+                    <li>🔄 <strong>Google Drive組織内共有:</strong> ドメイン制限付きリンク生成</li>
+                    <li>📋 <strong>録音データ暗号化:</strong> 計画中（現在はローカル一時保存のみ）</li>
+                </ul>
+            </div>
+            
+            <h3>⚡ 可用性・信頼性</h3>
+            <div class="function-card">
+                <ul>
+                    <li>✅ <strong>ヘルスチェック:</strong> 全外部API接続状況の監視</li>
+                    <li>✅ <strong>エラー通知:</strong> Slack自動通知システム</li>
+                    <li>✅ <strong>ログ記録:</strong> Winston使用（app.log）</li>
+                    <li>📋 <strong>リトライ機能:</strong> 要実装（現在は単発実行）</li>
+                    <li>📋 <strong>稼働率監視:</strong> 要測定</li>
+                </ul>
+            </div>
+            
+            <h3>🛠️ 技術スタック</h3>
+            <div class="function-card">
+                <table>
+                    <tr>
+                        <th>カテゴリ</th>
+                        <th>技術</th>
+                        <th>バージョン</th>
+                    </tr>
+                    <tr>
+                        <td>ランタイム</td>
+                        <td>Node.js</td>
+                        <td>18.x LTS</td>
+                    </tr>
+                    <tr>
+                        <td>AI・機械学習</td>
+                        <td>Google Gemini API</td>
+                        <td>2.5 Pro / 2.0 Flash</td>
+                    </tr>
+                    <tr>
+                        <td>外部API統合</td>
+                        <td>Zoom API v2, Slack Web API, Google Drive API v3</td>
+                        <td>最新版</td>
+                    </tr>
+                    <tr>
+                        <td>認証</td>
+                        <td>Server-to-Server OAuth 2.0, Bot Token, Service Account</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>インフラ</td>
+                        <td>Vercel Serverless Functions</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>監視・ログ</td>
+                        <td>node-cron, Winston</td>
+                        <td>最新版</td>
+                    </tr>
+                </table>
+            </div>
         </div>
         
         <div class="last-updated">
-            最終更新: <span id="lastUpdated"></span> | 
-            自動更新: <span id="autoUpdate">有効</span>
+            最終更新: 2025年7月31日 18:30 | 機能設計書リニューアル完了
         </div>
     </div>
-    
-    <script>
-        document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
-        
-        // 自動更新チェック（Claude対話記録から機能追加を検知）
-        function checkForUpdates() {
-            // 実装予定: claude.mdファイルを解析して新機能を自動検出
-            console.log('機能設計書の自動更新チェック');
-        }
-        
-        setInterval(checkForUpdates, 300000); // 5分毎
-    </script>
+
 </body>
 </html>

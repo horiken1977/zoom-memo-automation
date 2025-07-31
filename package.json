@@ -11,7 +11,9 @@
     "backup": "node 3.operations/src/chat-backup.js",
     "setup": "node 1.src/setup.js",
     "check-env": "node 1.src/check-env.js",
-    "check-env:verbose": "node 1.src/check-env.js --verbose"
+    "check-env:verbose": "node 1.src/check-env.js --verbose",
+    "claude-monitor": "node 3.operations/src/claude-monitor-standalone.js",
+    "update-docs": "node 3.operations/src/update-design-docs.js"
   },
   "keywords": [
     "zoom",
@@ -27,13 +29,16 @@
     "axios": "^1.6.0",
     "@google/generative-ai": "^0.2.0",
     "@slack/web-api": "^6.9.0",
+    "googleapis": "^126.0.0",
     "dotenv": "^16.3.0",
     "express": "^4.18.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
     "winston": "^3.11.0",
     "fs-extra": "^11.2.0",
-    "date-fns": "^2.30.0"
+    "date-fns": "^2.30.0",
+    "chokidar": "^3.5.3",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.0",

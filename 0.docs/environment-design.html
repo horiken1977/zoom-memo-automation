@@ -223,18 +223,20 @@ zoom-memo-automation/
             <h2>2. システム構成図</h2>
             
             <div class="architecture-diagram">
-                [ユーザー] ← → [Next.js Frontend (Vercel)]
+                【5ステップ処理フロー】
+                
+                1. [Zoom Cloud Recording] → [定期監視（30分間隔）]
                               ↓
-                [API Gateway] ← → [Node.js Backend (Vercel Functions)]
+                2. [録画ダウンロード] → [音声ファイル（M4A）+ 動画ファイル（MP4）]
                               ↓
-                [External APIs]
-                - Zoom Webhook
-                - OpenAI Whisper
-                - Email/Slack APIs
+                3. [Google Gemini 2.5 Pro] → [文字起こし + AI要約生成]
                               ↓
-                [Storage]
-                - AWS S3 (音声ファイル)
-                - Vercel KV (メタデータ)
+                4. [Google Drive API] → [録画ファイル保存 + 共有リンク生成]
+                              ↓
+                5. [Slack Web API] → [要約 + 録画リンク投稿]
+                
+                【実行環境】
+                [Node.js アプリケーション (Vercel)] ← [Cron監視]
             </div>
         </div>
         
@@ -338,47 +340,118 @@ zoom-memo-automation/
                         <th>状態</th>
                     </tr>
                     <tr>
-                        <td>OPENAI_API_KEY</td>
-                        <td>OpenAI API キー</td>
-                        <td><span class="status-badge status-pending">未設定</span></td>
+                        <td>ZOOM_API_KEY</td>
+                        <td>Zoom API キー（Zoom Marketplace）</td>
+                        <td><span class="status-badge status-completed">設定済み</span></td>
                     </tr>
                     <tr>
-                        <td>ZOOM_WEBHOOK_SECRET</td>
-                        <td>Zoom Webhook 検証用シークレット</td>
-                        <td><span class="status-badge status-pending">未設定</span></td>
+                        <td>ZOOM_API_SECRET</td>
+                        <td>Zoom API シークレット</td>
+                        <td><span class="status-badge status-completed">設定済み</span></td>
                     </tr>
                     <tr>
-                        <td>AWS_ACCESS_KEY_ID</td>
-                        <td>AWS S3 アクセスキー</td>
-                        <td><span class="status-badge status-pending">未設定</span></td>
+                        <td>ZOOM_ACCOUNT_ID</td>
+                        <td>Zoom アカウントID</td>
+                        <td><span class="status-badge status-completed">設定済み</span></td>
                     </tr>
                     <tr>
-                        <td>DATABASE_URL</td>
-                        <td>データベース接続URL</td>
-                        <td><span class="status-badge status-pending">未設定</span></td>
+                        <td>GOOGLE_AI_API_KEY</td>
+                        <td>Google AI Studio API キー</td>
+                        <td><span class="status-badge status-completed">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>SLACK_BOT_TOKEN</td>
+                        <td>Slack Bot トークン（xoxb-で始まる）</td>
+                        <td><span class="status-badge status-completed">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>SLACK_CHANNEL_ID</td>
+                        <td>Slack チャンネルID（Cで始まる）</td>
+                        <td><span class="status-badge status-completed">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>GOOGLE_DRIVE_CREDENTIALS</td>
+                        <td>Google Drive サービスアカウント認証情報（JSON）</td>
+                        <td><span class="status-badge status-pending">要設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>GOOGLE_DRIVE_ORG_DOMAIN</td>
+                        <td>Google Drive 組織ドメイン（共有用）</td>
+                        <td><span class="status-badge status-pending">要設定</span></td>
+                    </tr>
+                    <tr>
+                        <td>GOOGLE_DRIVE_RECORDINGS_FOLDER</td>
+                        <td>録画保存用フォルダ名（デフォルト: Zoom_Recordings）</td>
+                        <td><span class="status-badge status-optional">オプション</span></td>
                     </tr>
                 </table>
             </div>
         </div>
         
         <div class="section">
-            <h2>5. 外部サービス連携</h2>
+            <h2>5. デプロイメント環境</h2>
             
             <div class="environment-card">
-                <h3>Zoom Platform <span class="status-badge status-pending">未設定</span></h3>
+                <h3>Vercel Production <span class="status-badge status-completed">設定済み</span></h3>
                 <ul>
-                    <li>Zoom Webhook エンドポイント設定</li>
-                    <li>OAuth アプリケーション登録</li>
-                    <li>Recording API 権限設定</li>
+                    <li>✅ プロジェクト連携（GitHub → Vercel）</li>
+                    <li>✅ 環境変数設定（本番用）</li>
+                    <li>✅ ドメイン設定</li>
+                    <li>✅ API Functions デプロイ</li>
+                    <li>✅ 自動デプロイメント（main ブランチ）</li>
                 </ul>
             </div>
             
             <div class="environment-card">
-                <h3>OpenAI Platform <span class="status-badge status-pending">未設定</span></h3>
+                <h3>GitHub Repository <span class="status-badge status-completed">設定済み</span></h3>
                 <ul>
-                    <li>API キー取得</li>
-                    <li>Whisper API 利用設定</li>
-                    <li>GPT API 利用設定</li>
+                    <li>✅ リポジトリ作成・初期設定</li>
+                    <li>✅ Secrets設定（環境変数）</li>
+                    <li>✅ Actions設定（CI/CD）</li>
+                    <li>✅ Issues・Project管理</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>6. 外部サービス連携</h2>
+            
+            <div class="environment-card">
+                <h3>Zoom Platform <span class="status-badge status-completed">設定済み</span></h3>
+                <ul>
+                    <li>✅ Zoom Marketplace アプリケーション登録</li>
+                    <li>✅ OAuth 2.0 Account-level App設定</li>
+                    <li>✅ Cloud Recording API 権限設定</li>
+                    <li>✅ API Key & Secret取得</li>
+                </ul>
+            </div>
+            
+            <div class="environment-card">
+                <h3>Google AI Platform <span class="status-badge status-completed">設定済み</span></h3>
+                <ul>
+                    <li>✅ Google AI Studio API キー取得</li>
+                    <li>✅ Gemini 2.5 Pro アクセス確認</li>
+                    <li>✅ 動的モデル選択機能実装</li>
+                </ul>
+            </div>
+            
+            <div class="environment-card">
+                <h3>Google Drive Platform <span class="status-badge status-development">実装中</span></h3>
+                <ul>
+                    <li>✅ Google Cloud Console プロジェクト設定</li>
+                    <li>⏳ サービスアカウント作成 + JSON認証キー</li>
+                    <li>⏳ Drive API有効化</li>
+                    <li>⏳ 組織ドメイン共有権限設定</li>
+                </ul>
+            </div>
+            
+            <div class="environment-card">
+                <h3>Slack Platform <span class="status-badge status-completed">設定済み</span></h3>
+                <ul>
+                    <li>✅ Slack Bot アプリケーション作成</li>
+                    <li>✅ Bot Token (xoxb-) 取得</li>
+                    <li>✅ チャンネル権限設定</li>
+                    <li>✅ ブロックUI形式メッセージ送信機能</li>
                 </ul>
             </div>
             
@@ -444,16 +517,42 @@ zoom-memo-automation/
         </div>
     </div>
     
+    
     <script>
+        // 最終更新日時を設定
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
         
-        // 自動更新チェック（Claude対話記録から環境変更を検知）
-        function checkEnvironmentUpdates() {
-            // 実装予定: claude.mdファイルを解析して環境変更を自動検出
-            console.log('環境設計書の自動更新チェック');
+        // Claude対話記録から自動更新
+        async function checkForUpdates() {
+            try {
+                // Claude.mdファイルの内容を取得（実際の実装では、APIを通じて取得）
+                const response = await fetch('/api/claude-status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // 自動更新ステータスを表示
+                    const autoUpdateEl = document.getElementById('autoUpdate');
+                    if (autoUpdateEl) {
+                        autoUpdateEl.textContent = '有効 (最終確認: ' + new Date().toLocaleTimeString('ja-JP') + ')';
+                    }
+                    
+                    // 新しい変更があれば画面を更新
+                    if (data.hasUpdates) {
+                        console.log('新しい更新を検出しました。ページを再読み込みします。');
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                }
+            } catch (error) {
+                console.error('自動更新チェックエラー:', error);
+            }
         }
         
-        setInterval(checkEnvironmentUpdates, 300000); // 5分毎
+        // 5分ごとに更新をチェック
+        setInterval(checkForUpdates, 5 * 60 * 1000);
+        
+        // 初回チェック
+        checkForUpdates();
     </script>
+
 </body>
 </html>

@@ -1,0 +1,73 @@
+{
+  "timestamp": "2025-07-31T05:25:41.191Z",
+  "environment": "production",
+  "base_url": "https://zoom-memo-automation.vercel.app",
+  "tests": {
+    "health_check": {
+      "timestamp": "2025-07-31T05:26:20.769Z",
+      "environment": "production",
+      "vercel_region": "iad1",
+      "tests": {
+        "environment": {
+          "status": "success",
+          "message": "✅ All environment variables set",
+          "checks": {
+            "ZOOM_API_KEY": true,
+            "ZOOM_API_SECRET": true,
+            "ZOOM_ACCOUNT_ID": true,
+            "GOOGLE_AI_API_KEY": true,
+            "SLACK_BOT_TOKEN": true,
+            "SLACK_CHANNEL_ID": true,
+            "SLACK_SIGNING_SECRET": true
+          }
+        },
+        "zoom": {
+          "status": "success",
+          "message": "✅ Zoom API authentication successful",
+          "token_type": "bearer",
+          "expires_in": 3599
+        },
+        "google_ai": {
+          "status": "success",
+          "message": "✅ Google AI API connection successful",
+          "selected_model": "gemini-2.5-pro",
+          "test_response": "Google AI API connection test successful",
+          "response_length": 40
+        },
+        "slack": {
+          "status": "success",
+          "message": "✅ Slack API connection successful",
+          "user": "meeting_memo_post",
+          "team": "グロースＸ",
+          "url": "https://cs-s547178.slack.com/"
+        }
+      },
+      "summary": {
+        "overall_status": "success",
+        "total_tests": 4,
+        "successful_tests": 4,
+        "failed_tests": 0,
+        "success_rate": "100.0%"
+      }
+    },
+    "slack_notification": {
+      "timestamp": "2025-07-31T05:26:50.734Z",
+      "test_type": "slack_notification",
+      "environment": "production",
+      "status": "success",
+      "message": "✅ Slack test notification sent successfully",
+      "slack_response": {
+        "channel": "C02NWP1EANS",
+        "message_ts": "1753939610.930069",
+        "permalink": "https://slack.com/archives/C02NWP1EANS/p1753939610930069"
+      }
+    }
+  },
+  "summary": {
+    "total_tests": 2,
+    "successful_tests": 2,
+    "failed_tests": 0,
+    "success_rate": "100.0%",
+    "overall_status": "success"
+  }
+}

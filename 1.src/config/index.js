@@ -22,6 +22,15 @@ const config = {
     model: process.env.GOOGLE_AI_MODEL || 'auto', // 'auto' for automatic latest model selection
     fallbackModels: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'] // Updated with Gemini 2.x priority
   },
+
+  // Google Drive Configuration
+  googleDrive: {
+    serviceAccountKey: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY, // Path to service account key file
+    credentials: process.env.GOOGLE_DRIVE_CREDENTIALS, // JSON string of service account credentials
+    organizationDomain: process.env.GOOGLE_DRIVE_ORG_DOMAIN, // Organization domain for sharing
+    recordingsFolder: process.env.GOOGLE_DRIVE_RECORDINGS_FOLDER || 'Zoom_Recordings', // Base folder name
+    maxFileSize: parseInt(process.env.GOOGLE_DRIVE_MAX_FILE_SIZE) || 5 * 1024 * 1024 * 1024 // 5GB default
+  },
   
   // Slack Configuration
   slack: {
@@ -41,6 +50,13 @@ const config = {
   monitoring: {
     checkIntervalMinutes: parseInt(process.env.CHECK_INTERVAL_MINUTES) || 30,
     retentionDays: parseInt(process.env.RETENTION_DAYS) || 30
+  },
+  
+  // Development Settings
+  development: {
+    disableSlackNotifications: process.env.DISABLE_SLACK_NOTIFICATIONS === 'true' || process.env.NODE_ENV === 'development',
+    enableTestMode: process.env.ENABLE_TEST_MODE === 'true',
+    dryRun: process.env.DRY_RUN === 'true'
   },
   
   // Logging Configuration
