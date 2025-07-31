@@ -1,32 +1,28 @@
 {
   "version": 2,
-  "name": "zoom-memo-automation",
   "buildCommand": "echo 'No build required'",
   "outputDirectory": ".",
   "installCommand": "npm install",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/",
-      "dest": "/0.docs/index.html"
+      "source": "/",
+      "destination": "/0.docs/index.html"
     },
     {
-      "src": "/dashboard",
-      "dest": "/0.docs/dashboard.html"
+      "source": "/dashboard",
+      "destination": "/0.docs/dashboard.html"
     },
     {
-      "src": "/functional-design",
-      "dest": "/0.docs/functional-design.html"
+      "source": "/functional-design",
+      "destination": "/0.docs/functional-design.html"
     },
     {
-      "src": "/environment-design",
-      "dest": "/0.docs/environment-design.html"
+      "source": "/environment-design",
+      "destination": "/0.docs/environment-design.html"
     },
     {
-      "src": "/test-specifications",
-      "dest": "/0.docs/test-specifications.html"
-    },
-    {
-      "handle": "filesystem"
+      "source": "/test-specifications",
+      "destination": "/0.docs/test-specifications.html"
     }
   ],
   "headers": [
