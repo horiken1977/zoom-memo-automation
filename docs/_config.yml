@@ -1,0 +1,12 @@
+# Jekyll configuration for GitHub Pages
+theme: jekyll-theme-minimal
+title: Zoom Memo Automation
+description: Automated Zoom meeting transcription and summary system with Slack integration
+
+# Base URL for GitHub Pages
+baseurl: /zoom-memo-automation
+
+# Plugins
+plugins:
+  - jekyll-relative-links
+  - jekyll-seo-tag
