@@ -144,7 +144,6 @@ export default async function handler(req, res) {
         console.log(`🤖 文字起こし実行: ${recording.topic}`);
         
         // ファイルサイズと内容確認
-        const fs = require('fs-extra');
         const audioStats = await fs.stat(recordingInfo.audioFilePath);
         console.log(`📊 音声ファイル情報:`);
         console.log(`   - パス: ${recordingInfo.audioFilePath}`);
