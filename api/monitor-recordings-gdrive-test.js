@@ -195,12 +195,16 @@ Kinoshita: 期待しています。何かサポートが必要でしたらお声
         console.log(`📝 要約生成: ${recording.topic}`);
         const analysisResult = await aiService.analyzeComprehensively(transcriptionResult);
 
-        // 4. Google Drive保存
-        console.log(`☁️ Google Drive保存: ${recording.topic}`);
-        const driveResult = await googleDriveService.saveRecording(
-          recordingInfo.videoFilePath || recordingInfo.audioFilePath,
-          recordingInfo.meetingInfo
-        );
+        // 4. Google Drive保存（一時的にスキップ - 認証情報未設定のため）
+        console.log(`☁️ Google Drive保存: ${recording.topic} - スキップ中`);
+        const driveResult = {
+          fileId: 'test-file-id',
+          fileName: 'test-audio-sample.m4a',
+          viewLink: 'https://drive.google.com/file/d/test-file-id/view',
+          downloadLink: 'https://drive.google.com/uc?id=test-file-id',
+          folderPath: 'Zoom_Recordings/2025/08',
+          description: 'テスト用ダミーリンク（実際のGoogleDrive保存はスキップ）'
+        };
 
         // 5. Slack通知
         console.log(`💬 Slack通知送信: ${recording.topic}`);
