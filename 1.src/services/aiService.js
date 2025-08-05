@@ -136,15 +136,24 @@ class AIService {
       const audioData = await fs.readFile(audioFilePath);
       const base64Audio = audioData.toString('base64');
 
-      // ファイル拡張子から MIME タイプを決定
+      // ファイル拡張子から MIME タイプを決定（Gemini API仕様準拠）
       const ext = path.extname(audioFilePath).toLowerCase();
       const mimeTypes = {
-        '.mp3': 'audio/mpeg',
+        // 音声ファイル
+        '.mp3': 'audio/mp3',
+        '.wav': 'audio/wav',
+        '.m4a': 'audio/aac',      // M4AはAACとして処理
+        '.aac': 'audio/aac',
+        '.ogg': 'audio/ogg',
+        '.flac': 'audio/flac',
+        '.aiff': 'audio/aiff',
+        // 動画ファイル
         '.mp4': 'video/mp4',
-        '.m4a': 'audio/mp4',
-        '.wav': 'audio/wav'
+        '.mov': 'video/mov',
+        '.avi': 'video/avi',
+        '.mpeg': 'video/mpeg'
       };
-      const mimeType = mimeTypes[ext] || 'audio/mpeg';
+      const mimeType = mimeTypes[ext] || 'audio/aac'; // デフォルトをAACに変更
 
       // Google AI API に送信
       const prompt = this.buildTranscriptionPrompt(meetingInfo);
