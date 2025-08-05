@@ -245,18 +245,35 @@ ${config.prompts.transcription.userPrompt}
 
       logger.info(`Summary generated for meeting: ${transcriptionResult.meetingInfo.topic}`);
 
-      return {
-        summary,
-        transcription: transcriptionResult.transcription,
-        meetingInfo: transcriptionResult.meetingInfo,
-        timestamp: new Date().toISOString(),
-        originalFile: transcriptionResult.filePath
-      };
+          summary,
+          transcription: transcriptionResult.transcription,
+          meetingInfo: transcriptionResult.meetingInfo,
+          model: this.selectedModel,
+          timestamp: new Date().toISOString(),
+          originalFile: transcriptionResult.filePath,
+          attemptsUsed: attempt
+        };
 
-    } catch (error) {
-      logger.error(`Summary generation failed:`, error.message);
-      throw error;
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Summary generation attempt ${attempt}/${maxRetries} failed for ${transcriptionResult.meetingInfo.topic}: ${error.message}`);
+        
+        // 最後の試行でない場合は待機
+        if (attempt < maxRetries) {
+          const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          logger.info(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
+
+    // 全ての試行が失敗した場合
+    logger.error(`All ${maxRetries} summary generation attempts failed for ${transcriptionResult.meetingInfo.topic}`, {
+      finalError: lastError.message,
+      transcriptionLength: transcriptionResult.transcription?.length || 0
+    });
+    
+    throw new Error(`Summary generation failed after ${maxRetries} attempts. Last error: ${lastError.message}`);
   }
 
   /**
@@ -401,44 +418,70 @@ ${transcription}`;
    * 包括的な会議分析
    */
   async analyzeComprehensively(transcriptionResult) {
-    try {
-      logger.info('Starting comprehensive meeting analysis...');
+    const maxRetries = 5;
+    let lastError = null;
+    
+    logger.info(`Starting comprehensive analysis for: ${transcriptionResult.meetingInfo.topic}`);
 
-      const transcription = transcriptionResult.transcription;
+    // 5周フォールバック実行
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.info(`Comprehensive analysis attempt ${attempt}/${maxRetries} for: ${transcriptionResult.meetingInfo.topic}`);
+        
+        const transcription = transcriptionResult.transcription;
 
-      // 並行して各種分析を実行
-      const [
-        summary,
-        participants,
-        actionItems,
-        decisions
-      ] = await Promise.all([
-        this.generateSummary(transcriptionResult),
-        this.extractParticipants(transcription),
-        this.extractActionItems(transcription),
-        this.extractDecisions(transcription)
-      ]);
+        // 並行して各種分析を実行
+        const [
+          summary,
+          participants,
+          actionItems,
+          decisions
+        ] = await Promise.all([
+          this.generateSummary(transcriptionResult),
+          this.extractParticipants(transcription),
+          this.extractActionItems(transcription),
+          this.extractDecisions(transcription)
+        ]);
 
-      return {
-        meetingInfo: transcriptionResult.meetingInfo,
-        transcription,
-        summary: summary.summary,
-        participants,
-        actionItems,
-        decisions,
-        analysis: {
-          totalParticipants: participants.length,
-          totalActionItems: actionItems.length,
-          totalDecisions: decisions.length,
-          analyzedAt: new Date().toISOString()
-        },
-        originalFile: transcriptionResult.filePath
-      };
+        logger.info(`Comprehensive analysis completed successfully on attempt ${attempt}/${maxRetries} for: ${transcriptionResult.meetingInfo.topic}`);
 
-    } catch (error) {
-      logger.error('Comprehensive analysis failed:', error.message);
-      throw error;
+        return {
+          meetingInfo: transcriptionResult.meetingInfo,
+          transcription,
+          summary: summary.summary,
+          participants,
+          actionItems,
+          decisions,
+          analysis: {
+            totalParticipants: participants.length,
+            totalActionItems: actionItems.length,
+            totalDecisions: decisions.length,
+            analyzedAt: new Date().toISOString(),
+            attemptsUsed: attempt
+          },
+          originalFile: transcriptionResult.filePath
+        };
+
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Comprehensive analysis attempt ${attempt}/${maxRetries} failed for ${transcriptionResult.meetingInfo.topic}: ${error.message}`);
+        
+        // 最後の試行でない場合は待機
+        if (attempt < maxRetries) {
+          const waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 15000); // 長めの待機時間
+          logger.info(`Waiting ${waitTime}ms before comprehensive analysis retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
+
+    // 全ての試行が失敗した場合
+    logger.error(`All ${maxRetries} comprehensive analysis attempts failed for ${transcriptionResult.meetingInfo.topic}`, {
+      finalError: lastError.message,
+      meetingTopic: transcriptionResult.meetingInfo.topic
+    });
+    
+    throw new Error(`Comprehensive analysis failed after ${maxRetries} attempts. Last error: ${lastError.message}`);
   }
 
   /**

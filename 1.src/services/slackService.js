@@ -1,11 +1,13 @@
 const { WebClient } = require('@slack/web-api');
 const config = require('../config');
 const logger = require('../utils/logger');
+const ErrorRecoveryLogger = require('../utils/errorRecoveryLogger');
 
 class SlackService {
   constructor() {
     this.client = new WebClient(config.slack.botToken);
     this.channelId = config.slack.channelId;
+    this.errorRecoveryLogger = new ErrorRecoveryLogger();
   }
 
   /**
@@ -407,45 +409,94 @@ ${analysisResult.transcription}
   }
 
   /**
-   * 会議要約と録画リンクをSlackに送信
+   * 会議要約と録画リンクをSlackに送信（エラー回復機能付き）
    */
   async sendMeetingSummaryWithRecording(analysisResult, driveResult) {
-    try {
-      // Slack通知が無効化されている場合はログ出力のみ
-      if (config.development.disableSlackNotifications) {
-        logger.info(`Slack notifications disabled - would send meeting summary with recording: ${analysisResult.meetingInfo.topic}`);
-        logger.info(`Recording would be shared at: ${driveResult.viewLink}`);
-        return { 
-          ts: 'disabled',
-          message: 'Meeting summary with recording disabled in development mode'
-        };
+    const maxRetries = 3;
+    let lastError = null;
+
+    // Slack通知が無効化されている場合はログ出力のみ
+    if (config.development.disableSlackNotifications) {
+      logger.info(`Slack notifications disabled - would send meeting summary with recording: ${analysisResult.meetingInfo.topic}`);
+      logger.info(`Recording would be shared at: ${driveResult.viewLink}`);
+      return { 
+        ts: 'disabled',
+        message: 'Meeting summary with recording disabled in development mode'
+      };
+    }
+
+    // 3回リトライで Slack 投稿を試行
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.info(`Attempting to send meeting summary to Slack (${attempt}/${maxRetries}): ${analysisResult.meetingInfo.topic}`);
+
+        // Slack ブロック形式で整理されたメッセージを作成（録画リンク付き）
+        const blocks = this.buildSummaryBlocksWithRecording(analysisResult, driveResult);
+
+        const result = await this.client.chat.postMessage({
+          channel: this.channelId,
+          blocks: blocks,
+          text: `会議要約と録画: ${analysisResult.meetingInfo.topic}`, // フォールバック用テキスト
+          unfurl_links: false,
+          unfurl_media: false
+        });
+
+        logger.info(`Meeting summary with recording link sent to Slack successfully on attempt ${attempt}: ${result.ts}`);
+
+        // ファイルとして文字起こし全文も送信（必要に応じて）
+        if (analysisResult.transcription && analysisResult.transcription.length > 0) {
+          try {
+            await this.sendTranscriptionFile(analysisResult);
+          } catch (fileError) {
+            logger.warn(`Failed to send transcription file, but main message succeeded: ${fileError.message}`);
+          }
+        }
+
+        return result;
+
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Slack post attempt ${attempt}/${maxRetries} failed for ${analysisResult.meetingInfo.topic}: ${error.message}`);
+        
+        // 最後の試行でない場合は短い待機
+        if (attempt < maxRetries) {
+          const waitTime = 2000 * attempt; // 2秒、4秒、6秒
+          logger.info(`Waiting ${waitTime}ms before Slack retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
+    }
 
-      logger.info(`Sending meeting summary with recording link to Slack: ${analysisResult.meetingInfo.topic}`);
-
-      // Slack ブロック形式で整理されたメッセージを作成（録画リンク付き）
-      const blocks = this.buildSummaryBlocksWithRecording(analysisResult, driveResult);
-
-      const result = await this.client.chat.postMessage({
-        channel: this.channelId,
-        blocks: blocks,
-        text: `会議要約と録画: ${analysisResult.meetingInfo.topic}`, // フォールバック用テキスト
-        unfurl_links: false,
-        unfurl_media: false
+    // 全ての試行が失敗した場合、要約データを保存
+    logger.error(`All ${maxRetries} Slack post attempts failed for ${analysisResult.meetingInfo.topic}. Saving data for recovery.`);
+    
+    try {
+      const saveResult = await this.errorRecoveryLogger.saveSlackPostFailure(
+        analysisResult.meetingInfo,
+        analysisResult,
+        lastError,
+        { attemptCount: maxRetries, finalAttempt: true }
+      );
+      
+      logger.info(`Meeting summary data saved for manual recovery`, {
+        saved: saveResult.saved,
+        location: saveResult.location,
+        fileName: saveResult.fileName,
+        fileId: saveResult.fileId
       });
 
-      logger.info(`Meeting summary with recording link sent to Slack successfully: ${result.ts}`);
-
-      // ファイルとして文字起こし全文も送信（必要に応じて）
-      if (analysisResult.transcription && analysisResult.transcription.length > 0) {
-        await this.sendTranscriptionFile(analysisResult);
-      }
-
-      return result;
-
-    } catch (error) {
-      logger.error('Failed to send meeting summary with recording to Slack:', error.message);
-      throw error;
+      // Slack投稿は失敗したが、データは保存されたことを示すエラー
+      const dataPreservedError = new Error(`Slack post failed after ${maxRetries} attempts, but meeting data has been preserved for manual recovery. Last error: ${lastError.message}`);
+      dataPreservedError.dataPreserved = true;
+      dataPreservedError.recoveryInfo = saveResult;
+      
+      throw dataPreservedError;
+      
+    } catch (saveError) {
+      logger.error(`Failed to save meeting data for recovery: ${saveError.message}`);
+      
+      // データ保存も失敗した場合は、元のエラーをそのまま投げる
+      throw lastError;
     }
   }
 
