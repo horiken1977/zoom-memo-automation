@@ -18,7 +18,8 @@ const config = {
     clientSecret: process.env.ZOOM_CLIENT_SECRET,
     redirectUri: process.env.ZOOM_REDIRECT_URI || 'http://localhost:3000/auth/zoom/callback',
     baseUrl: 'https://api.zoom.us/v2',
-    oauthUrl: 'https://zoom.us/oauth'
+    oauthUrl: 'https://zoom.us/oauth',
+    useOAuth: process.env.ZOOM_USE_OAUTH === 'true' // OAuth使用フラグ
   },
   
   // Google AI Configuration

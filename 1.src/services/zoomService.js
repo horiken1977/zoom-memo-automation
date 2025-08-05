@@ -56,8 +56,8 @@ class ZoomService {
         return this.accessToken;
       }
 
-      // OAuth Server-to-Server認証を優先使用
-      if (this.clientId && this.clientSecret) {
+      // OAuth Server-to-Server認証を優先使用（設定で有効な場合のみ）
+      if (config.zoom.useOAuth && this.clientId && this.clientSecret) {
         const response = await axios.post('https://zoom.us/oauth/token', null, {
           params: {
             grant_type: 'account_credentials',
