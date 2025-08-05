@@ -40,17 +40,16 @@ class AIService {
         
         logger.info(`Available models: ${this.availableModels.join(', ')}`);
         
-        // 優先順位に基づいて最適なモデルを選択（Gemini 2.x系を最優先）
+        // 優先順位に基づいて最適なモデルを選択（動作確認済みモデルを最優先）
         const preferredModels = [
-          'gemini-2.5-pro',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash',
-          'gemini-1.5-pro-latest',
-          'gemini-1.5-pro',
+          'gemini-2.5-pro',     // ✅ 動作確認済み
+          'gemini-2.0-flash',   // ✅ 動作確認済み
+          'gemini-1.5-flash',   // ✅ 動作確認済み
           'gemini-pro-latest', 
           'gemini-pro',
           'gemini-1.0-pro-latest',
           'gemini-1.0-pro'
+          // gemini-1.5-pro系はRate Limit問題のため除外
         ];
 
         for (const preferredModel of preferredModels) {
@@ -72,8 +71,8 @@ class AIService {
         for (const fallbackModel of config.googleAI.fallbackModels) {
           try {
             const testModel = this.genAI.getGenerativeModel({ model: fallbackModel });
-            // 簡単なテストを実行してモデルが利用可能か確認
-            await testModel.generateContent('test');
+            // より詳細なテストプロンプトでモデルが利用可能か確認
+            await testModel.generateContent('こんにちは。システムテストです。');
             this.selectedModel = fallbackModel;
             break;
           } catch (error) {
