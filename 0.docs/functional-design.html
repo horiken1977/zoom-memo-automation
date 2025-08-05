@@ -155,30 +155,29 @@
                     <strong>【定期監視サイクル】</strong><br/>
                     ⏰ 30分間隔でZoom Cloud Recording APIを監視<br/>
                     <br/>
-                    <strong>【新録画検知時の自動処理】</strong><br/>
-                    1️⃣ 📥 <strong>録画ダウンロード</strong><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 音声ファイル（M4A）をダウンロード<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 動画ファイル（MP4）をダウンロード<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 会議メタデータを取得<br/>
+                    <strong>【新録画検知時の並列処理フロー】</strong><br/>
+                    1️⃣ 📥 <strong>録画ファイル取得</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• Zoom APIから録画情報を取得<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 会議メタデータを抽出<br/>
                     <br/>
-                    2️⃣ 🤖 <strong>AI文字起こし・要約生成</strong><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• Google Gemini 2.5 Proで音声をテキスト化<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 構造化された議事録を自動生成<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 参加者・決定事項・アクションアイテムを抽出<br/>
+                    2️⃣ 🔄 <strong>並列処理開始</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<strong>Thread A: 動画保存処理</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• MP4動画ファイルをダウンロード<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• Google Drive本保存 (Zoom_Recordings/{年}/{月}/)<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• 組織内共有リンクを生成<br/>
                     <br/>
-                    3️⃣ ☁️ <strong>Google Drive保存</strong><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 録画ファイルを年/月フォルダ構造で保存<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 組織内共有リンクを生成<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 適切なファイル名・説明を自動設定<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<strong>Thread B: 音声処理 → AI要約 → Slack投稿</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• M4A音声ファイルをダウンロード<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• Google Drive一時保存 (Temp/{meetingId}/)<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• Gemini 2.5 Proで文字起こし・要約生成<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• 構造化された議事録を自動生成<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• Slack投稿（要約 + 動画リンク）<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;• 一時音声ファイルを削除<br/>
                     <br/>
-                    4️⃣ 💬 <strong>Slack通知</strong><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 議事録要約をリッチメッセージで投稿<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• Google Drive録画リンクを添付<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 文字起こし全文をファイル添付<br/>
-                    <br/>
-                    5️⃣ 🗑️ <strong>クリーンアップ</strong><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 一時ダウンロードファイルを削除<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;• 処理完了ログを記録
+                    3️⃣ ✅ <strong>処理完了</strong><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 両処理の完了を確認<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• 処理結果ログを記録<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;• エラー発生時は個別にSlack通知
                 </div>
             </div>
         </div>
@@ -556,7 +555,7 @@
         </div>
         
         <div class="last-updated">
-            最終更新: 2025年7月31日 18:30 | 機能設計書リニューアル完了
+            最終更新: 2025年8月5日 16:40 | 並列処理フロー設計・テスト実行実績更新
         </div>
     </div>
 

@@ -405,7 +405,49 @@
             </div>
             
             <div class="test-case">
-                <h3><span class="status-indicator status-blocked"></span>TC006: 統合エンドツーエンドテスト</h3>
+                <h3><span class="status-indicator status-completed"></span>TC006: 音声ファイル統合テスト（GoogleDrive → Gemini → Slack）</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th>項目</th>
+                            <th>内容</th>
+                        </tr>
+                        <tr>
+                            <td>目的</td>
+                            <td>GoogleDrive音声ファイル → Gemini要約 → Slack投稿の統合フローテスト</td>
+                        </tr>
+                        <tr>
+                            <td>前提条件</td>
+                            <td>GoogleDriveサンプルファイル、Gemini 2.5-pro、Slack本番環境</td>
+                        </tr>
+                        <tr>
+                            <td>テスト手順</td>
+                            <td>
+                                1. https://drive.google.com/drive/folders/1U05EhOhWn91JMUINgF9de3kakdo9E_uX からM4A音声ファイル取得<br>
+                                2. Gemini 2.5-proでaudio/aac形式で文字起こし・要約実行<br>
+                                3. 本番Slackチャンネルに要約投稿<br>
+                                4. 処理時間・エラーハンドリング確認
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>実行結果</td>
+                            <td>✅ 成功（2025-08-05 16:33実行）<br>
+                                • 処理時間: 15秒<br>
+                                • Gemini 2.5-pro音声処理: 正常動作<br>
+                                • 要約生成: 高品質な日本語議事録<br>
+                                • Slack投稿: リッチメッセージ投稿成功
+                            </td>
+                        </tr>
+                        <tr class="priority-high">
+                            <td>優先度</td>
+                            <td>高</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="test-case">
+                <h3><span class="status-indicator status-blocked"></span>TC007: 完全統合エンドツーエンドテスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
