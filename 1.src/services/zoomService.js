@@ -7,6 +7,10 @@ class ZoomService {
   constructor() {
     this.baseUrl = config.zoom.baseUrl;
     this.accountId = config.zoom.accountId;
+    // OAuth credentials (preferred)
+    this.clientId = config.zoom.clientId;
+    this.clientSecret = config.zoom.clientSecret;
+    // Legacy JWT credentials (fallback)
     this.apiKey = config.zoom.apiKey;
     this.apiSecret = config.zoom.apiSecret;
     this.accessToken = null;
@@ -52,25 +56,32 @@ class ZoomService {
         return this.accessToken;
       }
 
-      const response = await axios.post('https://zoom.us/oauth/token', null, {
-        params: {
-          grant_type: 'account_credentials',
-          account_id: this.accountId
-        },
-        auth: {
-          username: this.apiKey,
-          password: this.apiSecret
-        },
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
+      // OAuth Server-to-Server認証を優先使用
+      if (this.clientId && this.clientSecret) {
+        const response = await axios.post('https://zoom.us/oauth/token', null, {
+          params: {
+            grant_type: 'account_credentials',
+            account_id: this.accountId
+          },
+          auth: {
+            username: this.clientId,
+            password: this.clientSecret
+          },
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        });
 
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000; // 1分前に期限切れとする
+        this.accessToken = response.data.access_token;
+        this.tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000; // 1分前に期限切れとする
 
-      logger.info('Zoom access token obtained successfully');
-      return this.accessToken;
+        logger.info('Zoom OAuth access token obtained successfully');
+        return this.accessToken;
+      } else {
+        // フォールバック: 既存のJWT認証
+        logger.warn('Using legacy JWT authentication. Consider upgrading to OAuth.');
+        return this.generateJWT();
+      }
     } catch (error) {
       logger.error('Failed to get Zoom access token:', error.response?.data || error.message);
       throw error;

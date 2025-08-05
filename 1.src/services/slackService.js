@@ -13,12 +13,27 @@ class SlackService {
    */
   async sendMeetingSummary(analysisResult) {
     try {
-      // Slack通知が無効化されている場合はログ出力のみ
-      if (config.development.disableSlackNotifications) {
-        logger.info(`Slack notifications disabled - would send meeting summary: ${analysisResult.meetingInfo.topic}`);
+      // Slack通知が無効化されている場合、または本番安全モードの場合はログ出力のみ
+      if (config.development.disableSlackNotifications || config.productionTest.logSlackInsteadOfSend) {
+        const logData = {
+          type: 'SLACK_MEETING_SUMMARY',
+          timestamp: new Date().toISOString(),
+          meetingInfo: analysisResult.meetingInfo,
+          summary: analysisResult.summary,
+          participants: analysisResult.participants,
+          actionItems: analysisResult.actionItems,
+          decisions: analysisResult.decisions,
+          blocks: this.buildSummaryBlocks(analysisResult)
+        };
+        
+        logger.info('=== SLACK MESSAGE LOG (PRODUCTION SAFE MODE) ===');
+        logger.info(JSON.stringify(logData, null, 2));
+        logger.info('=== END SLACK MESSAGE LOG ===');
+        
         return { 
-          ts: 'disabled',
-          message: 'Slack notifications are disabled in development mode'
+          ts: 'logged_only',
+          message: 'Slack message logged instead of sent (production safe mode)',
+          logData: logData
         };
       }
 
@@ -533,6 +548,63 @@ ${analysisResult.transcription}
     });
 
     return blocks;
+  }
+
+  /**
+   * 汎用的なSlack通知送信（本番安全モード対応）
+   */
+  async sendNotification(message) {
+    try {
+      // 本番安全モードの場合はログ出力のみ
+      if (config.productionTest.logSlackInsteadOfSend) {
+        const logData = {
+          type: 'SLACK_NOTIFICATION',
+          timestamp: new Date().toISOString(),
+          message: message
+        };
+        
+        logger.info('=== SLACK NOTIFICATION LOG (PRODUCTION SAFE MODE) ===');
+        logger.info(JSON.stringify(logData, null, 2));
+        logger.info('=== END SLACK NOTIFICATION LOG ===');
+        
+        return { 
+          success: true,
+          ts: 'logged_only',
+          message: 'Notification logged instead of sent (production safe mode)',
+          logData: logData
+        };
+      }
+
+      // 開発モードでの無効化チェック
+      if (config.development.disableSlackNotifications) {
+        logger.info('Slack notifications disabled in development mode');
+        return { 
+          success: true,
+          ts: 'disabled',
+          message: 'Slack notifications disabled in development mode'
+        };
+      }
+
+      // 実際にSlackに送信
+      const result = await this.client.chat.postMessage({
+        channel: this.channelId,
+        ...message
+      });
+
+      logger.info('Notification sent to Slack successfully');
+      return { 
+        success: true,
+        ts: result.ts,
+        channel: result.channel
+      };
+
+    } catch (error) {
+      logger.error('Failed to send notification to Slack:', error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 
   /**

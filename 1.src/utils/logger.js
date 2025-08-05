@@ -3,9 +3,22 @@ const path = require('path');
 const fs = require('fs-extra');
 const config = require('../config');
 
-// ログディレクトリを確保
+// ログディレクトリを確保（Vercel等のサーバーレス環境では無効化）
 const logDir = path.dirname(config.logging.file);
-fs.ensureDirSync(logDir);
+let canWriteFiles = true;
+
+// Vercel環境や読み取り専用環境でのディレクトリ作成を安全に処理
+try {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    // Vercel環境ではファイル書き込みをスキップ
+    canWriteFiles = false;
+  } else {
+    fs.ensureDirSync(logDir);
+  }
+} catch (error) {
+  console.warn('⚠️ ログディレクトリの作成に失敗しました。コンソール出力のみに切り替えます:', error.message);
+  canWriteFiles = false;
+}
 
 // カスタムログフォーマット
 const logFormat = winston.format.combine(
@@ -30,11 +43,12 @@ const logFormat = winston.format.combine(
 );
 
 // Winstonロガーの作成
-const logger = winston.createLogger({
-  level: config.logging.level,
-  format: logFormat,
-  transports: [
-    // ファイル出力
+const transports = [];
+
+// ファイル書き込みが可能な環境でのみファイルトランスポートを追加
+if (canWriteFiles) {
+  transports.push(
+    // ファイル出力  
     new winston.transports.File({
       filename: config.logging.file,
       maxsize: 5242880, // 5MB
@@ -49,21 +63,31 @@ const logger = winston.createLogger({
       maxsize: 5242880,
       maxFiles: 3
     })
-  ]
+  );
+}
+
+// コンソールトランスポートを追加（本番環境でもファイル書き込み不可の場合は必須）
+if (!canWriteFiles || config.nodeEnv !== 'production') {
+  transports.push(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple(),
+        winston.format.printf(({ timestamp, level, message }) => {
+          return `[${timestamp}] ${level}: ${message}`;
+        })
+      )
+    })
+  );
+}
+
+const logger = winston.createLogger({
+  level: config.logging.level,
+  format: logFormat,
+  transports: transports
 });
 
-// 開発環境ではコンソール出力も追加
-if (config.nodeEnv !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple(),
-      winston.format.printf(({ timestamp, level, message }) => {
-        return `[${timestamp}] ${level}: ${message}`;
-      })
-    )
-  }));
-}
+// Note: Console transport is now handled in the main transport configuration above
 
 // 追加のヘルパーメソッド
 logger.meetingStart = (meetingInfo) => {

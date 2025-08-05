@@ -1,6 +1,4 @@
 // Step 1: Zoom録画データ確認API
-const ZoomService = require('../1.src/services/zoomService');
-
 export default async function handler(req, res) {
   console.log('🔍 Step 1: Zoom録画データ確認開始');
   
@@ -9,8 +7,13 @@ export default async function handler(req, res) {
     name: 'zoom_recording_check',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'production',
+    vercel_region: process.env.VERCEL_REGION || 'unknown',
+    node_version: process.version,
     logs: ['🔍 Step 1: Zoom録画データ確認開始']
   };
+
+  // ZoomServiceの動的インポート
+  let ZoomService;
 
   try {
     // Step 1-1: 環境変数確認
@@ -31,8 +34,30 @@ export default async function handler(req, res) {
     result.logs.push('✅ 環境変数確認完了');
     console.log('✅ 環境変数確認完了');
 
-    // Step 1-2: ZoomService初期化
-    console.log('📡 ZoomService初期化中...');
+    // Step 1-2: ZoomServiceモジュール読み込み
+    console.log('📦 ZoomServiceモジュール読み込み中...');
+    try {
+      ZoomService = require('../1.src/services/zoomService');
+      result.zoom_service_module_loaded = true;
+      result.logs.push('✅ ZoomServiceモジュール読み込み完了');
+      console.log('✅ ZoomServiceモジュール読み込み完了');
+    } catch (moduleError) {
+      result.status = 'error';
+      result.error_type = 'zoom_service_module_load_failed';
+      result.message = '❌ ZoomServiceモジュール読み込みに失敗';
+      result.module_error_details = {
+        message: moduleError.message,
+        stack: moduleError.stack,
+        code: moduleError.code,
+        module_path: moduleError.requireStack || 'unknown'
+      };
+      result.logs.push(`❌ モジュール読み込み失敗: ${moduleError.message}`);
+      console.error('ZoomServiceモジュール読み込みエラー:', moduleError);
+      return res.status(500).json(result);
+    }
+
+    // Step 1-3: ZoomService初期化
+    console.log('🏗️ ZoomService初期化中...');
     let zoomService;
     try {
       zoomService = new ZoomService();
@@ -43,16 +68,25 @@ export default async function handler(req, res) {
       result.status = 'error';
       result.error_type = 'zoom_service_initialization_failed';
       result.message = '❌ ZoomService初期化に失敗';
-      result.error = initError.message;
+      result.init_error_details = {
+        message: initError.message,
+        stack: initError.stack,
+        constructor_error: initError.constructor?.name || 'unknown'
+      };
       result.logs.push(`❌ ZoomService初期化失敗: ${initError.message}`);
       console.error('ZoomService初期化エラー:', initError);
       return res.status(500).json(result);
     }
 
-    // Step 1-3: Zoom API認証テスト
+    // Step 1-4: Zoom API認証テスト
     console.log('🔌 Zoom API認証テスト中...');
     let authResult;
     try {
+      // まず、zoomServiceにgetAccessTokenメソッドがあるか確認
+      if (typeof zoomService.getAccessToken !== 'function') {
+        throw new Error('getAccessToken method not found on ZoomService instance');
+      }
+      
       // アクセストークン取得を試行
       const accessToken = await zoomService.getAccessToken();
       authResult = {

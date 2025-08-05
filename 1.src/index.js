@@ -136,8 +136,15 @@ class ZoomMemoAutomation {
 
       logger.info(`Found ${newRecordings.length} new recordings to process`);
 
+      // 本番安全モードでの処理制限
+      let recordingsToProcess = newRecordings;
+      if (config.productionTest.enableSafeMode && config.productionTest.maxProcessRecordings) {
+        recordingsToProcess = newRecordings.slice(0, config.productionTest.maxProcessRecordings);
+        logger.info(`Production safe mode: limiting to ${recordingsToProcess.length} recordings`);
+      }
+
       // 各録画を順番に処理
-      for (const recording of newRecordings) {
+      for (const recording of recordingsToProcess) {
         try {
           await this.processSingleRecording(recording);
         } catch (error) {
@@ -197,8 +204,12 @@ class ZoomMemoAutomation {
       logger.info(`Sending summary and recording link to Slack: ${recording.topic}`);
       await this.slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult);
 
-      // 6. 一時ファイルのクリーンアップ
-      await this.cleanupTempFiles([recordingInfo.audioFilePath, recordingInfo.videoFilePath]);
+      // 6. 一時ファイルのクリーンアップ（安全モードでは実行しない）
+      if (!config.productionTest.enableSafeMode) {
+        await this.cleanupTempFiles([recordingInfo.audioFilePath, recordingInfo.videoFilePath]);
+      } else {
+        logger.info('Production safe mode: skipping temp file cleanup to preserve downloaded recordings');
+      }
 
       const processingTime = Math.round((Date.now() - startTime) / 1000);
       logger.meetingComplete(recording, processingTime);

@@ -12,6 +12,7 @@
     "setup": "node 1.src/setup.js",
     "check-env": "node 1.src/check-env.js",
     "check-env:verbose": "node 1.src/check-env.js --verbose",
+    "test-integration": "node test-integration.js",
     "claude-monitor": "node 3.operations/src/claude-monitor-standalone.js",
     "update-docs": "node 3.operations/src/update-design-docs.js"
   },

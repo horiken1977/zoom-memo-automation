@@ -13,7 +13,12 @@ const config = {
     apiKey: process.env.ZOOM_API_KEY,
     apiSecret: process.env.ZOOM_API_SECRET,
     accountId: process.env.ZOOM_ACCOUNT_ID,
-    baseUrl: 'https://api.zoom.us/v2'
+    // OAuth Configuration
+    clientId: process.env.ZOOM_CLIENT_ID,
+    clientSecret: process.env.ZOOM_CLIENT_SECRET,
+    redirectUri: process.env.ZOOM_REDIRECT_URI || 'http://localhost:3000/auth/zoom/callback',
+    baseUrl: 'https://api.zoom.us/v2',
+    oauthUrl: 'https://zoom.us/oauth'
   },
   
   // Google AI Configuration
@@ -57,6 +62,14 @@ const config = {
     disableSlackNotifications: process.env.DISABLE_SLACK_NOTIFICATIONS === 'true' || process.env.NODE_ENV === 'development',
     enableTestMode: process.env.ENABLE_TEST_MODE === 'true',
     dryRun: process.env.DRY_RUN === 'true'
+  },
+
+  // Production Test Settings (安全なテスト用)
+  productionTest: {
+    enableSafeMode: process.env.PRODUCTION_SAFE_MODE === 'true',
+    skipRecordingDeletion: process.env.SKIP_RECORDING_DELETION === 'true',
+    logSlackInsteadOfSend: process.env.LOG_SLACK_INSTEAD_OF_SEND === 'true',
+    maxProcessRecordings: parseInt(process.env.MAX_PROCESS_RECORDINGS) || 1 // 最大処理件数制限
   },
   
   // Logging Configuration
@@ -123,6 +136,8 @@ function validateConfig() {
     { key: 'ZOOM_API_KEY', description: 'Zoom API Key from Zoom Marketplace' },
     { key: 'ZOOM_API_SECRET', description: 'Zoom API Secret from Zoom Marketplace' },
     { key: 'ZOOM_ACCOUNT_ID', description: 'Zoom Account ID from Zoom Marketplace' },
+    { key: 'ZOOM_CLIENT_ID', description: 'Zoom OAuth Client ID from Server-to-Server OAuth App' },
+    { key: 'ZOOM_CLIENT_SECRET', description: 'Zoom OAuth Client Secret from Server-to-Server OAuth App' },
     { key: 'GOOGLE_AI_API_KEY', description: 'Google AI API Key from Google AI Studio' },
     { key: 'SLACK_BOT_TOKEN', description: 'Slack Bot Token (starts with xoxb-)' },
     { key: 'SLACK_CHANNEL_ID', description: 'Slack Channel ID (starts with C)' }
