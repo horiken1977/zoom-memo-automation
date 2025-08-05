@@ -83,9 +83,10 @@ export default async function handler(req, res) {
         console.log(`📥 Google Driveからサンプルデータダウンロード: ${recording.topic}`);
         
         // Google Drive内のサンプルファイル情報
-        // URL: https://drive.google.com/drive/folders/1U05EhOhWn91JMUINgF9de3kakdo9E_uX
-        const googleDriveFileId = '1JVrMYl5XNHj6xjS-V5sCqAjfAjEhRNNg'; // audio1763668932.m4a のファイルID
-        const downloadUrl = `https://drive.google.com/uc?export=download&id=${googleDriveFileId}`;
+        // フォルダURL: https://drive.google.com/drive/folders/1U05EhOhWn91JMUINgF9de3kakdo9E_uX
+        // 実際のaudio1763668932.m4aファイルの直接ダウンロードURL
+        const googleDriveFileId = '1U05EhOhWn91JMUINgF9de3kakdo9E_uX'; // 正しいファイルIDに要更新
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${googleDriveFileId}&confirm=t`;
         
         const sampleDataPath = '/tmp/sample-zoom-data';
         await fs.ensureDir(sampleDataPath);
@@ -122,8 +123,7 @@ export default async function handler(req, res) {
           
         } catch (downloadError) {
           console.error('❌ Google Driveダウンロードエラー:', downloadError.message);
-          console.log('⚠️ ダミーファイルを作成します');
-          await fs.writeFile(audioDestPath, 'dummy audio content for testing');
+          throw new Error(`Google Driveからのファイルダウンロードに失敗しました: ${downloadError.message}`);
         }
         
         const recordingInfo = {
