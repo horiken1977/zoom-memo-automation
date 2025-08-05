@@ -25,7 +25,7 @@ const config = {
   // Google AI Configuration
   googleAI: {
     apiKey: process.env.GOOGLE_AI_API_KEY,
-    model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash', // デバッグで動作確認済みモデルを直接指定
+    model: process.env.GOOGLE_AI_MODEL || 'gemini-2.5-pro', // 最新の2.5-proを使用
     fallbackModels: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-pro'] // Rate limit対策でgemini-1.5-pro除外
   },
 
