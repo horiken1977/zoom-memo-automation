@@ -57,9 +57,9 @@ export default async function handler(req, res) {
 
     const processedRecordings = [];
     
-    // 各録画を順次処理
-    for (const recording of recordings) {
-      console.log(`🎬 処理開始: ${recording.topic}`);
+    // 各録画を並列処理
+    const recordingPromises = recordings.map(async (recording) => {
+      console.log(`🎬 並列処理開始: ${recording.topic}`);
       
       try {
         // Slack処理開始通知
@@ -69,65 +69,106 @@ export default async function handler(req, res) {
         console.log(`📥 録画ダウンロード: ${recording.topic}`);
         const recordingInfo = await zoomService.downloadRecording(recording);
 
-        // 2. AI文字起こし
-        console.log(`🤖 文字起こし実行: ${recording.topic}`);
-        const transcriptionResult = await aiService.transcribeAudio(
-          recordingInfo.audioFilePath, 
-          recordingInfo.meetingInfo
-        );
+        // 2. 並列処理開始
+        console.log(`🔄 並列処理開始: 動画保存 & 音声処理 - ${recording.topic}`);
+        
+        const [driveResult, analysisResult] = await Promise.all([
+          // Thread A: 動画保存処理
+          (async () => {
+            console.log(`☁️ [Thread A] Google Drive動画保存: ${recording.topic}`);
+            return await googleDriveService.saveRecording(
+              recordingInfo.videoFilePath || recordingInfo.audioFilePath,
+              recordingInfo.meetingInfo
+            );
+          })(),
+          
+          // Thread B: 音声処理 → AI要約 → Slack投稿
+          (async () => {
+            try {
+              // 2.1 音声ファイルを一時保存
+              console.log(`📤 [Thread B] 音声ファイル一時保存: ${recording.topic}`);
+              await googleDriveService.saveTemporaryFile(
+                recordingInfo.audioFilePath,
+                recording.id
+              );
 
-        // 3. AI要約生成
-        console.log(`📝 要約生成: ${recording.topic}`);
-        const analysisResult = await aiService.analyzeComprehensively(transcriptionResult);
+              // 2.2 AI文字起こし
+              console.log(`🤖 [Thread B] 文字起こし実行: ${recording.topic}`);
+              const transcriptionResult = await aiService.transcribeAudio(
+                recordingInfo.audioFilePath, 
+                recordingInfo.meetingInfo
+              );
 
-        // 4. Google Drive保存
-        console.log(`☁️ Google Drive保存: ${recording.topic}`);
-        const driveResult = await googleDriveService.saveRecording(
-          recordingInfo.videoFilePath || recordingInfo.audioFilePath,
-          recordingInfo.meetingInfo
-        );
+              // 2.3 AI要約生成
+              console.log(`📝 [Thread B] 要約生成: ${recording.topic}`);
+              const analysisResult = await aiService.analyzeComprehensively(transcriptionResult);
 
-        // 5. Slack通知
+              // 2.4 一時音声ファイル削除
+              console.log(`🗑️ [Thread B] 一時ファイル削除: ${recording.topic}`);
+              await googleDriveService.deleteTemporaryFile(recording.id);
+
+              return analysisResult;
+            } catch (audioError) {
+              console.error(`❌ [Thread B] 音声処理エラー: ${recording.topic}`, audioError.message);
+              // 一時ファイルのクリーンアップを試行
+              try {
+                await googleDriveService.deleteTemporaryFile(recording.id);
+              } catch (cleanupError) {
+                console.error(`⚠️ 一時ファイルクリーンアップエラー: ${cleanupError.message}`);
+              }
+              throw audioError;
+            }
+          })()
+        ]);
+
+        // 3. Slack通知（両処理完了後）
         console.log(`💬 Slack通知送信: ${recording.topic}`);
         await slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult);
 
-        // 6. 一時ファイル削除
-        console.log(`🗑️ 一時ファイル削除: ${recording.topic}`);
-        // ファイル削除処理をここに追加
+        // 4. ローカル一時ファイル削除
+        console.log(`🗑️ ローカル一時ファイル削除: ${recording.topic}`);
+        // ローカルファイル削除処理をここに追加
 
-        processedRecordings.push({
+        console.log(`✅ 並列処理完了: ${recording.topic}`);
+        
+        return {
           id: recording.id,
           topic: recording.topic,
           status: 'completed',
-          start_time: recording.start_time,
-          duration: recording.duration
-        });
-
-        console.log(`✅ 処理完了: ${recording.topic}`);
+          start_time: recording.startTime || recording.start_time,
+          duration: recording.duration,
+          processing_type: 'parallel'
+        };
 
       } catch (recordingError) {
-        console.error(`❌ 録画処理エラー [${recording.topic}]:`, recordingError.message);
+        console.error(`❌ 録画並列処理エラー [${recording.topic}]:`, recordingError.message);
         
         // エラー通知
         await slackService.sendErrorNotification(
           recordingError, 
-          `録画処理: ${recording.topic}`
+          `録画並列処理: ${recording.topic}`
         );
 
-        processedRecordings.push({
+        return {
           id: recording.id,
           topic: recording.topic,
           status: 'error',
-          error: recordingError.message
-        });
+          error: recordingError.message,
+          processing_type: 'parallel'
+        };
       }
-    }
+    });
+
+    // 全ての並列処理の完了を待機
+    console.log(`⏳ ${recordings.length}件の録画の並列処理を待機中...`);
+    const results = await Promise.all(recordingPromises);
+    processedRecordings.push(...results);
 
     console.log('🎉 全録画処理完了');
 
     return res.status(200).json({
       status: 'success',
-      message: `✅ ${recordings.length}件の録画を処理しました`,
+      message: `✅ ${recordings.length}件の録画を並列処理しました`,
       recordings_found: recordings.length,
       processed_recordings: processedRecordings,
       monitoring_interval: '2 hours',

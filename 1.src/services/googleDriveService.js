@@ -263,6 +263,129 @@ class GoogleDriveService {
   }
 
   /**
+   * 一時ファイルを保存（音声処理用）
+   */
+  async saveTemporaryFile(filePath, meetingId) {
+    try {
+      await this.initialize();
+
+      if (!await fs.pathExists(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const fileName = path.basename(filePath);
+      
+      // Tempフォルダを確保
+      const tempBaseFolderId = await this.ensureFolder('Temp');
+      
+      // 会議IDごとのフォルダを確保
+      const meetingFolderId = await this.ensureFolder(meetingId, tempBaseFolderId);
+
+      const fileMetadata = {
+        name: fileName,
+        parents: [meetingFolderId],
+        description: `Temporary audio file for processing - Meeting ID: ${meetingId} - ${new Date().toISOString()}`
+      };
+
+      const media = {
+        mimeType: this.getMimeType(fileName),
+        body: fs.createReadStream(filePath)
+      };
+
+      logger.info(`Uploading temporary file to Google Drive: ${fileName} (Meeting ID: ${meetingId})`);
+      const startTime = Date.now();
+
+      const response = await this.drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id, name, size, mimeType, createdTime'
+      });
+
+      const uploadTime = Math.round((Date.now() - startTime) / 1000);
+      const fileId = response.data.id;
+
+      logger.info(`Temporary file uploaded successfully: ${fileName} (ID: ${fileId}, Time: ${uploadTime}s)`);
+
+      return {
+        fileId: fileId,
+        fileName: fileName,
+        size: response.data.size,
+        mimeType: response.data.mimeType,
+        createdTime: response.data.createdTime,
+        uploadTime: uploadTime,
+        tempFolderPath: `Temp/${meetingId}`
+      };
+    } catch (error) {
+      logger.error(`Failed to save temporary file for meeting ${meetingId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 一時ファイルを削除（処理完了後のクリーンアップ）
+   */
+  async deleteTemporaryFile(meetingId) {
+    try {
+      await this.initialize();
+
+      // Tempフォルダを検索
+      const tempQuery = `name='Temp' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      const tempResponse = await this.drive.files.list({
+        q: tempQuery,
+        fields: 'files(id, name)'
+      });
+
+      if (tempResponse.data.files.length === 0) {
+        logger.warn(`Temp folder not found for cleanup`);
+        return { deleted: false, reason: 'Temp folder not found' };
+      }
+
+      const tempFolderId = tempResponse.data.files[0].id;
+
+      // 会議IDフォルダを検索
+      const meetingQuery = `name='${meetingId}' and '${tempFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      const meetingResponse = await this.drive.files.list({
+        q: meetingQuery,
+        fields: 'files(id, name)'
+      });
+
+      if (meetingResponse.data.files.length === 0) {
+        logger.warn(`Meeting folder ${meetingId} not found for cleanup`);
+        return { deleted: false, reason: 'Meeting folder not found' };
+      }
+
+      const meetingFolderId = meetingResponse.data.files[0].id;
+
+      // フォルダ内のすべてのファイルを削除
+      const filesQuery = `'${meetingFolderId}' in parents and trashed=false`;
+      const filesResponse = await this.drive.files.list({
+        q: filesQuery,
+        fields: 'files(id, name)'
+      });
+
+      const deletedFiles = [];
+      for (const file of filesResponse.data.files) {
+        await this.drive.files.delete({ fileId: file.id });
+        deletedFiles.push(file.name);
+        logger.info(`Deleted temporary file: ${file.name} (ID: ${file.id})`);
+      }
+
+      // 空になった会議フォルダも削除
+      await this.drive.files.delete({ fileId: meetingFolderId });
+      logger.info(`Deleted temporary meeting folder: ${meetingId} (ID: ${meetingFolderId})`);
+
+      return {
+        deleted: true,
+        deletedFiles: deletedFiles,
+        deletedFolderId: meetingFolderId
+      };
+    } catch (error) {
+      logger.error(`Failed to delete temporary files for meeting ${meetingId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * ヘルスチェック
    */
   async healthCheck() {
