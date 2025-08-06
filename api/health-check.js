@@ -1,6 +1,7 @@
 // Vercel Function for production health check and API testing
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const GoogleDriveService = require('../1.src/services/googleDriveService');
+const config = require('../1.src/config');
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -227,7 +228,7 @@ export default async function handler(req, res) {
       if (driveResult.status === 'healthy') {
         // テスト用フォルダアクセス確認
         try {
-          const testFolderId = '14d3gklSyBhiJf5NPzrc4_o4N0k4gpe_4';
+          const testFolderId = config.googleDrive.recordingsFolder;
           const folderInfo = await googleDriveService.drive.files.get({
             fileId: testFolderId,
             fields: 'id, name, mimeType'
@@ -252,7 +253,7 @@ export default async function handler(req, res) {
             user: driveResult.user || 'Service Account', 
             storage: driveResult.storageQuota || 'Unknown',
             testFolder: {
-              id: '1U05EhOhWn91JMUINgF9de3kakdo9E_uX',
+              id: testFolderId,
               name: 'Access Failed',
               accessible: false,
               error: folderError.message
