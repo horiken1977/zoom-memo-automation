@@ -121,7 +121,8 @@ class GoogleDriveService {
       const response = await this.drive.files.create({
         resource: fileMetadata,
         media: media,
-        fields: 'id, name, size, mimeType, createdTime'
+        fields: 'id, name, size, mimeType, createdTime',
+        supportsAllDrives: true
       });
 
       const uploadTime = Math.round((Date.now() - startTime) / 1000);
@@ -157,13 +158,15 @@ class GoogleDriveService {
           role: accessType, // 'reader', 'writer', 'commenter'
           type: 'domain',
           domain: config.googleDrive.organizationDomain || undefined
-        }
+        },
+        supportsAllDrives: true
       });
 
       // 共有リンクを取得
       const file = await this.drive.files.get({
         fileId: fileId,
-        fields: 'webViewLink, webContentLink'
+        fields: 'webViewLink, webContentLink',
+        supportsAllDrives: true
       });
 
       logger.info(`Created shareable link for file ID: ${fileId}`);
@@ -306,7 +309,8 @@ class GoogleDriveService {
       const response = await this.drive.files.create({
         resource: fileMetadata,
         media: media,
-        fields: 'id, name, size, mimeType, createdTime'
+        fields: 'id, name, size, mimeType, createdTime',
+        supportsAllDrives: true
       });
 
       const uploadTime = Math.round((Date.now() - startTime) / 1000);
