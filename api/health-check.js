@@ -231,7 +231,8 @@ export default async function handler(req, res) {
         try {
           const folderInfo = await googleDriveService.drive.files.get({
             fileId: testFolderId,
-            fields: 'id, name, mimeType'
+            fields: 'id, name, mimeType, webViewLink, owners, permissions',
+            supportsAllDrives: true
           });
           
           testResults.tests.google_drive = {
@@ -260,6 +261,20 @@ export default async function handler(req, res) {
             }
           };
           console.log('   ⚠️ Google Drive API connected but folder access failed:', folderError.message);
+          
+          // フォルダ一覧を確認
+          try {
+            const fileList = await googleDriveService.drive.files.list({
+              q: "mimeType='application/vnd.google-apps.folder'",
+              fields: 'files(id, name)',
+              pageSize: 10,
+              supportsAllDrives: true,
+              includeItemsFromAllDrives: true
+            });
+            console.log('   📁 Accessible folders:', fileList.data.files.map(f => `${f.name} (${f.id})`).join(', '));
+          } catch (listError) {
+            console.log('   ❌ Failed to list folders:', listError.message);
+          }
         }
       } else {
         testResults.tests.google_drive = {
