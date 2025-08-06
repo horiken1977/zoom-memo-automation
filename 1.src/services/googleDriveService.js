@@ -152,12 +152,17 @@ class GoogleDriveService {
       await this.initialize();
 
       // ファイルを組織内で共有可能に設定
+      if (!config.googleDrive.organizationDomain) {
+        logger.warn('GOOGLE_DRIVE_ORG_DOMAIN is not set. Please set your organization domain (e.g., grtx.jp)');
+        throw new Error('Organization domain is required for secure file sharing. Please set GOOGLE_DRIVE_ORG_DOMAIN environment variable.');
+      }
+
       await this.drive.permissions.create({
         fileId: fileId,
         resource: {
           role: accessType, // 'reader', 'writer', 'commenter'
           type: 'domain',
-          domain: config.googleDrive.organizationDomain || undefined
+          domain: config.googleDrive.organizationDomain
         },
         supportsAllDrives: true
       });
