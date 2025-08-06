@@ -24,10 +24,23 @@ module.exports = async function handler(req, res) {
   try {
     // 部品化されたサービス初期化
     console.log('🔧 サービス初期化中...');
+    
+    console.log('Step 1: SampleDataService初期化...');
     const sampleDataService = new SampleDataService();
+    console.log('✅ SampleDataService初期化完了');
+    
+    console.log('Step 2: AudioSummaryService初期化...');
     const audioSummaryService = new AudioSummaryService();
+    console.log('✅ AudioSummaryService初期化完了');
+    
+    console.log('Step 3: VideoStorageService初期化...');
     const videoStorageService = new VideoStorageService();
+    console.log('✅ VideoStorageService初期化完了');
+    
+    console.log('Step 4: MeetingNotificationService初期化...');
     const notificationService = new MeetingNotificationService();
+    console.log('✅ MeetingNotificationService初期化完了');
+    
     console.log('✅ 全サービス初期化完了');
 
     // Google Driveからサンプルデータを取得
