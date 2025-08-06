@@ -197,10 +197,15 @@ class ZoomService {
    */
   async downloadRecording(recording) {
     try {
-      const fs = require('fs-extra');
+      const fs = require('fs').promises;
+      const fsSync = require('fs');
       const path = require('path');
       
-      await fs.ensureDir(config.recording.downloadPath);
+      try {
+        await fs.mkdir(config.recording.downloadPath, { recursive: true });
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
 
       // 音声ファイルを優先してダウンロード
       const audioFile = recording.recordingFiles.find(file => 
@@ -273,7 +278,8 @@ class ZoomService {
         responseType: 'stream'
       });
 
-      const fs = require('fs-extra');
+      const fs = require('fs').promises;
+      const fsSync = require('fs');
       const writer = fs.createWriteStream(filePath);
       
       response.data.pipe(writer);

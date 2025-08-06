@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fs = require('fs-extra');
+const fs = require('fs').promises;
 const path = require('path');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -118,8 +118,9 @@ class AIService {
       logger.info(`Starting transcription for: ${audioFilePath}`);
 
       // ファイルの存在確認
-      const exists = await fs.pathExists(audioFilePath);
-      if (!exists) {
+      try {
+        await fs.access(audioFilePath);
+      } catch (error) {
         throw new Error(`Audio file not found: ${audioFilePath}`);
       }
 

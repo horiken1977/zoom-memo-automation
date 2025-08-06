@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
-const fs = require('fs-extra');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -94,7 +95,9 @@ class GoogleDriveService {
     try {
       await this.initialize();
 
-      if (!await fs.pathExists(filePath)) {
+      try {
+        await fs.access(filePath);
+      } catch (error) {
         throw new Error(`File not found: ${filePath}`);
       }
 
@@ -106,7 +109,7 @@ class GoogleDriveService {
 
       const media = {
         mimeType: this.getMimeType(fileName),
-        body: fs.createReadStream(filePath)
+        body: fsSync.createReadStream(filePath)
       };
 
       logger.info(`Uploading file to Google Drive: ${fileName}`);
@@ -269,7 +272,9 @@ class GoogleDriveService {
     try {
       await this.initialize();
 
-      if (!await fs.pathExists(filePath)) {
+      try {
+        await fs.access(filePath);
+      } catch (error) {
         throw new Error(`File not found: ${filePath}`);
       }
 
@@ -289,7 +294,7 @@ class GoogleDriveService {
 
       const media = {
         mimeType: this.getMimeType(fileName),
-        body: fs.createReadStream(filePath)
+        body: fsSync.createReadStream(filePath)
       };
 
       logger.info(`Uploading temporary file to Google Drive: ${fileName} (Meeting ID: ${meetingId})`);
