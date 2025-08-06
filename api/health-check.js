@@ -1,5 +1,6 @@
 // Vercel Function for production health check and API testing
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const GoogleDriveService = require('../1.src/services/googleDriveService');
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -31,7 +32,9 @@ export default async function handler(req, res) {
       GOOGLE_AI_API_KEY: !!process.env.GOOGLE_AI_API_KEY,
       SLACK_BOT_TOKEN: !!process.env.SLACK_BOT_TOKEN,
       SLACK_CHANNEL_ID: !!process.env.SLACK_CHANNEL_ID,
-      SLACK_SIGNING_SECRET: !!process.env.SLACK_SIGNING_SECRET
+      SLACK_SIGNING_SECRET: !!process.env.SLACK_SIGNING_SECRET,
+      GOOGLE_DRIVE_CREDENTIALS: !!process.env.GOOGLE_DRIVE_CREDENTIALS,
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY: !!process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY
     };
 
     const allEnvSet = Object.values(envCheck).every(check => check === true);
@@ -215,8 +218,67 @@ export default async function handler(req, res) {
       console.log('   ❌ Slack API error:', error.message);
     }
 
+    // Test 5: Google Drive API Connection
+    console.log('5️⃣ Testing Google Drive API connection...');
+    try {
+      const googleDriveService = new GoogleDriveService();
+      const driveResult = await googleDriveService.healthCheck();
+
+      if (driveResult.status === 'healthy') {
+        // テスト用フォルダアクセス確認
+        try {
+          const testFolderId = '1U05EhOhWn91JMUINgF9de3kakdo9E_uX';
+          const folderInfo = await googleDriveService.drive.files.get({
+            fileId: testFolderId,
+            fields: 'id, name, mimeType'
+          });
+          
+          testResults.tests.google_drive = {
+            status: 'success',
+            message: '✅ Google Drive API connection successful',
+            user: driveResult.user || 'Service Account',
+            storage: driveResult.storageQuota || 'Unknown',
+            testFolder: {
+              id: folderInfo.data.id,
+              name: folderInfo.data.name,
+              accessible: true
+            }
+          };
+          console.log('   ✅ Google Drive API connection and folder access successful');
+        } catch (folderError) {
+          testResults.tests.google_drive = {
+            status: 'partial_success',
+            message: '✅ Google Drive API connected, ❌ Test folder access failed',
+            user: driveResult.user || 'Service Account', 
+            storage: driveResult.storageQuota || 'Unknown',
+            testFolder: {
+              id: '1U05EhOhWn91JMUINgF9de3kakdo9E_uX',
+              name: 'Access Failed',
+              accessible: false,
+              error: folderError.message
+            }
+          };
+          console.log('   ⚠️ Google Drive API connected but folder access failed:', folderError.message);
+        }
+      } else {
+        testResults.tests.google_drive = {
+          status: 'error',
+          message: '❌ Google Drive API connection failed',
+          error: driveResult.error
+        };
+        console.log('   ❌ Google Drive API connection failed:', driveResult.error);
+      }
+    } catch (error) {
+      testResults.tests.google_drive = {
+        status: 'error',
+        message: '❌ Google Drive API connection error',
+        error: error.message
+      };
+      console.log('   ❌ Google Drive API error:', error.message);
+    }
+
     // Calculate overall status
-    const apiTests = [testResults.tests.zoom, testResults.tests.google_ai, testResults.tests.slack];
+    const apiTests = [testResults.tests.zoom, testResults.tests.google_ai, testResults.tests.slack, testResults.tests.google_drive];
     const successfulTests = apiTests.filter(test => test.status === 'success').length;
     const totalTests = apiTests.length + 1; // +1 for environment test
 
