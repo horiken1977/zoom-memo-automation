@@ -23,15 +23,29 @@ module.exports = async function handler(req, res) {
 
   try {
     // 部品化されたサービス初期化
+    console.log('🔧 サービス初期化中...');
     const sampleDataService = new SampleDataService();
     const audioSummaryService = new AudioSummaryService();
     const videoStorageService = new VideoStorageService();
     const notificationService = new MeetingNotificationService();
+    console.log('✅ 全サービス初期化完了');
 
     // Google Driveからサンプルデータを取得
     console.log('📡 Google Driveからサンプルデータを取得中...');
-    const sampleData = await sampleDataService.getSampleData();
-    console.log(`✅ サンプルファイル発見: ${sampleData.fileName} (${sampleData.fileId})`);
+    let sampleData;
+    try {
+      sampleData = await sampleDataService.getSampleData();
+      console.log(`✅ サンプルファイル発見: ${sampleData.fileName} (${sampleData.fileId})`);
+    } catch (sampleError) {
+      console.error('❌ サンプルデータ取得エラー:', sampleError.message);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Google Driveサンプルデータ取得に失敗',
+        error: sampleError.message,
+        step: 'sample_data_retrieval',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // サンプル会議情報を生成
     const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleData.fileName);
