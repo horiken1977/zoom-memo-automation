@@ -1,6 +1,5 @@
-// TC203: 8項目構造化要約統合テスト
+// TC203-debug: SampleDataServiceのみテスト（AudioSummaryService問題切り分け）
 const SampleDataService = require('../1.src/services/sampleDataService');
-const AudioSummaryService = require('../1.src/services/audioSummaryService');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,13 +11,12 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  console.log('🧪 TC203: 8項目構造化要約統合テスト開始');
+  console.log('🧪 TC203-debug: SampleDataServiceのみテスト開始');
 
   try {
     // Step 1: サービス初期化
-    console.log('Step 1: SampleDataService & AudioSummaryService初期化');
+    console.log('Step 1: SampleDataService初期化');
     const sampleDataService = new SampleDataService();
-    const audioSummaryService = new AudioSummaryService();
 
     // Step 2: Google Driveサンプルデータ取得（実際のAPIコール）
     console.log('Step 2: getSampleData()実行');
@@ -35,36 +33,24 @@ module.exports = async function handler(req, res) {
     const downloadResult = await sampleDataService.downloadSampleFile(sampleData.fileId, sampleData.fileName);
     console.log('✅ ファイルダウンロード成功:', downloadResult);
 
-    // Step 5: AudioSummaryService初期化テスト（段階的）
-    console.log('Step 5: AudioSummaryService初期化テスト');
-    try {
-      // AIService初期化のみテスト
-      console.log('Step 5a: aiService.initializeModel()テスト');
-      await audioSummaryService.aiService.initializeModel();
-      console.log('✅ AIService初期化成功');
-    } catch (aiError) {
-      console.error('❌ AIService初期化エラー:', aiError.message);
-      throw new Error(`AIService初期化失敗: ${aiError.message}`);
-    }
-
-    // Step 6: 一時ファイル削除
-    console.log('Step 6: 一時ファイル削除');
+    // Step 5: 一時ファイル削除
+    console.log('Step 5: 一時ファイル削除');
     await sampleDataService.cleanup();
     console.log('✅ 一時ファイル削除完了');
 
     return res.status(200).json({
       status: 'success',
-      test: 'TC203-stage1',
-      message: '8項目構造化要約統合テスト成功（初期化のみ）',
+      test: 'TC203-debug',
+      message: 'SampleDataServiceのみテスト成功（AudioSummaryService除外）',
       sampleData: sampleData,
       meetingInfo: meetingInfo,
       downloadResult: downloadResult,
-      note: 'AudioSummaryService初期化のみ実行 - 音声処理は未実行',
+      note: 'AudioSummaryService問題切り分けのためSampleDataServiceのみ実行',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ TC203統合テストエラー:', error);
+    console.error('❌ TC203-debugテストエラー:', error);
     
     // エラー時も一時ファイル削除を試行
     try {
@@ -77,8 +63,8 @@ module.exports = async function handler(req, res) {
     
     return res.status(500).json({
       status: 'error',
-      test: 'TC203-stage1',
-      message: '8項目構造化要約統合テスト失敗（初期化段階）',
+      test: 'TC203-debug',
+      message: 'SampleDataServiceのみテスト失敗',
       error: error.message,
       stack: error.stack,
       timestamp: new Date().toISOString()
