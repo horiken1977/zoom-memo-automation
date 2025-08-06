@@ -213,13 +213,37 @@ class VideoStorageService {
       const year = date.getFullYear().toString();
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
 
-      // ベースフォルダ（99.zoom_memo_recording）が存在することを確認
-      const baseFolderInfo = await this.googleDriveService.drive.files.get({
-        fileId: this.recordingsFolder,
-        fields: 'id, name'
-      });
+      logger.info(`Looking for base folder: ${this.recordingsFolder}`);
 
-      logger.info(`Base folder confirmed: ${baseFolderInfo.data.name} (${this.recordingsFolder})`);
+      // ベースフォルダの存在確認（SampleDataServiceと同じパターン）
+      let baseFolderInfo;
+      try {
+        baseFolderInfo = await this.googleDriveService.drive.files.get({
+          fileId: this.recordingsFolder,
+          fields: 'id, name',
+          supportsAllDrives: true
+        });
+        logger.info(`Base folder confirmed: ${baseFolderInfo.data.name} (${this.recordingsFolder})`);
+      } catch (error) {
+        logger.error(`Base folder not found by ID: ${this.recordingsFolder}, error: ${error.message}`);
+        
+        // フォルダIDが無効な場合、フォルダ名で検索（フォールバック）
+        const folderQuery = `name='${this.recordingsFolder}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        const folderResponse = await this.googleDriveService.drive.files.list({
+          q: folderQuery,
+          fields: 'files(id, name)',
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true
+        });
+        
+        if (folderResponse.data.files.length === 0) {
+          throw new Error(`Recording folder not found: ${this.recordingsFolder}`);
+        }
+        
+        this.recordingsFolder = folderResponse.data.files[0].id;
+        baseFolderInfo = { data: folderResponse.data.files[0] };
+        logger.info(`Base folder found by name: ${baseFolderInfo.data.name} (${this.recordingsFolder})`);
+      }
 
       // 年フォルダを確保
       const yearFolderId = await this.googleDriveService.ensureFolder(year, this.recordingsFolder);
