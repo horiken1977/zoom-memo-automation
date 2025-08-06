@@ -157,6 +157,90 @@ class SampleDataService {
   }
 
   /**
+   * Google Drive sampleフォルダから音声ファイルを直接Bufferとして取得（Vercel環境用）
+   */
+  async getSampleDataAsBuffer() {
+    try {
+      await this.googleDriveService.initialize();
+
+      // Step 1: sampleフォルダ検索
+      const sampleQuery = `name='sample' and '${this.sampleFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      const sampleResponse = await this.googleDriveService.drive.files.list({
+        q: sampleQuery,
+        fields: 'files(id, name)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+
+      if (sampleResponse.data.files.length === 0) {
+        throw new Error('Sample folder not found in Google Drive');
+      }
+
+      const sampleFolderId = sampleResponse.data.files[0].id;
+      logger.info(`Sample folder found: ${sampleFolderId}`);
+
+      // Step 2: 音声ファイル検索と選択
+      const filesQuery = `'${sampleFolderId}' in parents and trashed=false`;
+      const filesResponse = await this.googleDriveService.drive.files.list({
+        q: filesQuery,
+        fields: 'files(id, name, mimeType, size)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+
+      const audioFiles = filesResponse.data.files.filter(file => 
+        file.mimeType && (
+          file.mimeType.includes('audio/') ||
+          file.name.toLowerCase().includes('.m4a') ||
+          file.name.toLowerCase().includes('.mp3') ||
+          file.name.toLowerCase().includes('.wav')
+        )
+      );
+
+      if (audioFiles.length === 0) {
+        throw new Error('No audio files found in sample folder');
+      }
+
+      const selectedFile = audioFiles[0];
+      logger.info(`Selected audio file for buffer processing: ${selectedFile.name} (${selectedFile.id})`);
+
+      // Step 3: 音声ファイルを直接Bufferとして取得
+      logger.info(`Downloading sample file to buffer: ${selectedFile.name} (${selectedFile.id})`);
+
+      const response = await this.googleDriveService.drive.files.get({
+        fileId: selectedFile.id,
+        alt: 'media',
+        supportsAllDrives: true
+      }, { responseType: 'stream' });
+
+      // StreamをBufferに変換
+      const chunks = [];
+      return new Promise((resolve, reject) => {
+        response.data.on('data', chunk => chunks.push(chunk));
+        response.data.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          logger.info(`Sample file loaded to buffer: ${selectedFile.name} (${(buffer.length / 1024).toFixed(2)} KB)`);
+          
+          resolve({
+            audioBuffer: buffer,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.mimeType,
+            size: buffer.length,
+            fileId: selectedFile.id,
+            sampleFolderId: sampleFolderId,
+            downloadTime: new Date().toISOString()
+          });
+        });
+        response.data.on('error', reject);
+      });
+
+    } catch (error) {
+      logger.error('Failed to get sample data as buffer from Google Drive:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 一時ファイルのクリーンアップ
    */
   async cleanup() {
