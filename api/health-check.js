@@ -227,8 +227,8 @@ export default async function handler(req, res) {
 
       if (driveResult.status === 'healthy') {
         // テスト用フォルダアクセス確認
+        const testFolderId = config.googleDrive.recordingsFolder;
         try {
-          const testFolderId = config.googleDrive.recordingsFolder;
           const folderInfo = await googleDriveService.drive.files.get({
             fileId: testFolderId,
             fields: 'id, name, mimeType'
