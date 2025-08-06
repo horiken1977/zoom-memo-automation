@@ -484,17 +484,18 @@
         </div>
 
         <div class="section">
-            <h2>3. Phase 2: 統合テスト (TC101-105)</h2>
+            <h2>3. Phase 2: 統合テスト (TC201-205)</h2>
             
             <div class="test-data-section">
-                <h4>🚀 Vercel本番環境での統合テスト</h4>
+                <h4>🚀 Vercel本番環境での統合テスト - 部品化アーキテクチャ対応</h4>
                 <p><strong>実行環境:</strong> Vercel Production</p>
-                <p><strong>実行方法:</strong> `/api/monitor-recordings` エンドポイント直接実行</p>
-                <p><strong>データソース:</strong> Google Drive実サンプルファイル</p>
+                <p><strong>実行方法:</strong> `/api/monitor-recordings-gdrive-test` エンドポイント直接実行</p>
+                <p><strong>データソース:</strong> Google Drive実サンプルファイル (audio1763668932.m4a)</p>
+                <p><strong>アーキテクチャ:</strong> 4つの業務部品 + 4つのベース部品での統合テスト</p>
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-completed"></span>TC101: ヘルスチェック統合テスト</h3>
+                <h3><span class="status-indicator status-completed"></span>TC201: Vercelヘルスチェック統合テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -526,7 +527,7 @@
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-blocked"></span>TC102: Zoom録画監視機能テスト</h3>
+                <h3><span class="status-indicator status-completed"></span>TC202: 部品化サンプルデータ取得テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -537,28 +538,28 @@
                         </tr>
                         <tr>
                             <td>エンドポイント</td>
-                            <td>/api/monitor-recordings</td>
-                            <td><span class="status-indicator status-blocked"></span>エラー</td>
-                            <td>❌ FUNCTION_INVOCATION_FAILED</td>
+                            <td>/api/monitor-recordings-gdrive-test</td>
+                            <td><span class="status-indicator status-completed"></span>完了</td>
+                            <td>✅ HTTP 200 成功</td>
                         </tr>
                         <tr>
                             <td>確認項目</td>
-                            <td>録画データ検索、過去24時間以内のデータ取得</td>
-                            <td><span class="status-indicator status-blocked"></span>ブロック</td>
-                            <td>設定またはデータアクセス問題</td>
+                            <td>SampleDataService初期化、Google Drive接続、サンプルデータ取得</td>
+                            <td><span class="status-indicator status-completed"></span>完了</td>
+                            <td>✅ audio1763668932.m4a取得成功</td>
                         </tr>
                         <tr>
                             <td>期待結果</td>
-                            <td>200 OK、録画リストまたは"録画データなし"メッセージ</td>
-                            <td><span class="status-indicator status-blocked"></span>未達成</td>
-                            <td>Vercel Function実行時エラー</td>
+                            <td>14MB M4Aファイル情報取得、fileId・fileName・mimeType正常取得</td>
+                            <td><span class="status-indicator status-completed"></span>完了</td>
+                            <td>✅ 全項目正常取得</td>
                         </tr>
                     </table>
                 </div>
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC103: 音声ファイル処理統合テスト</h3>
+                <h3><span class="status-indicator status-in-progress"></span>TC203: 8項目構造化要約統合テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -568,21 +569,21 @@
                             <th width="15%">結果/備考</th>
                         </tr>
                         <tr>
-                            <td>テストデータ</td>
-                            <td>Google Drive サンプルM4Aファイル</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
+                            <td>テスト対象</td>
+                            <td>SampleDataService + AudioSummaryService統合処理</td>
+                            <td><span class="status-indicator status-in-progress"></span>実施中</td>
+                            <td>fs-extra依存修正中</td>
                         </tr>
                         <tr>
                             <td>確認項目</td>
-                            <td>M4A音声ダウンロード、Gemini 2.5-pro文字起こし、5周フォールバック</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
+                            <td>ファイルダウンロード→Gemini文字起こし→8項目構造化要約→一時ファイル削除</td>
+                            <td><span class="status-indicator status-in-progress"></span>実施中</td>
+                            <td>段階的テスト中</td>
                         </tr>
                         <tr>
                             <td>期待結果</td>
-                            <td>文字起こし完了(15-30秒以内)、日本語テキスト出力</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
+                            <td>クライアント名・会議目的・出席者・論点・決定事項・宿題・NextAction等8項目生成</td>
+                            <td><span class="status-indicator status-in-progress"></span>実施中</td>
                             <td>-</td>
                         </tr>
                     </table>
@@ -590,7 +591,7 @@
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC104: AI要約生成テスト</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC204: Google Drive保存・共有リンク統合テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -600,20 +601,20 @@
                             <th width="15%">結果/備考</th>
                         </tr>
                         <tr>
-                            <td>前提条件</td>
-                            <td>TC103完了後の文字起こしデータ使用</td>
+                            <td>テスト対象</td>
+                            <td>VideoStorageService統合処理</td>
                             <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
+                            <td>TC203完了後実施</td>
                         </tr>
                         <tr>
                             <td>確認項目</td>
-                            <td>新フォーマット適用(クライアント名、詳細議論内容)</td>
+                            <td>音声ファイル→Google Drive保存→共有リンク生成→フォルダ構造作成</td>
                             <td><span class="status-indicator status-not-started"></span>未着手</td>
                             <td>-</td>
                         </tr>
                         <tr>
                             <td>期待結果</td>
-                            <td>構造化Markdown要約、論理的議論内容記述</td>
+                            <td>年月フォルダ作成、viewLink・downloadLink生成、適切なメタデータ設定</td>
                             <td><span class="status-indicator status-not-started"></span>未着手</td>
                             <td>-</td>
                         </tr>
@@ -622,7 +623,7 @@
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC105: 並列処理アーキテクチャテスト</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC205: Slack構造化投稿統合テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -632,20 +633,20 @@
                             <th width="15%">結果/備考</th>
                         </tr>
                         <tr>
-                            <td>テストシナリオ</td>
-                            <td>動画・音声ファイル両方存在</td>
+                            <td>テスト対象</td>
+                            <td>MeetingNotificationService統合処理</td>
                             <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
+                            <td>TC204完了後実施</td>
                         </tr>
                         <tr>
                             <td>確認項目</td>
-                            <td>Thread A(動画保存)、Thread B(音声処理)の並列実行</td>
+                            <td>8項目要約→Slack構造化投稿→Google Driveリンク埋込→エラーハンドリング</td>
                             <td><span class="status-indicator status-not-started"></span>未着手</td>
                             <td>-</td>
                         </tr>
                         <tr>
                             <td>期待結果</td>
-                            <td>両スレッド正常完了、処理時間短縮、一時ファイル削除</td>
+                            <td>リッチメッセージ投稿成功、クリック可能リンク、適切な情報整理</td>
                             <td><span class="status-indicator status-not-started"></span>未着手</td>
                             <td>-</td>
                         </tr>
@@ -655,10 +656,10 @@
         </div>
 
         <div class="section">
-            <h2>4. Phase 3: エラーハンドリングテスト (TC201-203)</h2>
+            <h2>4. Phase 3: エラーハンドリングテスト (TC301-303)</h2>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC201: Gemini API 5周フォールバックテスト</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC301: Gemini API 5周フォールバックテスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -690,7 +691,7 @@
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC202: Slack投稿エラー・データ保護テスト</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC302: Slack投稿エラー・データ保護テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -722,7 +723,7 @@
             </div>
 
             <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC203: 動画ファイル処理テスト</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC303: 動画ファイル処理テスト</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
