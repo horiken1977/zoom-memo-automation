@@ -61,7 +61,9 @@ class GoogleDriveService {
 
       const response = await this.drive.files.list({
         q: query,
-        fields: 'files(id, name)'
+        fields: 'files(id, name)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
       });
 
       if (response.data.files.length > 0) {
@@ -77,7 +79,8 @@ class GoogleDriveService {
 
       const folder = await this.drive.files.create({
         resource: folderMetadata,
-        fields: 'id'
+        fields: 'id',
+        supportsAllDrives: true
       });
 
       logger.info(`Created Google Drive folder: ${folderName} (ID: ${folder.data.id})`);
