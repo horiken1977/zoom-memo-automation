@@ -4,7 +4,7 @@ const AudioSummaryService = require('../1.src/services/audioSummaryService');
 const VideoStorageService = require('../1.src/services/videoStorageService');
 const MeetingNotificationService = require('../1.src/services/meetingNotificationService');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS設定
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
