@@ -1,5 +1,6 @@
 const GoogleDriveService = require('./googleDriveService');
-const fs = require('fs-extra');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const config = require('../config');
@@ -86,7 +87,11 @@ class SampleDataService {
 
       // 一時保存ディレクトリ作成
       const tempDir = '/tmp/sample-data';
-      await fs.ensureDir(tempDir);
+      try {
+        await fs.mkdir(tempDir, { recursive: true });
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
       const filePath = path.join(tempDir, fileName);
 
       logger.info(`Downloading sample file: ${fileName} (${fileId})`);
@@ -99,7 +104,7 @@ class SampleDataService {
       }, { responseType: 'stream' });
 
       // ファイルに保存
-      const writeStream = fs.createWriteStream(filePath);
+      const writeStream = fsSync.createWriteStream(filePath);
       response.data.pipe(writeStream);
 
       await new Promise((resolve, reject) => {
@@ -157,9 +162,14 @@ class SampleDataService {
   async cleanup() {
     try {
       const tempDir = '/tmp/sample-data';
-      if (await fs.pathExists(tempDir)) {
-        await fs.remove(tempDir);
+      try {
+        await fs.access(tempDir);
+        await fs.rmdir(tempDir, { recursive: true });
         logger.info('Sample data temporary files cleaned up');
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
       }
     } catch (error) {
       logger.error('Failed to cleanup sample data:', error.message);

@@ -1,5 +1,5 @@
 const GoogleDriveService = require('./googleDriveService');
-const fs = require('fs-extra');
+const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
 const config = require('../config');
@@ -21,7 +21,9 @@ class VideoStorageService {
       logger.info(`Saving video to Google Drive: ${videoFilePath}`);
 
       // ファイル存在確認
-      if (!await fs.pathExists(videoFilePath)) {
+      try {
+        await fs.access(videoFilePath);
+      } catch (error) {
         throw new Error(`Video file not found: ${videoFilePath}`);
       }
 

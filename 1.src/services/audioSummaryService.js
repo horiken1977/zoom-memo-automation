@@ -1,5 +1,5 @@
 const AIService = require('./aiService');
-const fs = require('fs-extra');
+const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
 
@@ -19,7 +19,9 @@ class AudioSummaryService {
       logger.info(`Processing audio file: ${audioFilePath}`);
 
       // ファイル存在確認
-      if (!await fs.pathExists(audioFilePath)) {
+      try {
+        await fs.access(audioFilePath);
+      } catch (error) {
         throw new Error(`Audio file not found: ${audioFilePath}`);
       }
 
