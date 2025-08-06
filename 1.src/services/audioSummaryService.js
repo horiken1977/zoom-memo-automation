@@ -9,6 +9,32 @@ class AudioSummaryService {
   }
 
   /**
+   * 音声バッファをGeminiで文字起こし＆要約処理（Vercel環境用）
+   * @param {Buffer} audioBuffer - 音声ファイルのBuffer
+   * @param {string} fileName - ファイル名
+   * @param {Object} meetingInfo - 会議情報
+   * @returns {Object} 文字起こしと要約の結果
+   */
+  async processAudioBuffer(audioBuffer, fileName, meetingInfo) {
+    try {
+      logger.info(`Processing audio buffer: ${fileName} (${audioBuffer.length} bytes)`);
+
+      // バッファサイズ確認
+      logger.info(`Audio buffer size: ${(audioBuffer.length / 1024).toFixed(2)} KB`);
+
+      // 音声ファイル形式を検証（ファイル名から）
+      this.validateAudioFileByName(fileName);
+
+      // 実際の音声バッファ処理
+      return await this.processRealAudioBuffer(audioBuffer, fileName, meetingInfo);
+
+    } catch (error) {
+      logger.error('Failed to process audio buffer:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 音声ファイルをGeminiで文字起こし＆要約処理
    * @param {string} audioFilePath - 音声ファイルのパス
    * @param {Object} meetingInfo - 会議情報
@@ -37,6 +63,38 @@ class AudioSummaryService {
 
     } catch (error) {
       logger.error('Failed to process audio file:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 実際の音声バッファを処理（Vercel環境用）
+   */
+  async processRealAudioBuffer(audioBuffer, fileName, meetingInfo) {
+    try {
+      // 1. 音声の文字起こし（Bufferから）
+      logger.info('Starting audio transcription from buffer with Gemini...');
+      const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(audioBuffer, fileName, meetingInfo);
+
+      // 2. 構造化された要約を生成
+      logger.info('Generating structured summary...');
+      const structuredSummary = await this.generateStructuredSummary(transcriptionResult);
+
+      // 3. 結果の検証
+      this.validateProcessingResult({ transcription: transcriptionResult, analysis: structuredSummary });
+
+      return {
+        status: 'success',
+        transcription: transcriptionResult,
+        analysis: structuredSummary,
+        audioFileName: fileName,
+        audioBufferSize: audioBuffer.length,
+        meetingInfo: meetingInfo,
+        processedAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      logger.error('Failed to process real audio buffer:', error.message);
       throw error;
     }
   }
@@ -161,6 +219,20 @@ ${transcriptionResult.transcription}
     });
 
     return keyPoints;
+  }
+
+  /**
+   * 音声ファイル形式を検証（ファイル名から）
+   */
+  validateAudioFileByName(fileName) {
+    const ext = path.extname(fileName).toLowerCase();
+    const supportedFormats = ['.mp3', '.m4a', '.wav', '.ogg', '.flac'];
+    
+    if (!supportedFormats.includes(ext)) {
+      throw new Error(`Unsupported audio format: ${ext}. Supported formats: ${supportedFormats.join(', ')}`);
+    }
+    
+    return true;
   }
 
   /**

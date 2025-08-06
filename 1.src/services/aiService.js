@@ -108,6 +108,75 @@ class AIService {
   }
 
   /**
+   * 音声バッファを文字起こし（Vercel環境用）
+   */
+  async transcribeAudioFromBuffer(audioBuffer, fileName, meetingInfo) {
+    try {
+      await this.ensureModelInitialized();
+      
+      logger.info(`Starting transcription from buffer: ${fileName} (${audioBuffer.length} bytes)`);
+
+      // バッファサイズの確認（Google AI APIの制限: 20MB）
+      const fileSizeMB = audioBuffer.length / (1024 * 1024);
+      
+      if (fileSizeMB > 20) {
+        logger.warn(`Buffer size (${fileSizeMB.toFixed(2)}MB) exceeds API limit. Consider compression.`);
+      }
+
+      // バッファをBase64エンコード
+      const base64Audio = audioBuffer.toString('base64');
+
+      // ファイル拡張子から MIME タイプを決定（Gemini API仕様準拠）
+      const ext = path.extname(fileName).toLowerCase();
+      const mimeTypes = {
+        '.mp3': 'audio/mp3',
+        '.wav': 'audio/wav',
+        '.m4a': 'audio/aac',
+        '.aac': 'audio/aac',
+        '.ogg': 'audio/ogg',
+        '.flac': 'audio/flac',
+        '.aiff': 'audio/aiff',
+        '.mp4': 'video/mp4',
+        '.mov': 'video/mov',
+        '.avi': 'video/avi',
+        '.mpeg': 'video/mpeg'
+      };
+      const mimeType = mimeTypes[ext] || 'audio/aac';
+
+      // Google AI API に送信
+      const prompt = this.buildTranscriptionPrompt(meetingInfo);
+      
+      const result = await this.model.generateContent([
+        {
+          inlineData: {
+            data: base64Audio,
+            mimeType: mimeType
+          }
+        },
+        prompt
+      ]);
+
+      const response = result.response;
+      const transcription = response.text();
+
+      logger.info(`Transcription from buffer completed for meeting: ${meetingInfo.topic}`);
+
+      return {
+        transcription,
+        meetingInfo,
+        fileName: fileName,
+        timestamp: new Date().toISOString(),
+        audioBufferSize: audioBuffer.length,
+        model: this.selectedModel
+      };
+
+    } catch (error) {
+      logger.error(`Transcription from buffer failed for ${fileName}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 音声ファイルを文字起こし
    */
   async transcribeAudio(audioFilePath, meetingInfo) {
@@ -225,27 +294,32 @@ ${config.prompts.transcription.userPrompt}
    * 文字起こし結果から要約を生成
    */
   async generateSummary(transcriptionResult) {
-    try {
-      // モデルの初期化を確認
-      await this.ensureModelInitialized();
-      
-      logger.info(`Generating summary for meeting: ${transcriptionResult.meetingInfo.topic}`);
+    const maxRetries = 3;
+    let lastError = null;
 
-      const prompt = config.prompts.summary.userPrompt.replace(
-        '{transcription}', 
-        transcriptionResult.transcription
-      );
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // モデルの初期化を確認
+        await this.ensureModelInitialized();
+        
+        logger.info(`Generating summary for meeting: ${transcriptionResult.meetingInfo.topic} (attempt ${attempt}/${maxRetries})`);
 
-      const result = await this.model.generateContent([
-        config.prompts.summary.systemPrompt,
-        prompt
-      ]);
+        const prompt = config.prompts.summary.userPrompt.replace(
+          '{transcription}', 
+          transcriptionResult.transcription
+        );
 
-      const response = result.response;
-      const summary = response.text();
+        const result = await this.model.generateContent([
+          config.prompts.summary.systemPrompt,
+          prompt
+        ]);
 
-      logger.info(`Summary generated for meeting: ${transcriptionResult.meetingInfo.topic}`);
+        const response = result.response;
+        const summary = response.text();
 
+        logger.info(`Summary generated for meeting: ${transcriptionResult.meetingInfo.topic}`);
+
+        return {
           summary,
           transcription: transcriptionResult.transcription,
           meetingInfo: transcriptionResult.meetingInfo,
