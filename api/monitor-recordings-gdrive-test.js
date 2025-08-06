@@ -1,4 +1,4 @@
-// TC203-debug: SampleDataServiceのみテスト（AudioSummaryService問題切り分け）
+// TC202: サンプル音声データ取得テスト（ダウンロード完了まで）
 const SampleDataService = require('../1.src/services/sampleDataService');
 
 module.exports = async function handler(req, res) {
@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  console.log('🧪 TC203-debug: SampleDataServiceのみテスト開始');
+  console.log('🧪 TC202: サンプル音声データ取得テスト（ダウンロード完了まで）開始');
 
   try {
     // Step 1: サービス初期化
@@ -40,17 +40,17 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       status: 'success',
-      test: 'TC203-debug',
-      message: 'SampleDataServiceのみテスト成功（AudioSummaryService除外）',
+      test: 'TC202-complete',
+      message: 'サンプル音声データ取得テスト成功（ダウンロード完了まで）',
       sampleData: sampleData,
       meetingInfo: meetingInfo,
       downloadResult: downloadResult,
-      note: 'AudioSummaryService問題切り分けのためSampleDataServiceのみ実行',
+      note: 'TC202要件完了: メタデータ取得→会議情報生成→ファイルダウンロード→一時削除',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ TC203-debugテストエラー:', error);
+    console.error('❌ TC202完全テストエラー:', error);
     
     // エラー時も一時ファイル削除を試行
     try {
@@ -63,8 +63,8 @@ module.exports = async function handler(req, res) {
     
     return res.status(500).json({
       status: 'error',
-      test: 'TC203-debug',
-      message: 'SampleDataServiceのみテスト失敗',
+      test: 'TC202-complete',
+      message: 'サンプル音声データ取得テスト失敗（ダウンロード完了まで）',
       error: error.message,
       stack: error.stack,
       timestamp: new Date().toISOString()
