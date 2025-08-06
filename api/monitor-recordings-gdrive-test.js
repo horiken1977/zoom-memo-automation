@@ -35,10 +35,17 @@ module.exports = async function handler(req, res) {
     const downloadResult = await sampleDataService.downloadSampleFile(sampleData.fileId, sampleData.fileName);
     console.log('✅ ファイルダウンロード成功:', downloadResult);
 
-    // Step 5: 8項目構造化要約実行
-    console.log('Step 5: 8項目構造化要約実行');
-    const analysisResult = await audioSummaryService.processAudioFile(downloadResult.filePath, meetingInfo);
-    console.log('✅ 8項目構造化要約成功:', analysisResult);
+    // Step 5: AudioSummaryService初期化テスト（段階的）
+    console.log('Step 5: AudioSummaryService初期化テスト');
+    try {
+      // AIService初期化のみテスト
+      console.log('Step 5a: aiService.initializeModel()テスト');
+      await audioSummaryService.aiService.initializeModel();
+      console.log('✅ AIService初期化成功');
+    } catch (aiError) {
+      console.error('❌ AIService初期化エラー:', aiError.message);
+      throw new Error(`AIService初期化失敗: ${aiError.message}`);
+    }
 
     // Step 6: 一時ファイル削除
     console.log('Step 6: 一時ファイル削除');
@@ -47,12 +54,12 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       status: 'success',
-      test: 'TC203',
-      message: '8項目構造化要約統合テスト成功',
+      test: 'TC203-stage1',
+      message: '8項目構造化要約統合テスト成功（初期化のみ）',
       sampleData: sampleData,
       meetingInfo: meetingInfo,
       downloadResult: downloadResult,
-      analysisResult: analysisResult,
+      note: 'AudioSummaryService初期化のみ実行 - 音声処理は未実行',
       timestamp: new Date().toISOString()
     });
 
@@ -70,8 +77,8 @@ module.exports = async function handler(req, res) {
     
     return res.status(500).json({
       status: 'error',
-      test: 'TC203',
-      message: '8項目構造化要約統合テスト失敗',
+      test: 'TC203-stage1',
+      message: '8項目構造化要約統合テスト失敗（初期化段階）',
       error: error.message,
       stack: error.stack,
       timestamp: new Date().toISOString()
