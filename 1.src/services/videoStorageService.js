@@ -1,5 +1,6 @@
 const GoogleDriveService = require('./googleDriveService');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const config = require('../config');
@@ -11,41 +12,157 @@ class VideoStorageService {
   }
 
   /**
+   * Google Drive sampleフォルダから動画データを取得
+   */
+  async getSampleVideoData() {
+    try {
+      await this.googleDriveService.initialize();
+
+      // sampleフォルダを検索
+      const sampleQuery = `name='sample' and '${this.recordingsFolder}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      const sampleResponse = await this.googleDriveService.drive.files.list({
+        q: sampleQuery,
+        fields: 'files(id, name)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+
+      if (sampleResponse.data.files.length === 0) {
+        throw new Error('Sample folder not found in Google Drive');
+      }
+
+      const sampleFolderId = sampleResponse.data.files[0].id;
+      logger.info(`Sample folder found for video: ${sampleFolderId}`);
+
+      // sampleフォルダ内のファイルを取得
+      const filesQuery = `'${sampleFolderId}' in parents and trashed=false`;
+      const filesResponse = await this.googleDriveService.drive.files.list({
+        q: filesQuery,
+        fields: 'files(id, name, mimeType, size)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+
+      const files = filesResponse.data.files;
+      logger.info(`Found ${files.length} files in sample folder for video`);
+
+      // 動画ファイル（.mp4, .avi, .mov）を選択
+      const videoFiles = files.filter(file => 
+        file.mimeType && (
+          file.mimeType.includes('video/') ||
+          file.name.toLowerCase().includes('.mp4') ||
+          file.name.toLowerCase().includes('.avi') ||
+          file.name.toLowerCase().includes('.mov')
+        )
+      );
+
+      if (videoFiles.length === 0) {
+        throw new Error('No video files found in sample folder');
+      }
+
+      // 最初の動画ファイルを選択
+      const selectedFile = videoFiles[0];
+      logger.info(`Selected video file: ${selectedFile.name} (${selectedFile.id})`);
+
+      return {
+        fileId: selectedFile.id,
+        fileName: selectedFile.name,
+        mimeType: selectedFile.mimeType,
+        size: selectedFile.size,
+        sampleFolderId: sampleFolderId
+      };
+
+    } catch (error) {
+      logger.error('Failed to get sample video data from Google Drive:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Google Driveからサンプル動画ファイルをダウンロード
+   */
+  async downloadSampleVideoFile(fileId, fileName) {
+    try {
+      await this.googleDriveService.initialize();
+
+      // 一時保存ディレクトリ作成
+      const tempDir = '/tmp/sample-video';
+      try {
+        await fs.mkdir(tempDir, { recursive: true });
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+      const filePath = path.join(tempDir, fileName);
+
+      logger.info(`Downloading sample video file: ${fileName} (${fileId})`);
+
+      // Google Drive APIでファイルをダウンロード
+      const response = await this.googleDriveService.drive.files.get({
+        fileId: fileId,
+        alt: 'media',
+        supportsAllDrives: true
+      }, { responseType: 'stream' });
+
+      // ファイルストリームを保存
+      const writer = fsSync.createWriteStream(filePath);
+      response.data.pipe(writer);
+
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+          logger.info(`Sample video file downloaded: ${filePath}`);
+          resolve({
+            filePath: filePath,
+            fileName: fileName,
+            fileId: fileId,
+            tempDir: tempDir
+          });
+        });
+
+        writer.on('error', reject);
+      });
+
+    } catch (error) {
+      logger.error('Failed to download sample video file:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 動画ファイルをGoogleDriveに保存し、共有リンクを取得
-   * @param {string} videoFilePath - 動画ファイルのパス
    * @param {Object} meetingInfo - 会議情報
    * @returns {Object} 保存結果と共有リンク情報
    */
-  async saveVideoToGoogleDrive(videoFilePath, meetingInfo) {
+  async saveVideoToGoogleDrive(meetingInfo) {
     try {
-      logger.info(`Saving video to Google Drive: ${videoFilePath}`);
+      logger.info(`Starting video processing for Google Drive storage`);
 
-      // ファイル存在確認
-      try {
-        await fs.access(videoFilePath);
-      } catch (error) {
-        throw new Error(`Video file not found: ${videoFilePath}`);
-      }
+      // Step 1: サンプル動画データを取得
+      const videoData = await this.getSampleVideoData();
+      logger.info(`Video data retrieved: ${videoData.fileName} (${videoData.size} bytes)`);
 
-      // ファイル情報取得
-      const stats = await fs.stat(videoFilePath);
+      // Step 2: サンプル動画ファイルをダウンロード
+      const downloadResult = await this.downloadSampleVideoFile(videoData.fileId, videoData.fileName);
+      logger.info(`Video file downloaded: ${downloadResult.filePath}`);
+
+      // Step 3: ファイル情報取得
+      const stats = await fs.stat(downloadResult.filePath);
       logger.info(`Video file size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
 
-      // GoogleDriveService初期化
+      // Step 4: GoogleDriveService初期化
       await this.googleDriveService.initialize();
 
-      // 年月フォルダ構造を作成・確認
+      // Step 5: 年月フォルダ構造を作成・確認
       const folderStructure = await this.ensureFolderStructure(meetingInfo.start_time);
 
-      // ファイル名生成
+      // Step 6: ファイル名生成
       const fileName = this.generateVideoFileName(meetingInfo);
       
-      // ファイルの説明を生成
+      // Step 7: ファイルの説明を生成
       const description = this.generateVideoDescription(meetingInfo);
 
-      // Google Driveにアップロード
+      // Step 8: Google Driveにアップロード
       const uploadResult = await this.googleDriveService.uploadFile(
-        videoFilePath,
+        downloadResult.filePath,
         fileName,
         folderStructure.monthFolderId,
         description
@@ -55,6 +172,15 @@ class VideoStorageService {
       const shareResult = await this.googleDriveService.createShareableLink(uploadResult.fileId, 'reader');
 
       logger.info(`Video uploaded successfully: ${fileName} (${uploadResult.fileId})`);
+
+      // Step 9: 一時ファイル削除
+      try {
+        await fs.unlink(downloadResult.filePath);
+        await fs.rmdir(downloadResult.tempDir);
+        logger.info(`Temporary video files cleaned up: ${downloadResult.tempDir}`);
+      } catch (cleanupError) {
+        logger.warn(`Failed to cleanup temporary video files: ${cleanupError.message}`);
+      }
 
       return {
         status: 'success',
@@ -68,6 +194,7 @@ class VideoStorageService {
         uploadTime: uploadResult.uploadTime,
         createdTime: uploadResult.createdTime,
         mimeType: uploadResult.mimeType,
+        originalVideoData: videoData,
         savedAt: new Date().toISOString()
       };
 
