@@ -1,10 +1,8 @@
-// GoogleDriveサンプルデータテスト用API - 本番環境のAI/Slack機能テスト
-const AIService = require('../1.src/services/aiService');
-const SlackService = require('../1.src/services/slackService');
-const GoogleDriveService = require('../1.src/services/googleDriveService');
-const fs = require('fs-extra');
-const path = require('path');
-const https = require('https');
+// GoogleDriveサンプルデータテスト用API - 部品化された本番環境テスト
+const SampleDataService = require('../1.src/services/sampleDataService');
+const AudioSummaryService = require('../1.src/services/audioSummaryService');
+const VideoStorageService = require('../1.src/services/videoStorageService');
+const MeetingNotificationService = require('../1.src/services/meetingNotificationService');
 
 export default async function handler(req, res) {
   // CORS設定
@@ -24,27 +22,21 @@ export default async function handler(req, res) {
   console.log(`リージョン: ${process.env.VERCEL_REGION || 'unknown'}`);
 
   try {
-    // サービス初期化
-    const aiService = new AIService();
-    const slackService = new SlackService();
-    const googleDriveService = new GoogleDriveService();
+    // 部品化されたサービス初期化
+    const sampleDataService = new SampleDataService();
+    const audioSummaryService = new AudioSummaryService();
+    const videoStorageService = new VideoStorageService();
+    const notificationService = new MeetingNotificationService();
 
-    // サンプルデータを使用（Zoom APIの代わり）
-    console.log('📡 サンプルデータを準備中...');
-    const recordings = [{
-      id: 'sample-test-20250805',
-      uuid: 'sample-uuid-test',
-      topic: '【GoogleDriveテスト】1on1 Kinoshita-san & Horie',
-      start_time: '2025-07-31T13:59:11Z',
-      duration: 30,
-      host_email: 'test@example.com',
-      recording_files: [{
-        id: 'sample-file-1',
-        file_type: 'MP4',
-        download_url: 'dummy-url',
-        recording_type: 'shared_screen_with_speaker_view'
-      }]
-    }];
+    // Google Driveからサンプルデータを取得
+    console.log('📡 Google Driveからサンプルデータを取得中...');
+    const sampleData = await sampleDataService.getSampleData();
+    console.log(`✅ サンプルファイル発見: ${sampleData.fileName} (${sampleData.fileId})`);
+
+    // サンプル会議情報を生成
+    const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleData.fileName);
+    
+    const recordings = [meetingInfo];
 
     if (!recordings || recordings.length === 0) {
       console.log('📭 現在処理対象の録画データはありません');
@@ -77,147 +69,28 @@ export default async function handler(req, res) {
       
       try {
         // Slack処理開始通知
-        await slackService.sendProcessingNotification(recording);
+        console.log(`💬 Slack開始通知送信: ${recording.topic}`);
+        await notificationService.sendProcessingStartNotification(recording);
 
-        // 1. Google Driveからサンプル録画データをダウンロード
+        // 1. Google Driveからサンプル音声データをダウンロード
         console.log(`📥 Google Driveからサンプルデータダウンロード: ${recording.topic}`);
+        const downloadResult = await sampleDataService.downloadSampleFile(sampleData.fileId, sampleData.fileName);
         
-        // Google Drive内のサンプルファイル情報
-        // フォルダURL: https://drive.google.com/drive/folders/1U05EhOhWn91JMUINgF9de3kakdo9E_uX
-        // 実際のaudio1763668932.m4aファイルの直接ダウンロードURL
-        const googleDriveFileId = '1U05EhOhWn91JMUINgF9de3kakdo9E_uX'; // 正しいファイルIDに要更新
-        const downloadUrl = `https://drive.google.com/uc?export=download&id=${googleDriveFileId}&confirm=t`;
-        
-        const sampleDataPath = '/tmp/sample-zoom-data';
-        await fs.ensureDir(sampleDataPath);
-        const audioDestPath = path.join(sampleDataPath, 'audio_sample.m4a');
-        
-        // Google Driveからファイルをダウンロード
-        try {
-          console.log(`⬇️ ダウンロード開始: ${downloadUrl}`);
-          
-          await new Promise((resolve, reject) => {
-            const file = fs.createWriteStream(audioDestPath);
-            
-            https.get(downloadUrl, (response) => {
-              // リダイレクトの処理
-              if (response.statusCode === 302 || response.statusCode === 303) {
-                https.get(response.headers.location, (redirectResponse) => {
-                  redirectResponse.pipe(file);
-                  file.on('finish', () => {
-                    file.close();
-                    console.log(`✅ ダウンロード完了: audio_sample.m4a`);
-                    resolve();
-                  });
-                }).on('error', reject);
-              } else {
-                response.pipe(file);
-                file.on('finish', () => {
-                  file.close();
-                  console.log(`✅ ダウンロード完了: audio_sample.m4a`);
-                  resolve();
-                });
-              }
-            }).on('error', reject);
-          });
-          
-        } catch (downloadError) {
-          console.error('❌ Google Driveダウンロードエラー:', downloadError.message);
-          throw new Error(`Google Driveからのファイルダウンロードに失敗しました: ${downloadError.message}`);
-        }
-        
-        const recordingInfo = {
-          audioFilePath: audioDestPath,
-          videoFilePath: audioDestPath, // 同じファイルを使用
-          meetingInfo: {
-            id: recording.id,
-            topic: recording.topic,
-            startTime: recording.start_time,
-            duration: recording.duration,
-            hostName: recording.host_email,
-            participantCount: 2,
-            originalFileName: 'test_sample.m4a'
-          }
-        };
+        // 2. 音声ファイルをGeminiで8項目要約処理
+        console.log(`🤖 音声ファイル処理開始: ${recording.topic}`);
+        const analysisResult = await audioSummaryService.processAudioFile(downloadResult.filePath, recording);
 
-        // 2. ファイル確認とAI文字起こし
-        console.log(`🤖 文字起こし実行: ${recording.topic}`);
-        
-        // ファイルサイズと内容確認
-        const audioStats = await fs.stat(recordingInfo.audioFilePath);
-        console.log(`📊 音声ファイル情報:`);
-        console.log(`   - パス: ${recordingInfo.audioFilePath}`);
-        console.log(`   - サイズ: ${(audioStats.size / 1024).toFixed(2)} KB`);
-        
-        // ダミーファイルの場合は実際の音声処理をスキップしてテキストベースのテストを実行
-        let transcriptionResult;
-        if (audioStats.size < 1024) { // 1KB未満はダミーファイル
-          console.log('⚠️ ダミーファイル検出 - テキストベースのGeminiテストを実行');
-          
-          // テキストベースのGemini要約テスト
-          const testTranscript = `[会議開始 14:00]
-Horie: こんにちは、木下さん。今日はお忙しい中お時間をいただき、ありがとうございます。
+        // 3. 動画ファイルをGoogle Driveに保存し共有リンク取得
+        console.log(`☁️ Google Drive保存: ${recording.topic}`);
+        const driveResult = await videoStorageService.saveVideoToGoogleDrive(downloadResult.filePath, recording);
 
-Kinoshita: こちらこそ、堀江さん。最近のプロジェクトの進捗はいかがですか？
-
-Horie: Zoom自動化システムの開発が順調に進んでいます。OAuth認証の実装が完了し、録画の自動処理フローも整いました。
-
-Kinoshita: それは素晴らしいですね。具体的にはどのような機能が実装されましたか？
-
-Horie: 録画データの自動取得、AIによる文字起こしと要約、Google Driveへの保存、そしてSlackへの通知まで一連の流れが自動化されています。
-
-Kinoshita: 実用性が高そうですね。テスト結果はいかがでしたか？
-
-Horie: 現在統合テストを実施中です。各コンポーネントは個別に動作確認済みで、来週から段階的な本格運用を予定しています。
-
-Kinoshita: 期待しています。何かサポートが必要でしたらお声がけください。
-
-[会議終了 14:30]`;
-
-          transcriptionResult = {
-            transcription: testTranscript,
-            meetingInfo: recordingInfo.meetingInfo,
-            filePath: recordingInfo.audioFilePath,
-            timestamp: new Date().toISOString(),
-            audioLength: audioStats.size,
-            model: 'text-based-test'
-          };
-          
-        } else {
-          // 実際の音声ファイルの場合は通常の文字起こし処理
-          transcriptionResult = await aiService.transcribeAudio(
-            recordingInfo.audioFilePath, 
-            recordingInfo.meetingInfo
-          );
-        }
-
-        // 3. AI要約生成
-        console.log(`📝 要約生成: ${recording.topic}`);
-        const analysisResult = await aiService.analyzeComprehensively(transcriptionResult);
-
-        // 4. Google Drive保存（一時的にスキップ - 認証情報未設定のため）
-        console.log(`☁️ Google Drive保存: ${recording.topic} - スキップ中`);
-        const driveResult = {
-          fileId: 'test-file-id',
-          fileName: 'test-audio-sample.m4a',
-          viewLink: 'https://drive.google.com/file/d/test-file-id/view',
-          downloadLink: 'https://drive.google.com/uc?id=test-file-id',
-          folderPath: 'Zoom_Recordings/2025/08',
-          description: 'テスト用ダミーリンク（実際のGoogleDrive保存はスキップ）'
-        };
-
-        // 5. Slack通知
+        // 4. 8項目構造化要約と動画リンクをSlackに送信
         console.log(`💬 Slack通知送信: ${recording.topic}`);
-        await slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult);
+        await notificationService.sendStructuredMeetingSummary(analysisResult, driveResult);
 
-        // 6. 一時ファイル削除
+        // 5. 一時ファイル削除
         console.log(`🗑️ 一時ファイル削除: ${recording.topic}`);
-        try {
-          await fs.remove(sampleDataPath);
-          console.log('✅ 一時ファイル削除完了');
-        } catch (cleanupError) {
-          console.error('⚠️ 一時ファイル削除エラー:', cleanupError.message);
-        }
+        await sampleDataService.cleanup();
 
         processedRecordings.push({
           id: recording.id,
@@ -233,10 +106,7 @@ Kinoshita: 期待しています。何かサポートが必要でしたらお声
         console.error(`❌ 録画処理エラー [${recording.topic}]:`, recordingError.message);
         
         // エラー通知
-        await slackService.sendErrorNotification(
-          recordingError, 
-          `録画処理: ${recording.topic}`
-        );
+        await notificationService.sendProcessingErrorNotification(recording, recordingError);
 
         processedRecordings.push({
           id: recording.id,
@@ -275,8 +145,9 @@ Kinoshita: 期待しています。何かサポートが必要でしたらお声
     
     // エラー通知を送信
     try {
-      const slackService = new SlackService();
-      await slackService.sendErrorNotification(error, 'Zoom録画監視処理');
+      const notificationService = new MeetingNotificationService();
+      const errorMeetingInfo = { topic: 'システムエラー', start_time: new Date().toISOString() };
+      await notificationService.sendProcessingErrorNotification(errorMeetingInfo, error);
     } catch (slackError) {
       console.error('Slack通知送信エラー:', slackError.message);
     }
