@@ -174,6 +174,15 @@ async function runTC204Test(res) {
 // TC205: End-to-End統合テスト（データ取得→要約→保存→Slack投稿）
 async function runTC205Test(res) {
   console.log('🚀 TC205: End-to-End統合テスト開始');
+  
+  // 環境情報を確認
+  const config = require('../1.src/config');
+  console.log('環境情報:', {
+    NODE_ENV: process.env.NODE_ENV,
+    disableSlackNotifications: config.development.disableSlackNotifications,
+    logSlackInsteadOfSend: config.productionTest.logSlackInsteadOfSend,
+    slackChannelId: config.slack.channelId ? 'SET' : 'NOT SET'
+  });
 
   try {
     // Step 1: 全サービス初期化
