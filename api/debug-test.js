@@ -200,10 +200,93 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    if (step === 'audio-service-init') {
+      console.log('🔍 Step: AudioSummaryService初期化テスト');
+      const AudioSummaryService = require('../1.src/services/audioSummaryService');
+      
+      console.log('AudioSummaryService初期化...');
+      const audioSummaryService = new AudioSummaryService();
+      console.log('AudioSummaryService初期化完了');
+      
+      return res.status(200).json({
+        status: 'success',
+        step: 'audio-service-init',
+        result: {
+          serviceCreated: !!audioSummaryService,
+          hasAiService: !!audioSummaryService.aiService,
+          timestamp: new Date().toISOString(),
+          executionTime: `${Date.now() - startTime}ms`
+        }
+      });
+    }
+
+    if (step === 'ai-service-init') {
+      console.log('🔍 Step: AIService（Gemini）初期化テスト');
+      const AIService = require('../1.src/services/aiService');
+      
+      console.log('AIService初期化...');
+      const aiService = new AIService();
+      
+      console.log('AIService.initialize()実行...');
+      await aiService.initialize();
+      console.log('AIService初期化完了');
+      
+      return res.status(200).json({
+        status: 'success',
+        step: 'ai-service-init',
+        result: {
+          serviceCreated: !!aiService,
+          hasModel: !!aiService.model,
+          modelName: aiService.model ? aiService.model.model : 'unknown',
+          timestamp: new Date().toISOString(),
+          executionTime: `${Date.now() - startTime}ms`
+        }
+      });
+    }
+
+    if (step === 'gemini-transcribe-test') {
+      console.log('🔍 Step: Gemini文字起こし最小テスト（小サイズBuffer）');
+      const AIService = require('../1.src/services/aiService');
+      const SampleDataService = require('../1.src/services/sampleDataService');
+      
+      // 小サイズのテストデータを準備
+      console.log('小サイズテストデータ準備...');
+      const sampleDataService = new SampleDataService();
+      const sampleData = await sampleDataService.getSampleDataAsBuffer();
+      
+      // バッファを最初の100KB（約10秒程度の音声）に制限してテスト
+      const testBuffer = sampleData.audioBuffer.slice(0, 100 * 1024);
+      console.log('テストバッファ作成完了:', testBuffer.length, 'bytes');
+      
+      console.log('AIService初期化...');
+      const aiService = new AIService();
+      await aiService.initialize();
+      
+      console.log('Gemini文字起こしテスト実行...');
+      const transcription = await aiService.transcribeAudioFromBuffer(
+        testBuffer, 
+        sampleData.fileName
+      );
+      console.log('Gemini文字起こし完了');
+      
+      return res.status(200).json({
+        status: 'success',
+        step: 'gemini-transcribe-test',
+        result: {
+          originalFileSize: sampleData.size,
+          testBufferSize: testBuffer.length,
+          transcriptionLength: transcription ? transcription.length : 0,
+          transcriptionPreview: transcription ? transcription.substring(0, 200) + '...' : 'empty',
+          timestamp: new Date().toISOString(),
+          executionTime: `${Date.now() - startTime}ms`
+        }
+      });
+    }
+
     return res.status(400).json({
       status: 'error',
       message: 'Invalid step parameter',
-      availableSteps: ['config', 'services', 'gdrive-init', 'gdrive-list', 'gdrive-files', 'gdrive-download', 'sample-service']
+      availableSteps: ['config', 'services', 'gdrive-init', 'gdrive-list', 'gdrive-files', 'gdrive-download', 'sample-service', 'audio-service-init', 'ai-service-init', 'gemini-transcribe-test']
     });
     
   } catch (error) {
