@@ -23,6 +23,8 @@ module.exports = async function handler(req, res) {
     return await runTC204Test(res);
   } else if (testCase === 'TC205') {
     return await runTC205Test(res);
+  } else if (testCase === 'TC205a') {
+    return await runTC205aTest(res);  // 環境確認のみ
   } else {
     return await runTC203Test(res);
   }
@@ -302,4 +304,30 @@ async function runTC205Test(res) {
       timestamp: new Date().toISOString()
     });
   }
+}
+
+// TC205a: 環境確認テスト
+async function runTC205aTest(res) {
+  console.log('🔍 TC205a: 環境確認テスト');
+  
+  const config = require('../1.src/config');
+  const envInfo = {
+    NODE_ENV: process.env.NODE_ENV,
+    disableSlackNotifications: config.development.disableSlackNotifications,
+    logSlackInsteadOfSend: config.productionTest.logSlackInsteadOfSend,
+    slackChannelId: config.slack.channelId ? 'SET' : 'NOT SET',
+    slackBotToken: config.slack.botToken ? 'SET' : 'NOT SET'
+  };
+  
+  console.log('環境情報:', envInfo);
+  
+  return res.status(200).json({
+    status: 'success',
+    test: 'TC205a-environment-check',
+    environment: envInfo,
+    expectedSlackBehavior: !config.development.disableSlackNotifications && !config.productionTest.logSlackInsteadOfSend 
+      ? 'WILL_POST_TO_SLACK' 
+      : 'WILL_NOT_POST_TO_SLACK',
+    timestamp: new Date().toISOString()
+  });
 }
