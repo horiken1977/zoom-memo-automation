@@ -6,7 +6,12 @@
 
 **プロジェクト名:** Zoom Memo Automation  
 **開始日:** 2025年7月30日  
-**目的:** Zoomミーティングの議事録を自動生成するシステムの開発
+**目的:** Zoom録画ファイルを自動で文字起こし・要約し、Google Driveに保存してSlackに通知するシステムの開発
+
+**本番環境:** Vercel (Hobbyプラン)  
+**主要技術:** Node.js, Google APIs (Drive, Gemini AI), Slack API, Zoom API
+
+> **注意:** プロジェクトのガイドライン・開発ルールについては、ルートディレクトリの `CLAUDE.md` を参照してください。
 
 ## 対話履歴
 

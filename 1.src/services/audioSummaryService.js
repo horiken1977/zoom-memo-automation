@@ -273,11 +273,12 @@ ${transcriptionResult.transcription}
    * 処理結果の検証
    */
   validateProcessingResult(result) {
-    if (!result || !result.analysis || !result.transcription) {
+    if (!result || !result.transcription) {
       throw new Error('Invalid processing result: missing required fields');
     }
 
-    if (!result.analysis.summary) {
+    // 構造化要約の検証（新形式対応）
+    if (!result.structuredSummary && (!result.analysis || !result.analysis.summary)) {
       throw new Error('Invalid analysis result: missing structured summary');
     }
 
