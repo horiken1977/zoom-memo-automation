@@ -1,8 +1,10 @@
 // TC203: 8項目構造化要約テスト（メモリバッファ処理）
 // TC204: VideoStorageService動画処理テスト
+// TC205: End-to-End統合テスト（データ取得→要約→保存→Slack投稿）
 const SampleDataService = require('../1.src/services/sampleDataService');
 const AudioSummaryService = require('../1.src/services/audioSummaryService');
 const VideoStorageService = require('../1.src/services/videoStorageService');
+const SlackService = require('../1.src/services/slackService');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,11 +16,13 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // テストケース判定：クエリパラメータでTC203/TC204を切り替え
+  // テストケース判定：クエリパラメータでTC203/TC204/TC205を切り替え
   const testCase = req.query.test || 'TC203';
   
   if (testCase === 'TC204') {
     return await runTC204Test(res);
+  } else if (testCase === 'TC205') {
+    return await runTC205Test(res);
   } else {
     return await runTC203Test(res);
   }
@@ -160,6 +164,127 @@ async function runTC204Test(res) {
       status: 'error',
       test: 'TC204-complete',
       message: 'VideoStorageService動画処理テスト失敗',
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// TC205: End-to-End統合テスト（データ取得→要約→保存→Slack投稿）
+async function runTC205Test(res) {
+  console.log('🚀 TC205: End-to-End統合テスト開始');
+
+  try {
+    // Step 1: 全サービス初期化
+    console.log('Step 1: 全サービス初期化');
+    const sampleDataService = new SampleDataService();
+    const audioSummaryService = new AudioSummaryService();
+    const videoStorageService = new VideoStorageService();
+    const slackService = new SlackService();
+    
+    console.log('✅ 全サービス初期化完了');
+
+    // Step 2: TC202相当 - サンプルデータ取得（音声ファイル）
+    console.log('\n=== TC202相当: サンプルデータ取得 ===');
+    const sampleBufferData = await sampleDataService.getSampleDataAsBuffer();
+    console.log('✅ 音声データ取得成功:', {
+      fileName: sampleBufferData.fileName,
+      size: `${(sampleBufferData.size / 1024).toFixed(2)} KB`,
+      mimeType: sampleBufferData.mimeType
+    });
+
+    // 会議情報生成
+    const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleBufferData.fileName);
+    console.log('✅ 会議情報生成成功:', meetingInfo.topic);
+
+    // Step 3: TC203相当 - 8項目構造化要約
+    console.log('\n=== TC203相当: 8項目構造化要約 ===');
+    const analysisResult = await audioSummaryService.processAudioBuffer(
+      sampleBufferData.audioBuffer, 
+      sampleBufferData.fileName, 
+      meetingInfo
+    );
+    console.log('✅ 8項目構造化要約成功');
+    console.log('   - 文字起こし文字数:', analysisResult.transcription.length);
+    console.log('   - 要約項目数:', Object.keys(analysisResult.structuredSummary).length);
+
+    // Step 4: TC204相当 - 動画保存・共有リンク作成
+    console.log('\n=== TC204相当: 動画保存・共有リンク作成 ===');
+    const videoSaveResult = await videoStorageService.saveVideoToGoogleDrive(meetingInfo);
+    console.log('✅ 動画保存・共有リンク作成成功');
+    console.log('   - 保存先:', videoSaveResult.folderPath);
+    console.log('   - ファイルID:', videoSaveResult.fileId);
+
+    // Step 5: TC205新規 - Slack投稿
+    console.log('\n=== TC205: Slack構造化投稿 ===');
+    
+    // 要約とリンクを統合したメッセージ作成
+    const slackMessage = {
+      meetingInfo: meetingInfo,
+      summary: analysisResult.structuredSummary,
+      transcription: analysisResult.transcription,
+      videoLink: videoSaveResult.viewLink,
+      downloadLink: videoSaveResult.downloadLink,
+      folderPath: videoSaveResult.folderPath
+    };
+
+    // Slack投稿実行
+    const slackResult = await slackService.postMeetingSummary(slackMessage);
+    console.log('✅ Slack投稿成功');
+    console.log('   - チャンネル:', slackResult.channel);
+    console.log('   - タイムスタンプ:', slackResult.ts);
+
+    // 完全な統合結果を返す
+    return res.status(200).json({
+      status: 'success',
+      test: 'TC205-complete',
+      message: 'End-to-End統合テスト成功',
+      workflow: {
+        step1_dataFetch: {
+          fileName: sampleBufferData.fileName,
+          size: sampleBufferData.size,
+          mimeType: sampleBufferData.mimeType
+        },
+        step2_summary: {
+          transcriptionLength: analysisResult.transcription.length,
+          summaryItems: Object.keys(analysisResult.structuredSummary),
+          clientName: analysisResult.structuredSummary.clientName,
+          nextActions: analysisResult.structuredSummary.nextActions
+        },
+        step3_storage: {
+          fileId: videoSaveResult.fileId,
+          fileName: videoSaveResult.fileName,
+          viewLink: videoSaveResult.viewLink,
+          downloadLink: videoSaveResult.downloadLink,
+          folderPath: videoSaveResult.folderPath
+        },
+        step4_slack: {
+          channel: slackResult.channel,
+          messageId: slackResult.ts,
+          threadId: slackResult.thread_ts,
+          posted: true
+        }
+      },
+      note: 'TC205完了: データ取得→要約→保存→Slack投稿の完全統合フロー成功',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ TC205 End-to-Endテストエラー:', error);
+    
+    // エラー箇所の特定
+    let failedStep = 'unknown';
+    if (error.message.includes('Sample')) failedStep = 'data_fetch';
+    else if (error.message.includes('transcription') || error.message.includes('summary')) failedStep = 'summary';
+    else if (error.message.includes('Drive') || error.message.includes('folder')) failedStep = 'storage';
+    else if (error.message.includes('Slack') || error.message.includes('channel')) failedStep = 'slack';
+    
+    return res.status(500).json({
+      status: 'error',
+      test: 'TC205-complete',
+      message: 'End-to-End統合テスト失敗',
+      failedStep: failedStep,
       error: error.message,
       stack: error.stack,
       timestamp: new Date().toISOString()
