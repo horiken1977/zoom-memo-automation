@@ -25,6 +25,8 @@ module.exports = async function handler(req, res) {
     return await runProductionThroughputTest(res);
   } else if (testCase === 'PT001a') {
     return await runZoomConnectionTest(res);  // Zoom接続のみテスト
+  } else if (testCase === 'debug') {
+    return await runDebugConfigTest(res);  // 環境変数確認テスト
   } else {
     return await runProductionThroughputTest(res);
   }
@@ -326,6 +328,57 @@ async function runZoomConnectionTest(res) {
       message: 'Zoom接続テスト失敗',
       error: error.message,
       executionTime: `${errorTime}ms`,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// Debug: 環境変数確認テスト
+async function runDebugConfigTest(res) {
+  console.log('🔍 Debug: 環境変数確認テスト開始');
+  
+  try {
+    const config = require('../1.src/config');
+    
+    const debugInfo = {
+      zoom: {
+        accountId: config.zoom.accountId ? 'SET' : 'NOT SET',
+        clientId: config.zoom.clientId ? 'SET' : 'NOT SET', 
+        clientSecret: config.zoom.clientSecret ? 'SET' : 'NOT SET',
+        useOAuth: config.zoom.useOAuth,
+        baseUrl: config.zoom.baseUrl
+      },
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: !!process.env.VERCEL,
+        VERCEL_REGION: process.env.VERCEL_REGION
+      },
+      rawEnvVars: {
+        ZOOM_ACCOUNT_ID: process.env.ZOOM_ACCOUNT_ID ? 'SET' : 'NOT SET',
+        ZOOM_CLIENT_ID: process.env.ZOOM_CLIENT_ID ? 'SET' : 'NOT SET',
+        ZOOM_CLIENT_SECRET: process.env.ZOOM_CLIENT_SECRET ? 'SET' : 'NOT SET',
+        ZOOM_USE_OAUTH: process.env.ZOOM_USE_OAUTH
+      }
+    };
+    
+    console.log('Debug情報:', JSON.stringify(debugInfo, null, 2));
+    
+    return res.status(200).json({
+      status: 'success',
+      test: 'debug-config',
+      message: '環境変数確認テスト',
+      config: debugInfo,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Debug テストエラー:', error);
+    
+    return res.status(500).json({
+      status: 'error',
+      test: 'debug-config', 
+      message: '環境変数確認テスト失敗',
+      error: error.message,
       timestamp: new Date().toISOString()
     });
   }
