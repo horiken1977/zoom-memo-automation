@@ -113,12 +113,27 @@ class ZoomService {
       }
     } catch (error) {
       logger.error('Failed to get Zoom access token:', error.response?.data || error.message);
+      logger.error('HTTP Status:', error.response?.status);
+      logger.error('Response Headers:', error.response?.headers);
+      logger.error('Full Error Response:', JSON.stringify(error.response?.data, null, 2));
       logger.error('Request details:', {
         url: 'https://zoom.us/oauth/token',
         accountId: this.accountId,
         clientIdSet: !!this.clientId,
-        clientSecretSet: !!this.clientSecret
+        clientSecretSet: !!this.clientSecret,
+        requestMethod: 'POST',
+        contentType: 'application/x-www-form-urlencoded'
       });
+      
+      // 400エラーの詳細分析
+      if (error.response?.status === 400) {
+        logger.error('400 Bad Request - 考えられる原因:');
+        logger.error('1. grant_type パラメータが無効');
+        logger.error('2. account_id が無効');
+        logger.error('3. Client ID/Secret の組み合わせが無効');
+        logger.error('4. Zoom Appの設定（Server-to-Server OAuth）が無効');
+      }
+      
       throw error;
     }
   }
