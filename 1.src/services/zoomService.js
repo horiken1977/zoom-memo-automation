@@ -86,8 +86,15 @@ class ZoomService {
           headers: tokenRequest.headers
         }, null, 2));
 
-        const response = await axios.post(tokenRequest.url, null, {
-          params: tokenRequest.params,
+        // Server-to-Server OAuth認証用のリクエストボディを作成
+        const requestBody = new URLSearchParams({
+          grant_type: 'account_credentials',
+          account_id: this.accountId
+        });
+
+        logger.info('Request body:', requestBody.toString());
+
+        const response = await axios.post(tokenRequest.url, requestBody.toString(), {
           auth: tokenRequest.auth,
           headers: tokenRequest.headers
         });
