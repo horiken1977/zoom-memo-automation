@@ -146,7 +146,7 @@ module.exports = async function handler(req, res) {
       await gdriveService.initialize();
       
       // 最小のファイルを選択してダウンロードテスト（まず1KB程度の範囲取得）
-      const testFileId = 'audio1763668932.m4a'; // テスト仕様書に記載されたファイル
+      const testFileId = '1j-yX9BRITl0TwBeZ4kMQN6k7klq9UunK'; // audio1763668932.m4aの実際のfileId
       
       console.log('小サイズダウンロード開始...', testFileId);
       const downloadResponse = await gdriveService.drive.files.get({
@@ -173,10 +173,37 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    if (step === 'sample-service') {
+      console.log('🔍 Step: SampleDataService.getSampleDataAsBuffer()実行テスト');
+      const SampleDataService = require('../1.src/services/sampleDataService');
+      
+      console.log('SampleDataService初期化...');
+      const sampleDataService = new SampleDataService();
+      
+      console.log('getSampleDataAsBuffer()実行開始...');
+      const result = await sampleDataService.getSampleDataAsBuffer();
+      console.log('getSampleDataAsBuffer()実行完了');
+      
+      return res.status(200).json({
+        status: 'success',
+        step: 'sample-service',
+        result: {
+          fileName: result.fileName,
+          size: result.size,
+          mimeType: result.mimeType,
+          fileId: result.fileId,
+          hasAudioBuffer: !!result.audioBuffer,
+          bufferLength: result.audioBuffer ? result.audioBuffer.length : 0,
+          timestamp: new Date().toISOString(),
+          executionTime: `${Date.now() - startTime}ms`
+        }
+      });
+    }
+
     return res.status(400).json({
       status: 'error',
       message: 'Invalid step parameter',
-      availableSteps: ['config', 'services', 'gdrive-init', 'gdrive-list', 'gdrive-files', 'gdrive-download']
+      availableSteps: ['config', 'services', 'gdrive-init', 'gdrive-list', 'gdrive-files', 'gdrive-download', 'sample-service']
     });
     
   } catch (error) {
