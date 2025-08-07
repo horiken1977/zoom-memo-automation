@@ -34,19 +34,33 @@ module.exports = async function handler(req, res) {
 
 // TC203: 8項目構造化要約テスト（メモリバッファ処理）
 async function runTC203Test(res) {
-  console.log('🧪 TC203: 8項目構造化要約テスト（メモリバッファ処理）開始');
+  const startTime = Date.now();
+  console.log('🧪 TC203: 8項目構造化要約テスト（メモリバッファ処理）開始', new Date().toISOString());
+
+  // 詳細タイミング追跡
+  const debugTimer = {
+    start: startTime,
+    log: function(step, detail = '') {
+      const elapsed = Date.now() - this.start;
+      console.log(`⏱️ [${elapsed}ms] ${step} ${detail}`);
+      return elapsed;
+    }
+  };
 
   try {
     // Step 1: サービス初期化
-    console.log('Step 1: SampleDataService初期化');
+    debugTimer.log('Step 1: SampleDataService初期化開始');
     const sampleDataService = new SampleDataService();
+    debugTimer.log('Step 1: SampleDataService初期化完了');
     
-    console.log('Step 1b: AudioSummaryService初期化');
+    debugTimer.log('Step 1b: AudioSummaryService初期化開始');
     const audioSummaryService = new AudioSummaryService();
+    debugTimer.log('Step 1b: AudioSummaryService初期化完了');
 
     // Step 2: Google Driveから音声データを直接Bufferとして取得（メモリ処理）
-    console.log('Step 2: getSampleDataAsBuffer()実行（メモリバッファ処理）');
+    debugTimer.log('Step 2: getSampleDataAsBuffer()実行開始（メモリバッファ処理）');
     const sampleBufferData = await sampleDataService.getSampleDataAsBuffer();
+    debugTimer.log('Step 2: getSampleDataAsBuffer()完了', `size: ${(sampleBufferData.size / 1024).toFixed(2)} KB`);
     console.log('✅ サンプルバッファ取得成功:', {
       fileName: sampleBufferData.fileName,
       size: `${(sampleBufferData.size / 1024).toFixed(2)} KB`,
@@ -54,18 +68,23 @@ async function runTC203Test(res) {
     });
 
     // Step 3: サンプル会議情報生成
-    console.log('Step 3: サンプル会議情報生成');
+    debugTimer.log('Step 3: サンプル会議情報生成開始');
     const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleBufferData.fileName);
-    console.log('✅ サンプル会議情報生成成功:', meetingInfo);
+    debugTimer.log('Step 3: サンプル会議情報生成完了');
+    console.log('✅ サンプル会議情報生成成功:', meetingInfo.topic);
 
     // Step 4: AudioSummaryServiceでBuffer処理＋8項目構造化要約（ファイル作成なし）
-    console.log('Step 4: 8項目構造化要約処理開始（メモリバッファ処理）');
+    debugTimer.log('Step 4: processAudioBuffer()開始（メモリバッファ処理）');
+    
     const analysisResult = await audioSummaryService.processAudioBuffer(
       sampleBufferData.audioBuffer, 
       sampleBufferData.fileName, 
       meetingInfo
     );
+    debugTimer.log('Step 4: processAudioBuffer()完了');
     console.log('✅ 8項目構造化要約処理成功');
+
+    const totalTestTime = debugTimer.log('TC203テスト完了');
 
     return res.status(200).json({
       status: 'success',

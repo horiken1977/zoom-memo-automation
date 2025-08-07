@@ -71,26 +71,46 @@ class AudioSummaryService {
    * 実際の音声バッファを処理（Vercel環境用）
    */
   async processRealAudioBuffer(audioBuffer, fileName, meetingInfo) {
-    try {
-      // 1. 音声の文字起こし（Bufferから）
-      logger.info('Starting audio transcription from buffer with Gemini...');
-      const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(audioBuffer, fileName, meetingInfo);
+    const startTime = Date.now();
+    const debugTimer = (step, detail = '') => {
+      const elapsed = Date.now() - startTime;
+      logger.info(`🔧 AudioSummaryService [${elapsed}ms] ${step} ${detail}`);
+      return elapsed;
+    };
 
+    try {
+      debugTimer('processRealAudioBuffer開始', `fileName: ${fileName}, bufferSize: ${audioBuffer.length}`);
+      
+      // 1. 音声の文字起こし（Bufferから）
+      debugTimer('Step 1: transcribeAudioFromBuffer開始');
+      logger.info('Starting audio transcription from buffer with Gemini...');
+      
+      const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(audioBuffer, fileName, meetingInfo);
+      debugTimer('Step 1: transcribeAudioFromBuffer完了', `transcription length: ${transcriptionResult?.length || 0}`);
+      
       // 2. 構造化された要約を生成
+      debugTimer('Step 2: generateStructuredSummary開始');
       logger.info('Generating structured summary...');
       const structuredSummary = await this.generateStructuredSummary(transcriptionResult);
+      debugTimer('Step 2: generateStructuredSummary完了');
 
       // 3. 結果の検証
+      debugTimer('Step 3: validateProcessingResult開始');
       this.validateProcessingResult({ transcription: transcriptionResult, analysis: structuredSummary });
-
+      debugTimer('Step 3: validateProcessingResult完了');
+      
+      const totalTime = debugTimer('processRealAudioBuffer完了');
+      
       return {
         status: 'success',
         transcription: transcriptionResult,
+        structuredSummary: structuredSummary, // TC203で期待される構造
         analysis: structuredSummary,
         audioFileName: fileName,
         audioBufferSize: audioBuffer.length,
         meetingInfo: meetingInfo,
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
+        totalProcessingTime: totalTime
       };
 
     } catch (error) {
