@@ -209,23 +209,22 @@ async function runTC205Test(res) {
     const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleBufferData.fileName);
     console.log('✅ 会議情報生成成功:', meetingInfo.topic);
 
-    // Step 3: TC203相当 - 8項目構造化要約
-    console.log('\n=== TC203相当: 8項目構造化要約 ===');
-    const analysisResult = await audioSummaryService.processAudioBuffer(
-      sampleBufferData.audioBuffer, 
-      sampleBufferData.fileName, 
-      meetingInfo
-    );
-    console.log('✅ 8項目構造化要約成功');
+    // Step 3&4: 要約と動画保存を並列実行（時間短縮）
+    console.log('\n=== 並列処理: 要約＆動画保存 ===');
+    const [analysisResult, videoSaveResult] = await Promise.all([
+      // TC203相当 - 8項目構造化要約
+      audioSummaryService.processAudioBuffer(
+        sampleBufferData.audioBuffer, 
+        sampleBufferData.fileName, 
+        meetingInfo
+      ),
+      // TC204相当 - 動画保存・共有リンク作成
+      videoStorageService.saveVideoToGoogleDrive(meetingInfo)
+    ]);
+    
+    console.log('✅ 並列処理完了');
     console.log('   - 文字起こし文字数:', analysisResult.transcription.length);
-    console.log('   - 要約項目数:', Object.keys(analysisResult.structuredSummary).length);
-
-    // Step 4: TC204相当 - 動画保存・共有リンク作成
-    console.log('\n=== TC204相当: 動画保存・共有リンク作成 ===');
-    const videoSaveResult = await videoStorageService.saveVideoToGoogleDrive(meetingInfo);
-    console.log('✅ 動画保存・共有リンク作成成功');
-    console.log('   - 保存先:', videoSaveResult.folderPath);
-    console.log('   - ファイルID:', videoSaveResult.fileId);
+    console.log('   - 動画保存先:', videoSaveResult.folderPath);
 
     // Step 5: TC205新規 - Slack投稿
     console.log('\n=== TC205: Slack構造化投稿 ===');
