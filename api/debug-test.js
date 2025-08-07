@@ -103,10 +103,80 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    if (step === 'gdrive-files') {
+      console.log('🔍 Step: Sample folder内ファイル一覧');
+      const config = require('../1.src/config');
+      const GoogleDriveService = require('../1.src/services/googleDriveService');
+      const gdriveService = new GoogleDriveService();
+      
+      await gdriveService.initialize();
+      const sampleFolderId = '1JYgvxz3vKqBoz23vyYkxKvByHFlTViaM'; // 固定値で直接指定
+      
+      console.log('Sample folder内ファイル検索開始...', sampleFolderId);
+      const filesQuery = `'${sampleFolderId}' in parents and trashed=false`;
+      const filesResponse = await gdriveService.drive.files.list({
+        q: filesQuery,
+        fields: 'files(id, name, mimeType, size)',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+      console.log('Sample folder内ファイル検索完了');
+      
+      return res.status(200).json({
+        status: 'success',
+        step: 'gdrive-files',
+        result: {
+          sampleFolderId: sampleFolderId,
+          foundFiles: filesResponse.data.files.length,
+          files: filesResponse.data.files,
+          audioFiles: filesResponse.data.files.filter(file => 
+            file.mimeType && file.mimeType.startsWith('audio/')
+          ),
+          timestamp: new Date().toISOString(),
+          executionTime: `${Date.now() - startTime}ms`
+        }
+      });
+    }
+
+    if (step === 'gdrive-download') {
+      console.log('🔍 Step: Sample audioファイル小サイズダウンロードテスト');
+      const GoogleDriveService = require('../1.src/services/googleDriveService');
+      const gdriveService = new GoogleDriveService();
+      
+      await gdriveService.initialize();
+      
+      // 最小のファイルを選択してダウンロードテスト（まず1KB程度の範囲取得）
+      const testFileId = 'audio1763668932.m4a'; // テスト仕様書に記載されたファイル
+      
+      console.log('小サイズダウンロード開始...', testFileId);
+      const downloadResponse = await gdriveService.drive.files.get({
+        fileId: testFileId,
+        alt: 'media',
+        supportsAllDrives: true,
+        headers: {
+          'Range': 'bytes=0-1023' // 最初の1KBのみ取得
+        }
+      });
+      console.log('小サイズダウンロード完了');
+      
+      return res.status(200).json({
+        status: 'success',  
+        step: 'gdrive-download',
+        result: {
+          fileId: testFileId,
+          downloadedBytes: downloadResponse.data.length,
+          contentType: downloadResponse.headers['content-type'],
+          hasData: !!downloadResponse.data,
+          timestamp: new Date().toISOString(),
+          executionTime: `${Date.now() - startTime}ms`
+        }
+      });
+    }
+
     return res.status(400).json({
       status: 'error',
       message: 'Invalid step parameter',
-      availableSteps: ['config', 'services', 'gdrive-init', 'gdrive-list']
+      availableSteps: ['config', 'services', 'gdrive-init', 'gdrive-list', 'gdrive-files', 'gdrive-download']
     });
     
   } catch (error) {
