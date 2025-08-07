@@ -219,18 +219,21 @@ async function runTC205Test(res) {
     // Step 5: TC205新規 - Slack投稿
     console.log('\n=== TC205: Slack構造化投稿 ===');
     
-    // 要約とリンクを統合したメッセージ作成
-    const slackMessage = {
+    // SlackServiceが期待する形式にデータを整形
+    const slackAnalysisResult = {
       meetingInfo: meetingInfo,
       summary: analysisResult.structuredSummary,
       transcription: analysisResult.transcription,
-      videoLink: videoSaveResult.viewLink,
-      downloadLink: videoSaveResult.downloadLink,
-      folderPath: videoSaveResult.folderPath
+      participants: analysisResult.structuredSummary.attendees || [],
+      actionItems: analysisResult.structuredSummary.nextActions || [],
+      decisions: analysisResult.structuredSummary.decisions || []
     };
 
-    // Slack投稿実行
-    const slackResult = await slackService.postMeetingSummary(slackMessage);
+    // Slack投稿実行（sendMeetingSummaryWithRecordingメソッドを使用）
+    const slackResult = await slackService.sendMeetingSummaryWithRecording(
+      slackAnalysisResult,
+      videoSaveResult
+    );
     console.log('✅ Slack投稿成功');
     console.log('   - チャンネル:', slackResult.channel);
     console.log('   - タイムスタンプ:', slackResult.ts);
