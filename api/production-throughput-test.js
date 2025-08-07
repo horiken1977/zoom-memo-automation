@@ -27,6 +27,8 @@ module.exports = async function handler(req, res) {
     return await runZoomConnectionTest(res);  // Zoom接続のみテスト
   } else if (testCase === 'debug') {
     return await runDebugConfigTest(res);  // 環境変数確認テスト
+  } else if (testCase === 'jwt') {
+    return await runJWTFallbackTest(res);  // JWT認証フォールバックテスト
   } else {
     return await runProductionThroughputTest(res);
   }
@@ -379,6 +381,154 @@ async function runDebugConfigTest(res) {
       test: 'debug-config', 
       message: '環境変数確認テスト失敗',
       error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// JWT: JWT認証フォールバックテスト
+async function runJWTFallbackTest(res) {
+  const startTime = Date.now();
+  console.log('🔧 JWT: JWT認証フォールバックテスト開始', new Date().toISOString());
+  console.log('目的: OAuth認証問題の切り分けとZoom API基本接続確認');
+  
+  try {
+    // 一時的にJWT認証を強制使用するZoomServiceを作成
+    const config = require('../1.src/config');
+    const axios = require('axios');
+    const crypto = require('crypto');
+    
+    // JWT生成（ZoomServiceのメソッドを一時的に再実装）
+    const generateJWT = () => {
+      const header = {
+        alg: 'HS256',
+        typ: 'JWT'
+      };
+
+      const payload = {
+        iss: config.zoom.clientId, // Client IDをAPI Keyとして使用
+        exp: Math.floor(Date.now() / 1000) + 3600
+      };
+
+      const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+      const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      
+      const signature = crypto
+        .createHmac('sha256', config.zoom.clientSecret) // Client SecretをAPI Secretとして使用
+        .update(`${encodedHeader}.${encodedPayload}`)
+        .digest('base64url');
+
+      return `${encodedHeader}.${encodedPayload}.${signature}`;
+    };
+
+    console.log('JWT生成中...');
+    const jwtToken = generateJWT();
+    console.log('✅ JWT生成完了');
+
+    // JWT認証でZoom API基本テスト（/users/me）
+    console.log('Zoom API基本接続テスト中（JWT認証）...');
+    const headers = {
+      'Authorization': `Bearer ${jwtToken}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const userResponse = await axios.get(`${config.zoom.baseUrl}/users/me`, { headers });
+    console.log('✅ Zoom API基本接続成功（JWT認証）');
+    console.log('ユーザー情報:', userResponse.data.email);
+
+    // JWT認証で録画データ取得テスト
+    console.log('録画データ取得テスト中（JWT認証）...');
+    const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = new Date().toISOString().split('T')[0];
+    
+    const recordingsResponse = await axios.get(`${config.zoom.baseUrl}/accounts/${config.zoom.accountId}/recordings`, {
+      headers,
+      params: {
+        from: fromDate,
+        to: toDate,
+        page_size: 10
+      }
+    });
+
+    const recordings = recordingsResponse.data.meetings || [];
+    console.log(`✅ 録画データ取得成功: ${recordings.length}件発見`);
+
+    // 録画詳細情報を表示
+    let recordingDetails = [];
+    if (recordings.length > 0) {
+      console.log('\\n📊 Zoom録画データ一覧（JWT認証）:');
+      for (let i = 0; i < Math.min(recordings.length, 3); i++) {
+        const meeting = recordings[i];
+        console.log(`\\n${i + 1}. 会議: ${meeting.topic}`);
+        console.log(`   - 会議ID: ${meeting.id}`);
+        console.log(`   - 開始時間: ${meeting.start_time}`);
+        console.log(`   - 時間: ${meeting.duration}分`);
+        console.log(`   - ホスト: ${meeting.host_email}`);
+        
+        recordingDetails.push({
+          meetingId: meeting.id,
+          topic: meeting.topic,
+          startTime: meeting.start_time,
+          duration: meeting.duration,
+          hostEmail: meeting.host_email
+        });
+      }
+    }
+
+    const totalTime = Date.now() - startTime;
+    
+    return res.status(200).json({
+      status: 'success',
+      test: 'jwt-fallback',
+      message: 'JWT認証フォールバックテスト成功',
+      executionTime: `${totalTime}ms`,
+      authMethod: 'JWT (Legacy)',
+      zoomApiAccess: true,
+      userInfo: {
+        email: userResponse.data.email,
+        accountId: userResponse.data.account_id,
+        type: userResponse.data.type
+      },
+      recordingsFound: recordings.length,
+      recordingDetails: recordingDetails,
+      searchPeriod: { from: fromDate, to: toDate },
+      conclusion: recordings.length > 0 
+        ? '✅ JWT認証で録画データアクセス成功 → OAuth設定に問題あり'
+        : '✅ JWT認証成功、録画データなし → OAuth設定問題 or 録画データ不存在',
+      nextSteps: [
+        'Zoom App StatusをPublishedに変更',
+        'OAuth Scopesを再確認',
+        'Server-to-Server OAuth App設定を見直し'
+      ],
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ JWT認証フォールバックテストエラー:', error);
+    
+    const errorTime = Date.now() - startTime;
+    
+    let conclusion = 'JWT認証も失敗';
+    let nextSteps = ['Zoom Account設定を確認', 'Client ID/Secretを再生成'];
+    
+    if (error.response?.status === 401) {
+      conclusion = 'JWT認証失敗 → Client ID/Secretに問題';
+      nextSteps = ['Zoom App Credentialsを再確認', 'Client Secret再生成を検討'];
+    } else if (error.response?.status === 403) {
+      conclusion = 'JWT認証成功だが権限不足 → Scopeに問題';
+      nextSteps = ['Zoom App Scopesを確認', 'recording:read権限を追加'];
+    }
+    
+    return res.status(500).json({
+      status: 'error',
+      test: 'jwt-fallback',
+      message: 'JWT認証フォールバックテスト失敗',
+      error: error.message,
+      httpStatus: error.response?.status,
+      errorResponse: error.response?.data,
+      executionTime: `${errorTime}ms`,
+      conclusion: conclusion,
+      nextSteps: nextSteps,
       timestamp: new Date().toISOString()
     });
   }
