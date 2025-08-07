@@ -344,23 +344,26 @@ async function runTC205Test(res) {
     timeTracker.log('Step 2: 会議情報生成完了');
     console.log('✅ 会議情報生成成功:', meetingInfo.topic);
 
-    // Step 3&4: 要約と動画保存を並列実行（時間短縮）
-    timeTracker.log('Step 3&4: 並列処理開始（要約＆動画保存）');
-    console.log('\n=== 並列処理: 要約＆動画保存 ===');
-    const [analysisResult, videoSaveResult] = await Promise.all([
-      // TC203相当 - 8項目構造化要約
-      audioSummaryService.processAudioBuffer(
-        sampleBufferData.audioBuffer, 
-        sampleBufferData.fileName, 
-        meetingInfo
-      ),
-      // TC204相当 - 動画保存・共有リンク作成
-      videoStorageService.saveVideoToGoogleDrive(meetingInfo)
-    ]);
+    // Step 3: TC203相当 - 8項目構造化要約（順次処理）
+    timeTracker.log('Step 3: 音声要約処理開始');
+    console.log('\n=== Step 3: 音声要約処理 ===');
+    const analysisResult = await audioSummaryService.processAudioBuffer(
+      sampleBufferData.audioBuffer, 
+      sampleBufferData.fileName, 
+      meetingInfo
+    );
     
-    timeTracker.log('Step 3&4: 並列処理完了');
-    console.log('✅ 並列処理完了');
+    timeTracker.log('Step 3: 音声要約処理完了');
+    console.log('✅ 音声要約処理完了');
     console.log('   - 文字起こし文字数:', analysisResult.transcription.length);
+
+    // Step 4: TC204相当 - 動画保存・共有リンク作成（順次処理）
+    timeTracker.log('Step 4: 動画保存処理開始');
+    console.log('\n=== Step 4: 動画保存処理 ===');
+    const videoSaveResult = await videoStorageService.saveVideoToGoogleDrive(meetingInfo);
+    
+    timeTracker.log('Step 4: 動画保存処理完了');
+    console.log('✅ 動画保存処理完了');
     console.log('   - 動画保存先:', videoSaveResult.folderPath);
 
     // Step 5: TC205新規 - Slack投稿
@@ -425,10 +428,10 @@ async function runTC205Test(res) {
           posted: true,
           method: 'sendMeetingSummary',
           videoLinkIncluded: false,
-          note: 'TC006成功版メソッド使用'
+          note: '順次処理版（音声要約→動画保存→Slack投稿）'
         }
       },
-      note: 'TC205完了: データ取得→要約→保存→Slack投稿の完全統合フロー成功',
+      note: 'TC205完了: データ取得→音声要約→動画保存→Slack投稿の順次処理統合フロー成功',
       timestamp: new Date().toISOString()
     });
 
