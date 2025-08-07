@@ -227,8 +227,8 @@ module.exports = async function handler(req, res) {
       console.log('AIService初期化...');
       const aiService = new AIService();
       
-      console.log('AIService.initialize()実行...');
-      await aiService.initialize();
+      console.log('AIService.initializeModel()実行...');
+      await aiService.initializeModel();
       console.log('AIService初期化完了');
       
       return res.status(200).json({
@@ -260,7 +260,7 @@ module.exports = async function handler(req, res) {
       
       console.log('AIService初期化...');
       const aiService = new AIService();
-      await aiService.initialize();
+      await aiService.initializeModel();
       
       console.log('Gemini文字起こしテスト実行...');
       const transcription = await aiService.transcribeAudioFromBuffer(
