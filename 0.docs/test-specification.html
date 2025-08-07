@@ -608,7 +608,7 @@
                 </div>
                 
                 <div class="test-data-section">
-                    <h4>🎯 TC203実行結果詳細 (2025-08-06)</h4>
+                    <h4>🎯 TC203実行結果詳細 (2025-08-07 更新)</h4>
                     <table>
                         <tr>
                             <th width="25%">テスト項目</th>
@@ -616,7 +616,15 @@
                         </tr>
                         <tr>
                             <td><strong>実行環境</strong></td>
-                            <td>Vercel Production (https://zoom-memo-automation.vercel.app/api/monitor-recordings-gdrive-test)</td>
+                            <td>Vercel Production (https://zoom-memo-automation.vercel.app/api/monitor-recordings-gdrive-test?test=TC203)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>実行日時</strong></td>
+                            <td>2025-08-07T05:51:53.443Z</td>
+                        </tr>
+                        <tr>
+                            <td><strong>実行時間</strong></td>
+                            <td><strong>161秒（2分41秒）</strong> - Vercel制限内で余裕動作</td>
                         </tr>
                         <tr>
                             <td><strong>処理方式</strong></td>
@@ -679,7 +687,7 @@
                             <td>テスト対象</td>
                             <td>VideoStorageService統合処理</td>
                             <td><span class="status-indicator status-complete"></span>完了</td>
-                            <td>2025/8/6 成功</td>
+                            <td>2025/8/7 再実行成功</td>
                         </tr>
                         <tr>
                             <td>確認項目</td>
@@ -696,13 +704,35 @@
                         <tr>
                             <td>実行結果詳細</td>
                             <td colspan="3">
-                                <ul style="margin: 5px 0; padding-left: 20px;">
-                                    <li>動画ファイル取得成功: video1763668932.mp4 (97.6MB)</li>
-                                    <li>保存先フォルダ: 99.zoom_memo_recording/2025/08/</li>
-                                    <li>保存ファイル名: 2025-08-06_100101_【サンプルデータテスト】1on1_Meeting.mp4</li>
-                                    <li>共有リンク作成成功（組織内共有）</li>
-                                    <li>Google Drive API共有ドライブサポート実装完了</li>
-                                </ul>
+                                <div class="test-data-section">
+                                    <h5>🎯 TC204最新実行結果 (2025-08-07T06:19:36.311Z)</h5>
+                                    <ul style="margin: 5px 0; padding-left: 20px;">
+                                        <li><strong>動画データ取得成功:</strong> video1942594093.mp4 (74.3MB)</li>
+                                        <li><strong>Google Drive File ID:</strong> 1vHS5fezzLM1WUXTLbMma1y0F20MBnzGO</li>
+                                        <li><strong>保存先フォルダ:</strong> 99.zoom_memo_recording/2025/08/</li>
+                                        <li><strong>保存ファイル名:</strong> 2025-08-07_054918_【サンプルデータテスト】1on1_Meeting.mp4</li>
+                                        <li><strong>新しいFile ID:</strong> 1QV6oEvkToeOlhRjls8hmpog5GxV-5qgf</li>
+                                        <li><strong>アップロード時間:</strong> 3秒（74.3MB → 高速アップロード）</li>
+                                        <li><strong>保存完了時刻:</strong> 2025-08-07T06:19:36.311Z</li>
+                                    </ul>
+                                    
+                                    <h5>📋 生成されたリンク・メタデータ</h5>
+                                    <ul style="margin: 5px 0; padding-left: 20px;">
+                                        <li><strong>閲覧リンク:</strong> https://drive.google.com/file/d/1QV6oEvkToeOlhRjls8hmpog5GxV-5qgf/view?usp=drivesdk</li>
+                                        <li><strong>ダウンロードリンク:</strong> https://drive.google.com/uc?id=1QV6oEvkToeOlhRjls8hmpog5GxV-5qgf&export=download</li>
+                                        <li><strong>会議情報自動記録:</strong> 会議名、開催日時、主催者、参加者数、Meeting ID、UUID</li>
+                                        <li><strong>自動保存メッセージ:</strong> "Zoom Meeting Automation"による自動保存</li>
+                                    </ul>
+                                    
+                                    <h5>✅ 技術的成果</h5>
+                                    <ul style="margin: 5px 0; padding-left: 20px;">
+                                        <li><strong>高速処理:</strong> 74.3MBファイルを3秒でアップロード</li>
+                                        <li><strong>自動フォルダ作成:</strong> 年/月の階層構造を自動生成</li>
+                                        <li><strong>ファイル名標準化:</strong> 日時_会議名の標準フォーマット適用</li>
+                                        <li><strong>共有ドライブ対応:</strong> supportsAllDrives完全対応</li>
+                                        <li><strong>詳細メタデータ:</strong> 会議情報を説明欄に自動記録</li>
+                                    </ul>
+                                </div>
                             </td>
                         </tr>
                     </table>
@@ -1095,7 +1125,7 @@
         </div>
         
         <div class="last-updated">
-            最終更新: 2025年8月6日 18:40 | TC203完全成功・メモリバッファ処理対応完了
+            最終更新: 2025年8月7日 15:20 | TC203・TC204テスト結果更新完了（2025-08-07実行結果反映）
         </div>
     </div>
 </body>
