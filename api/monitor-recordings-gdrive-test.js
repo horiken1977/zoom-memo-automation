@@ -177,10 +177,34 @@ async function runTC204Test(res) {
 
 // TC205: End-to-End統合テスト（データ取得→要約→保存→Slack投稿）
 async function runTC205Test(res) {
-  console.log('🚀 TC205: End-to-End統合テスト開始');
+  const startTime = Date.now();
+  console.log('🚀 TC205: End-to-End統合テスト開始', new Date().toISOString());
+  
+  // タイムアウトデバッグ用の時間追跡
+  const timeTracker = {
+    start: startTime,
+    steps: [],
+    log: function(stepName) {
+      const now = Date.now();
+      const elapsed = now - this.start;
+      const stepTime = this.steps.length > 0 ? now - this.steps[this.steps.length - 1].timestamp : 0;
+      
+      const step = {
+        step: stepName,
+        timestamp: now,
+        elapsed: elapsed,
+        stepDuration: stepTime
+      };
+      this.steps.push(step);
+      
+      console.log(`⏱️ [${elapsed}ms] ${stepName} (step: ${stepTime}ms)`);
+      return step;
+    }
+  };
   
   // 環境情報を確認
   const config = require('../1.src/config');
+  timeTracker.log('環境情報確認完了');
   console.log('環境情報:', {
     NODE_ENV: process.env.NODE_ENV,
     disableSlackNotifications: config.development.disableSlackNotifications,
@@ -190,17 +214,21 @@ async function runTC205Test(res) {
 
   try {
     // Step 1: 全サービス初期化
+    timeTracker.log('Step 1: 全サービス初期化開始');
     console.log('Step 1: 全サービス初期化');
     const sampleDataService = new SampleDataService();
     const audioSummaryService = new AudioSummaryService();
     const videoStorageService = new VideoStorageService();
     const slackService = new SlackService();
     
+    timeTracker.log('Step 1: 全サービス初期化完了');
     console.log('✅ 全サービス初期化完了');
 
     // Step 2: TC202相当 - サンプルデータ取得（音声ファイル）
+    timeTracker.log('Step 2: サンプルデータ取得開始');
     console.log('\n=== TC202相当: サンプルデータ取得 ===');
     const sampleBufferData = await sampleDataService.getSampleDataAsBuffer();
+    timeTracker.log('Step 2: 音声データ取得完了');
     console.log('✅ 音声データ取得成功:', {
       fileName: sampleBufferData.fileName,
       size: `${(sampleBufferData.size / 1024).toFixed(2)} KB`,
@@ -209,9 +237,11 @@ async function runTC205Test(res) {
 
     // 会議情報生成
     const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleBufferData.fileName);
+    timeTracker.log('Step 2: 会議情報生成完了');
     console.log('✅ 会議情報生成成功:', meetingInfo.topic);
 
     // Step 3&4: 要約と動画保存を並列実行（時間短縮）
+    timeTracker.log('Step 3&4: 並列処理開始（要約＆動画保存）');
     console.log('\n=== 並列処理: 要約＆動画保存 ===');
     const [analysisResult, videoSaveResult] = await Promise.all([
       // TC203相当 - 8項目構造化要約
@@ -224,11 +254,13 @@ async function runTC205Test(res) {
       videoStorageService.saveVideoToGoogleDrive(meetingInfo)
     ]);
     
+    timeTracker.log('Step 3&4: 並列処理完了');
     console.log('✅ 並列処理完了');
     console.log('   - 文字起こし文字数:', analysisResult.transcription.length);
     console.log('   - 動画保存先:', videoSaveResult.folderPath);
 
     // Step 5: TC205新規 - Slack投稿
+    timeTracker.log('Step 5: Slack投稿準備開始');
     console.log('\n=== TC205: Slack構造化投稿 ===');
     
     // SlackServiceが期待する形式にデータを整形
@@ -241,17 +273,28 @@ async function runTC205Test(res) {
       decisions: analysisResult.structuredSummary.decisions || []
     };
 
+    timeTracker.log('Step 5: Slack投稿実行開始');
     // Slack投稿実行（TC006成功版のsendMeetingSummaryメソッドを使用）
     const slackResult = await slackService.sendMeetingSummary(slackAnalysisResult);
+    timeTracker.log('Step 5: Slack投稿完了');
     console.log('✅ Slack投稿成功');
     console.log('   - チャンネル:', slackResult.channel);
     console.log('   - タイムスタンプ:', slackResult.ts);
 
     // 完全な統合結果を返す
+    timeTracker.log('TC205完了 - レスポンス生成');
+    const totalExecutionTime = Date.now() - startTime;
+    
     return res.status(200).json({
       status: 'success',
       test: 'TC205-complete',
       message: 'End-to-End統合テスト成功',
+      executionTiming: {
+        totalTime: `${totalExecutionTime}ms`,
+        steps: timeTracker.steps,
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date().toISOString()
+      },
       workflow: {
         step1_dataFetch: {
           fileName: sampleBufferData.fileName,
@@ -286,6 +329,7 @@ async function runTC205Test(res) {
     });
 
   } catch (error) {
+    timeTracker.log('TC205エラー発生');
     console.error('❌ TC205 End-to-Endテストエラー:', error);
     
     // エラー箇所の特定
@@ -295,6 +339,8 @@ async function runTC205Test(res) {
     else if (error.message.includes('Drive') || error.message.includes('folder')) failedStep = 'storage';
     else if (error.message.includes('Slack') || error.message.includes('channel')) failedStep = 'slack';
     
+    const errorTime = Date.now() - startTime;
+    
     return res.status(500).json({
       status: 'error',
       test: 'TC205-complete',
@@ -302,6 +348,12 @@ async function runTC205Test(res) {
       failedStep: failedStep,
       error: error.message,
       stack: error.stack,
+      executionTiming: {
+        errorOccurredAt: `${errorTime}ms`,
+        completedSteps: timeTracker.steps,
+        startTime: new Date(startTime).toISOString(),
+        errorTime: new Date().toISOString()
+      },
       timestamp: new Date().toISOString()
     });
   }

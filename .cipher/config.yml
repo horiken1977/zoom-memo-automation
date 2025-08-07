@@ -1,0 +1,31 @@
+# Zoom Memo Automation プロジェクト用 cipher 設定
+
+# プロジェクト情報
+project:
+  name: "Zoom Memo Automation"
+  description: "Zoomクラウド録画自動文字起こし・要約システム"
+  version: "1.0.0"
+
+# 記録設定
+memory:
+  auto_record: true
+  categories:
+    - "開発進捗"
+    - "テスト結果"
+    - "バグ修正"
+    - "機能追加"
+    - "設計変更"
+    - "デプロイ"
+
+# 知識抽出パターン
+extraction_patterns:
+  - "テストケース"
+  - "エラー解決"
+  - "API設定"
+  - "実装パターン"
+  - "運用知識"
+
+# 出力設定
+output:
+  format: "markdown"
+  location: "3.operations/logs/cipher-memory/"
