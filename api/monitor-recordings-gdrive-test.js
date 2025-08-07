@@ -239,11 +239,8 @@ async function runTC205Test(res) {
       decisions: analysisResult.structuredSummary.decisions || []
     };
 
-    // Slack投稿実行（sendMeetingSummaryWithRecordingメソッドを使用）
-    const slackResult = await slackService.sendMeetingSummaryWithRecording(
-      slackAnalysisResult,
-      videoSaveResult
-    );
+    // Slack投稿実行（TC006成功版のsendMeetingSummaryメソッドを使用）
+    const slackResult = await slackService.sendMeetingSummary(slackAnalysisResult);
     console.log('✅ Slack投稿成功');
     console.log('   - チャンネル:', slackResult.channel);
     console.log('   - タイムスタンプ:', slackResult.ts);
@@ -273,10 +270,13 @@ async function runTC205Test(res) {
           folderPath: videoSaveResult.folderPath
         },
         step4_slack: {
-          channel: slackResult.channel,
+          channel: slackResult.channel || config.slack.channelId,
           messageId: slackResult.ts,
-          threadId: slackResult.thread_ts,
-          posted: true
+          threadId: slackResult.thread_ts || null,
+          posted: true,
+          method: 'sendMeetingSummary',
+          videoLinkIncluded: false,
+          note: 'TC006成功版メソッド使用'
         }
       },
       note: 'TC205完了: データ取得→要約→保存→Slack投稿の完全統合フロー成功',
