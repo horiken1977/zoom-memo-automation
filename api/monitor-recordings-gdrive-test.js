@@ -25,6 +25,8 @@ module.exports = async function handler(req, res) {
     return await runTC205Test(res);
   } else if (testCase === 'TC205a') {
     return await runTC205aTest(res);  // 環境確認のみ
+  } else if (testCase === 'TC205b') {
+    return await runTC205bTest(res);  // Slack投稿のみテスト
   } else {
     return await runTC203Test(res);
   }
@@ -329,4 +331,54 @@ async function runTC205aTest(res) {
       : 'WILL_NOT_POST_TO_SLACK',
     timestamp: new Date().toISOString()
   });
+}
+
+// TC205b: Slack投稿のみテスト
+async function runTC205bTest(res) {
+  console.log('📤 TC205b: Slack投稿のみテスト');
+  
+  const config = require('../1.src/config');
+  const SlackService = require('../1.src/services/slackService');
+  
+  try {
+    const slackService = new SlackService();
+    
+    // 最小限のテストデータ
+    const testData = {
+      meetingInfo: {
+        topic: 'TC205b テスト投稿',
+        startTime: new Date().toISOString(),
+        duration: 5,
+        hostName: 'Test User'
+      },
+      summary: 'TC205b Slack投稿テストです',
+      participants: [],
+      actionItems: [],
+      decisions: []
+    };
+
+    console.log('Slack投稿実行中...');
+    const result = await slackService.sendMeetingSummary(testData);
+    console.log('Slack投稿完了');
+    
+    return res.status(200).json({
+      status: 'success',
+      test: 'TC205b-slack-only',
+      slackResult: {
+        ts: result.ts,
+        channel: result.channel,
+        posted: true
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Slack投稿エラー:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      test: 'TC205b-slack-only',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 }
