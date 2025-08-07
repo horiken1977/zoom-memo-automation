@@ -19,7 +19,10 @@ module.exports = async function handler(req, res) {
   // テストケース判定：クエリパラメータでTC203/TC204/TC205を切り替え
   const testCase = req.query.test || 'TC203';
   
-  if (testCase === 'TC204') {
+  if (testCase === 'timeout') {
+    // タイムアウト検証用：指定秒数待機
+    return await runTimeoutTest(res, req);
+  } else if (testCase === 'TC204') {
     return await runTC204Test(res);
   } else if (testCase === 'TC205') {
     return await runTC205Test(res);
@@ -32,17 +35,82 @@ module.exports = async function handler(req, res) {
   }
 };
 
+// タイムアウト検証テスト
+async function runTimeoutTest(res, req) {
+  const targetSeconds = parseInt(req.query.wait || '90'); // デフォルト90秒
+  const startTime = Date.now();
+  
+  console.log(`⏰ タイムアウト検証開始: ${targetSeconds}秒待機予定`, new Date().toISOString());
+  console.log('📊 Vercel設定: maxDuration=300秒（vercel.json）');
+  
+  // 10秒ごとに生存確認
+  const intervalId = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    console.log(`⌛ [生存確認] ${elapsed}秒経過 - まだ生きてます...`, new Date().toISOString());
+  }, 10000);
+  
+  try {
+    // 指定秒数待機
+    await new Promise(resolve => setTimeout(resolve, targetSeconds * 1000));
+    
+    clearInterval(intervalId);
+    const totalTime = Date.now() - startTime;
+    const totalSeconds = Math.floor(totalTime / 1000);
+    
+    console.log(`✅ タイムアウト検証成功: ${totalSeconds}秒実行`);
+    
+    return res.status(200).json({
+      status: 'success',
+      message: `タイムアウト検証成功: ${totalSeconds}秒実行`,
+      targetSeconds: targetSeconds,
+      actualSeconds: totalSeconds,
+      actualMs: totalTime,
+      vercelConfig: {
+        maxDuration: 300,
+        note: 'vercel.json設定値'
+      },
+      conclusion: totalSeconds >= 60 ? '60秒以上の実行が可能' : '60秒未満で完了',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    clearInterval(intervalId);
+    const errorTime = Date.now() - startTime;
+    const errorSeconds = Math.floor(errorTime / 1000);
+    
+    console.error(`❌ タイムアウト検証エラー: ${errorSeconds}秒でエラー`, error.message);
+    
+    return res.status(500).json({
+      status: 'error',
+      message: 'タイムアウト検証中にエラー',
+      error: error.message,
+      errorAtSeconds: errorSeconds,
+      errorAtMs: errorTime,
+      targetSeconds: targetSeconds,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
 // TC203: 8項目構造化要約テスト（メモリバッファ処理）
 async function runTC203Test(res) {
   const startTime = Date.now();
   console.log('🧪 TC203: 8項目構造化要約テスト（メモリバッファ処理）開始', new Date().toISOString());
+  console.log('📊 Vercel設定: maxDuration=300秒（vercel.json）');
+
+  // 10秒ごとに生存確認ログを出力する非同期タスク
+  const intervalId = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    console.log(`⌛ [生存確認] ${elapsed}秒経過 - 処理継続中...`, new Date().toISOString());
+  }, 10000);
 
   // 詳細タイミング追跡
   const debugTimer = {
     start: startTime,
     log: function(step, detail = '') {
       const elapsed = Date.now() - this.start;
-      console.log(`⏱️ [${elapsed}ms] ${step} ${detail}`);
+      const seconds = Math.floor(elapsed / 1000);
+      console.log(`⏱️ [${elapsed}ms = ${seconds}秒] ${step} ${detail}`);
       return elapsed;
     }
   };
@@ -84,12 +152,20 @@ async function runTC203Test(res) {
     debugTimer.log('Step 4: processAudioBuffer()完了');
     console.log('✅ 8項目構造化要約処理成功');
 
+    clearInterval(intervalId); // 生存確認タイマー停止
     const totalTestTime = debugTimer.log('TC203テスト完了');
+    const totalSeconds = Math.floor(totalTestTime / 1000);
+    console.log(`✅ TC203総実行時間: ${totalSeconds}秒（${totalTestTime}ms）`);
 
     return res.status(200).json({
       status: 'success',
       test: 'TC203-complete',
       message: '8項目構造化要約テスト成功（メモリバッファ処理）',
+      executionTime: {
+        totalMs: totalTestTime,
+        totalSeconds: totalSeconds,
+        note: `Vercel設定maxDuration=300秒, 実際の実行時間=${totalSeconds}秒`
+      },
       sampleData: {
         fileName: sampleBufferData.fileName,
         size: sampleBufferData.size,
@@ -108,7 +184,11 @@ async function runTC203Test(res) {
     });
 
   } catch (error) {
+    clearInterval(intervalId); // 生存確認タイマー停止
+    const errorTime = Date.now() - startTime;
+    const errorSeconds = Math.floor(errorTime / 1000);
     console.error('❌ TC203テストエラー:', error);
+    console.error(`❌ エラー発生時の経過時間: ${errorSeconds}秒（${errorTime}ms）`);
     
     return res.status(500).json({
       status: 'error',
@@ -116,6 +196,11 @@ async function runTC203Test(res) {
       message: '8項目構造化要約テスト失敗（メモリバッファ処理）',
       error: error.message,
       stack: error.stack,
+      executionTime: {
+        errorAtMs: errorTime,
+        errorAtSeconds: errorSeconds,
+        note: `エラー発生時刻: ${errorSeconds}秒経過時点`
+      },
       timestamp: new Date().toISOString(),
       processingMode: 'memory_only'
     });
