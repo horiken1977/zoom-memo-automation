@@ -116,13 +116,45 @@ async function runProductionThroughputTest(res) {
     } else {
       console.log('📝 処理可能な録画データなし');
       
+      // 録画がない場合でもExecutionLoggerを作成して記録
+      const noRecordingMeetingInfo = {
+        id: 'no-recordings-found',
+        topic: 'PT001テスト - 録画データ未発見',
+        start_time: new Date().toISOString()
+      };
+      executionLogger = ExecutionLogManager.startExecution(noRecordingMeetingInfo, executionId);
+      
+      executionLogger.logInfo('PT001_NO_RECORDINGS_FOUND', {
+        testType: 'Production Throughput Test - No Recordings',
+        searchPeriod: `${fromDate} ～ ${toDate}`,
+        totalSearchTime: Date.now() - startTime,
+        reason: '指定期間内に処理可能な録画データが見つかりませんでした'
+      });
+      
+      // Google Driveにログを保存
+      let logSaveResult = null;
+      try {
+        logSaveResult = await executionLogger.saveToGoogleDrive();
+        console.log('✅ 録画未発見ログ保存成功:', logSaveResult.viewLink);
+      } catch (logError) {
+        console.error('❌ 録画未発見ログ保存失敗:', logError.message);
+        logSaveResult = { success: false, error: logError.message };
+      }
+      
       // 録画がない場合の対応
       const result = {
         success: false,
         message: 'PT001テスト: 処理可能な録画データが見つかりませんでした',
         period: `${fromDate} ～ ${toDate}`,
         totalDuration: Date.now() - startTime,
-        steps: timeTracker.steps
+        steps: timeTracker.steps,
+        executionLog: logSaveResult ? {
+          saved: logSaveResult.success,
+          viewLink: logSaveResult.viewLink,
+          fileName: logSaveResult.logFileName,
+          folderPath: logSaveResult.folderPath,
+          error: logSaveResult.error
+        } : null
       };
       
       return res.status(200).json(result);
