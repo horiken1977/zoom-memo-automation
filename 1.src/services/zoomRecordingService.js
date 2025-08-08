@@ -342,12 +342,12 @@ class ZoomRecordingService {
         executionLogger.completeStep('AUDIO_PROCESSING', {
           fileName: audioFileName,
           fileSize: audioFile.file_size,
-          transcriptionLength: analysisResult.transcription?.length || 0,
+          transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
           summaryGenerated: !!analysisResult.structuredSummary
         });
       }
       
-      logger.info(`音声処理完了: 文字起こし${analysisResult.transcription?.length || 0}文字`);
+      logger.info(`音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
       
       // メモリからaudioBufferを明示的に解放
       // (JavaScriptのGCに頼るが、参照をnullにして解放を促進)

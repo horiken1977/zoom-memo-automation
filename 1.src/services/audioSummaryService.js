@@ -86,7 +86,7 @@ class AudioSummaryService {
       logger.info('Starting audio transcription from buffer with Gemini...');
       
       const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(audioBuffer, fileName, meetingInfo);
-      debugTimer('Step 1: transcribeAudioFromBuffer完了', `transcription length: ${transcriptionResult?.length || 0}`);
+      debugTimer('Step 1: transcribeAudioFromBuffer完了', `transcription length: ${transcriptionResult?.transcription?.length || 0}`);
       
       // 2. 構造化された要約を生成
       debugTimer('Step 2: generateStructuredSummary開始');
@@ -96,7 +96,7 @@ class AudioSummaryService {
 
       // 3. 結果の検証
       debugTimer('Step 3: validateProcessingResult開始');
-      this.validateProcessingResult({ transcription: transcriptionResult, analysis: structuredSummary });
+      this.validateProcessingResult({ transcription: transcriptionResult, structuredSummary: structuredSummary });
       debugTimer('Step 3: validateProcessingResult完了');
       
       const totalTime = debugTimer('processRealAudioBuffer完了');
