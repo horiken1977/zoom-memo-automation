@@ -7,6 +7,7 @@ const SampleDataService = require('../1.src/services/sampleDataService');
 const AudioSummaryService = require('../1.src/services/audioSummaryService');
 const VideoStorageService = require('../1.src/services/videoStorageService');
 const SlackService = require('../1.src/services/slackService');
+const { ExecutionLogger, ExecutionLogManager } = require('../1.src/utils/executionLogger');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -38,6 +39,9 @@ module.exports = async function handler(req, res) {
 async function runProductionThroughputTest(res) {
   const startTime = Date.now();
   console.log('🚀 PT001: 本番環境スルーテスト開始', new Date().toISOString());
+  
+  // 実行ログ開始（ダミーの会議情報で初期化）
+  let executionLogger = null;
   
   // 時間追跡システム
   const timeTracker = {
@@ -73,6 +77,8 @@ async function runProductionThroughputTest(res) {
     const healthCheck = await zoomService.healthCheck();
     timeTracker.log('Step 1a: Zoom APIヘルスチェック完了');
     console.log('✅ Zoom API接続状況:', healthCheck);
+    
+    // 実行ログに記録（後でexecutionLoggerが初期化された後に記録）
 
     // 録画データ存在確認（過去7日間）
     const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -147,6 +153,22 @@ async function runProductionThroughputTest(res) {
     timeTracker.log('Step 2a: サンプル音声データ取得完了');
     
     const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleBufferData.fileName);
+    
+    // 実行ログを開始（会議情報が取得できたタイミング）
+    executionLogger = ExecutionLogManager.startExecution(meetingInfo);
+    executionLogger.logInfo('PT001_TEST_START', {
+      testType: 'Production Throughput Test',
+      dataSource: 'Sample Data',
+      zoomRecordingsFound: zoomRecordingDetails.length
+    });
+    
+    // Step 1の結果を実行ログに記録
+    executionLogger.logSuccess('ZOOM_API_CONNECTION', {
+      healthStatus: healthCheck.status,
+      recordingsFound: zoomRecordings.length,
+      recordingDetails: zoomRecordingDetails.length
+    });
+    
     // 会議情報にZoom情報を追記（スルーテスト用）
     meetingInfo.zoomTestInfo = {
       zoomApiHealthy: healthCheck.status === 'healthy',
@@ -158,6 +180,13 @@ async function runProductionThroughputTest(res) {
     
     timeTracker.log('Step 2: テストデータ準備完了');
     console.log('✅ テストデータ準備完了:', meetingInfo.topic);
+    
+    // Step 2を実行ログに記録
+    executionLogger.logSuccess('TEST_DATA_PREPARATION', {
+      fileName: sampleBufferData.fileName,
+      fileSize: sampleBufferData.size,
+      meetingTopic: meetingInfo.topic
+    });
 
     // Step 3: 音声要約処理（ダミーデータ）
     timeTracker.log('Step 3: 音声要約処理開始');
@@ -173,6 +202,13 @@ async function runProductionThroughputTest(res) {
     timeTracker.log('Step 3: 音声要約処理完了');
     console.log('✅ 音声要約処理完了');
     console.log('   - 文字起こし文字数:', analysisResult.transcription?.length || 0);
+    
+    // Step 3を実行ログに記録
+    executionLogger.logSuccess('AUDIO_SUMMARY_PROCESSING', {
+      transcriptionLength: analysisResult.transcription?.length || 0,
+      summaryGenerated: !!analysisResult.structuredSummary,
+      processingMethod: 'Sample Data with Gemini AI'
+    });
 
     // Step 4: 動画保存処理（ダミーデータ）
     timeTracker.log('Step 4: 動画保存処理開始');
@@ -184,6 +220,14 @@ async function runProductionThroughputTest(res) {
     timeTracker.log('Step 4: 動画保存処理完了');
     console.log('✅ 動画保存処理完了');
     console.log('   - 動画保存先:', videoSaveResult.folderPath);
+    
+    // Step 4を実行ログに記録
+    executionLogger.logSuccess('VIDEO_STORAGE', {
+      fileId: videoSaveResult.fileId,
+      fileName: videoSaveResult.fileName,
+      folderPath: videoSaveResult.folderPath,
+      viewLink: videoSaveResult.viewLink
+    });
 
     // Step 5: Slack投稿（本番チャンネル）
     timeTracker.log('Step 5: Slack投稿開始（スルーテスト通知）');
@@ -215,7 +259,34 @@ async function runProductionThroughputTest(res) {
     console.log('✅ Slack投稿成功');
     console.log('   - チャンネル:', slackResult.channel);
     console.log('   - タイムスタンプ:', slackResult.ts);
+    
+    // Step 5を実行ログに記録
+    executionLogger.logSuccess('SLACK_NOTIFICATION', {
+      channel: slackResult.channel,
+      messageId: slackResult.ts,
+      testType: 'Production Throughput Test'
+    });
 
+    // 実行ログを完了してGoogle Driveに保存
+    let logSaveResult = null;
+    if (executionLogger) {
+      executionLogger.logSuccess('PT001_TEST_COMPLETE', {
+        totalExecutionTime: Date.now() - startTime,
+        allStepsCompleted: true,
+        finalStatus: 'SUCCESS'
+      });
+      
+      try {
+        logSaveResult = await executionLogger.saveToGoogleDrive();
+        console.log('✅ 実行ログ保存成功:', logSaveResult.viewLink);
+        timeTracker.log('Step 6: 実行ログGoogle Drive保存完了');
+      } catch (logError) {
+        console.error('❌ 実行ログ保存失敗:', logError.message);
+        timeTracker.log('Step 6: 実行ログGoogle Drive保存エラー');
+        logSaveResult = { success: false, error: logError.message };
+      }
+    }
+    
     // 完了レスポンス
     timeTracker.log('PT001完了 - レスポンス生成');
     const totalExecutionTime = Date.now() - startTime;
@@ -258,13 +329,37 @@ async function runProductionThroughputTest(res) {
           testType: 'production_throughput'
         }
       },
-      note: 'PT001完了: Zoom環境確認→録画リスト取得→サンプルデータでのEnd-to-End処理→本番Slack投稿',
+      executionLog: logSaveResult ? {
+        saved: logSaveResult.success,
+        viewLink: logSaveResult.viewLink,
+        fileName: logSaveResult.logFileName,
+        folderPath: logSaveResult.folderPath,
+        error: logSaveResult.error
+      } : null,
+      note: 'PT001完了: Zoom環境確認→録画リスト取得→サンプルデータでのEnd-to-End処理→本番Slack投稿→実行ログGoogle Drive保存',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
     timeTracker.log('PT001エラー発生');
     console.error('❌ PT001 本番スルーテストエラー:', error);
+    
+    // エラー時にも実行ログを保存
+    let errorLogSaveResult = null;
+    if (executionLogger) {
+      executionLogger.logError('PT001_TEST_ERROR', 'E_PT001_FAILED', error.message, {
+        errorStack: error.stack,
+        errorAt: Date.now() - startTime
+      });
+      
+      try {
+        errorLogSaveResult = await executionLogger.saveToGoogleDrive();
+        console.log('✅ エラー時実行ログ保存成功:', errorLogSaveResult.viewLink);
+      } catch (logError) {
+        console.error('❌ エラー時実行ログ保存失敗:', logError.message);
+        errorLogSaveResult = { success: false, error: logError.message };
+      }
+    }
     
     const errorTime = Date.now() - startTime;
     
@@ -280,6 +375,12 @@ async function runProductionThroughputTest(res) {
         startTime: new Date(startTime).toISOString(),
         errorTime: new Date().toISOString()
       },
+      executionLog: errorLogSaveResult ? {
+        saved: errorLogSaveResult.success,
+        viewLink: errorLogSaveResult.viewLink,
+        fileName: errorLogSaveResult.logFileName,
+        error: errorLogSaveResult.error
+      } : null,
       timestamp: new Date().toISOString()
     });
   }
