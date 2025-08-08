@@ -157,13 +157,16 @@
                     <strong>【上位レイヤー: 業務機能部品】</strong><br/>
                     📋 <strong>monitor-recordings-gdrive-test.js</strong> (エントリーポイント)<br/>
                     &nbsp;&nbsp;↓<br/>
-                    📥 <strong>SampleDataService</strong> - Google Drive sampleデータ取得<br/>
+                    📥 <strong>ZoomRecordingService</strong> - Zoom本番録画データ取得・処理（シーケンシャル）<br/>
                     &nbsp;&nbsp;↓<br/>
                     🤖 <strong>AudioSummaryService</strong> - 音声ファイル8項目要約<br/>
                     &nbsp;&nbsp;↓<br/>
                     💾 <strong>VideoStorageService</strong> - Google Drive保存・共有リンク<br/>
                     &nbsp;&nbsp;↓<br/>
                     💬 <strong>MeetingNotificationService</strong> - Slack構造化投稿<br/>
+                    <br/>
+                    <strong>【テスト・開発用】</strong><br/>
+                    📋 <strong>SampleDataService</strong> - Google Drive sampleデータ取得（開発・テスト用）<br/>
                     <br/>
                     <strong>【下位レイヤー: 基盤サービス部品】</strong><br/>
                     🔧 <strong>googleDriveService.js</strong> - Google Drive API操作<br/>
@@ -176,10 +179,11 @@
             <div class="requirement-list">
                 <h4>🔄 部品化処理フロー</h4>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; margin: 15px 0;">
-                    <strong>【Step 1: データ取得】SampleDataService</strong><br/>
-                    &nbsp;&nbsp;• Google Drive「99.zoom_memo_recording/sample」フォルダから音声ファイル検索<br/>
-                    &nbsp;&nbsp;• Google Drive API経由でファイルをローカルにダウンロード<br/>
-                    &nbsp;&nbsp;• サンプル会議情報を生成<br/>
+                    <strong>【Step 1: Zoom録画取得】ZoomRecordingService (シーケンシャル処理)</strong><br/>
+                    &nbsp;&nbsp;• Zoom API経由で録画リスト取得<br/>
+                    &nbsp;&nbsp;• 動画ファイル取得 → Google Drive保存 → 共有リンク生成<br/>
+                    &nbsp;&nbsp;• 音声ファイル取得 → メモリバッファ処理<br/>
+                    &nbsp;&nbsp;• Vercel制約対応（メモリ効率・300秒制限）<br/>
                     <br/>
                     <strong>【Step 2: AI要約処理】AudioSummaryService</strong><br/>
                     &nbsp;&nbsp;• ダウンロード済み音声ファイルをGeminiで文字起こし<br/>
@@ -214,10 +218,85 @@
             <h2>2. 部品化コア機能</h2>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-completed"></span>P001: SampleDataService（サンプルデータ取得部品）</h3>
-                <p><strong>説明:</strong> Google Drive「99.zoom_memo_recording/sample」フォルダからサンプル音声データを取得する部品</p>
-                <p><strong>実装場所:</strong> 1.src/services/sampleDataService.js</p>
+                <h3><span class="status-indicator status-completed"></span>P001: ZoomRecordingService（本番録画処理部品）</h3>
+                <p><strong>説明:</strong> Zoom API経由で実際の録画データを取得し、シーケンシャル処理で効率的に動画・音声を処理する部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/zoomRecordingService.js</p>
                 <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>シーケンシャル処理フロー</h4>
+                <table>
+                    <tr>
+                        <th>ステップ</th>
+                        <th>処理内容</th>
+                        <th>メモリ効率</th>
+                        <th>備考</th>
+                    </tr>
+                    <tr>
+                        <td>1. 録画リスト取得</td>
+                        <td>Zoom API からprocessableRecordingsを取得</td>
+                        <td>軽量</td>
+                        <td>処理可能な録画のみフィルタリング</td>
+                    </tr>
+                    <tr>
+                        <td>2. 動画処理</td>
+                        <td>MP4ダウンロード → Google Drive保存 → 共有リンク取得</td>
+                        <td>中程度</td>
+                        <td>メモリバッファ使用、保存後すぐ解放</td>
+                    </tr>
+                    <tr>
+                        <td>3. 音声処理</td>
+                        <td>M4A/MP3ダウンロード → Gemini AI処理 → メモリ破棄</td>
+                        <td>高負荷</td>
+                        <td>音声はGoogle Driveに保存しない</td>
+                    </tr>
+                    <tr>
+                        <td>4. 結果統合</td>
+                        <td>動画リンク + 音声要約 → Slack投稿用データ生成</td>
+                        <td>軽量</td>
+                        <td>最終的な処理結果をまとめ</td>
+                    </tr>
+                </table>
+                
+                <h4>主要メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド名</th>
+                        <th>機能</th>
+                        <th>戻り値</th>
+                    </tr>
+                    <tr>
+                        <td>getRecordingsList()</td>
+                        <td>指定期間のZoom録画リスト取得</td>
+                        <td>処理可能録画配列</td>
+                    </tr>
+                    <tr>
+                        <td>processRecording()</td>
+                        <td>単一録画の完全処理（動画+音声）</td>
+                        <td>統合処理結果</td>
+                    </tr>
+                    <tr>
+                        <td>processVideoFile()</td>
+                        <td>動画ファイル処理（取得→保存→共有リンク）</td>
+                        <td>動画保存結果</td>
+                    </tr>
+                    <tr>
+                        <td>processAudioFile()</td>
+                        <td>音声ファイル処理（取得→AI処理→破棄）</td>
+                        <td>音声解析結果</td>
+                    </tr>
+                    <tr>
+                        <td>processBatchRecordings()</td>
+                        <td>複数録画の一括処理（シーケンシャル）</td>
+                        <td>一括処理結果</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>P001-DEV: SampleDataService（開発・テスト用）</h3>
+                <p><strong>説明:</strong> Google Drive「99.zoom_memo_recording/sample」フォルダからサンプル音声データを取得する部品（開発・テスト専用）</p>
+                <p><strong>実装場所:</strong> 1.src/services/sampleDataService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（本番では非使用）</p>
                 
                 <h4>詳細仕様</h4>
                 <table>
@@ -600,10 +679,24 @@
                 <h3><span class="status-indicator status-completed"></span>B004: ZoomService（基盤）</h3>
                 <p><strong>説明:</strong> Zoom Cloud Recording APIを使用した録画取得機能を提供する共通部品</p>
                 <p><strong>実装場所:</strong> 1.src/services/zoomService.js</p>
-                <p><strong>使用部品:</strong> 本番monitor-recordings.js（テスト版では未使用）</p>
-                <p><strong>状態:</strong> ✅ 実装完了</p>
+                <p><strong>使用部品:</strong> ZoomRecordingService, 各種テストエンドポイント</p>
+                <p><strong>状態:</strong> ✅ 実装完了（Vercel対応メソッド追加）</p>
                 
                 <h4>提供メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド名</th>
+                        <th>機能</th>
+                        <th>備考</th>
+                    </tr>
+                    <tr>
+                        <td>downloadFileAsBuffer()</td>
+                        <td>録画ファイルをメモリバッファとしてダウンロード</td>
+                        <td><strong>NEW:</strong> Vercel環境対応</td>
+                    </tr>
+                </table>
+                
+                <h4>従来メソッド</h4>
                 <table>
                     <tr>
                         <th>メソッド</th>
@@ -990,7 +1083,7 @@ const shouldNotify = ErrorManager.shouldNotifySlack('ZM001'); // true
         </div>
         
         <div class="last-updated">
-            最終更新: 2025年8月8日 17:00 | S002実行ログシステム・S003標準エラーコード体系完全実装完了（50種類のエラーコード定義、ExecutionLogger統合）
+            最終更新: 2025年8月8日 18:35 | ZoomRecordingService追加・シーケンシャル処理フロー設計反映（本番Zoom環境対応、メモリ効率最適化）
         </div>
     </div>
 

@@ -353,6 +353,41 @@ class ZoomService {
   }
 
   /**
+   * ファイルをメモリバッファとしてダウンロード (Vercel対応)
+   * @param {string} downloadUrl - ダウンロードURL
+   * @returns {Promise<Buffer>} ファイルバッファ
+   */
+  async downloadFileAsBuffer(downloadUrl) {
+    try {
+      const headers = await this.getAuthHeaders();
+      
+      logger.info(`ファイルバッファダウンロード開始: ${downloadUrl}`);
+      
+      const response = await axios({
+        method: 'GET',
+        url: downloadUrl,
+        headers,
+        responseType: 'arraybuffer', // バイナリデータとして取得
+        timeout: 120000 // 2分タイムアウト
+      });
+      
+      const buffer = Buffer.from(response.data);
+      logger.info(`ファイルバッファダウンロード完了: ${Math.round(buffer.length / 1024 / 1024)}MB`);
+      
+      return buffer;
+      
+    } catch (error) {
+      logger.error('ファイルバッファダウンロード失敗:', error.response?.data || error.message);
+      
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('ファイルダウンロードタイムアウト');
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * 録画の文字起こし用音声を取得（下位互換性のため残す）
    * @deprecated downloadRecording を使用してください
    */
