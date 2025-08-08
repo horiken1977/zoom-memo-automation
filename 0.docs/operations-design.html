@@ -462,6 +462,459 @@
                         <td>Vercel制限・環境変数確認</td>
                     </tr>
                 </table>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <button onclick="toggleErrorCodeDetails()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                        📖 全エラーコード詳細一覧を表示/非表示
+                    </button>
+                </div>
+                
+                <!-- 詳細エラーコード一覧（初期状態：非表示） -->
+                <div id="errorCodeDetails" style="display: none;">
+                    <h4>🔍 全エラーコード詳細一覧（50コード）</h4>
+                    
+                    <!-- Zoom API Errors -->
+                    <div class="error-category">
+                        <h5 style="background: #007bff; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">🔗 Zoom API エラー (ZM001-ZM010)</h5>
+                        <div style="border: 2px solid #007bff; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
+                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                                <tr>
+                                    <th>コード</th>
+                                    <th>エラー内容</th>
+                                    <th>リトライ</th>
+                                    <th>Slack通知</th>
+                                    <th>対応策</th>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>ZM001</strong></td>
+                                    <td>Zoom API認証失敗</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>ZOOM_API_KEY、ZOOM_API_SECRET、ZOOM_ACCOUNT_IDを確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ZM002</strong></td>
+                                    <td>Zoom APIレート制限超過</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>APIリクエスト頻度を下げるか、しばらく待ってからリトライしてください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ZM003</strong></td>
+                                    <td>Zoom録画データ取得失敗</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>録画ファイルの存在とアクセス権限を確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>ZM004</strong></td>
+                                    <td>Zoom録画ファイルが存在しない</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>録画が正常に完了しているか、削除されていないか確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>ZM005</strong></td>
+                                    <td>Zoom録画ファイルの形式未対応</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>サポート形式: MP4, M4A, MP3, WAV</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ZM006</strong></td>
+                                    <td>Zoom APIレスポンス不正</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>ZoomのAPIステータスを確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>ZM007</strong></td>
+                                    <td>Zoom API接続タイムアウト</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>ZM008</strong></td>
+                                    <td>Zoomアカウント権限不足</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>Zoomアカウントの録画アクセス権限を確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>ZM009</strong></td>
+                                    <td>Zoom録画データサイズ制限超過</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>録画ファイルサイズを確認し、分割処理を検討してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ZM010</strong></td>
+                                    <td>Zoom録画ダウンロード失敗</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>ネットワーク状況と録画ファイルの可用性を確認してください</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Google Drive API Errors -->
+                    <div class="error-category" style="margin-top: 20px;">
+                        <h5 style="background: #28a745; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">☁️ Google Drive API エラー (GD001-GD010)</h5>
+                        <div style="border: 2px solid #28a745; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
+                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                                <tr>
+                                    <th>コード</th>
+                                    <th>エラー内容</th>
+                                    <th>リトライ</th>
+                                    <th>Slack通知</th>
+                                    <th>対応策</th>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>GD001</strong></td>
+                                    <td>Google Drive API認証失敗</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>GOOGLE_DRIVE_CREDENTIALSを確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>GD002</strong></td>
+                                    <td>Google Drive容量制限超過</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>Google Driveの容量を確認し、不要ファイルを削除してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>GD003</strong></td>
+                                    <td>Google Driveファイルアップロード失敗</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>ネットワーク状況とGoogle Drive APIステータスを確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>GD004</strong></td>
+                                    <td>Google Driveフォルダ作成失敗</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>親フォルダの存在と権限を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>GD005</strong></td>
+                                    <td>Google Drive共有リンク生成失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ファイルの共有設定を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>GD006</strong></td>
+                                    <td>Google Driveファイル検索失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>フォルダIDとファイル名を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>GD007</strong></td>
+                                    <td>Google Drive権限設定失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>サービスアカウントの権限設定を確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>GD008</strong></td>
+                                    <td>Google Drive APIレート制限超過</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>APIリクエスト頻度を下げてリトライしてください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>GD009</strong></td>
+                                    <td>Google Drive API接続タイムアウト</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>GD010</strong></td>
+                                    <td>Google Driveファイル削除失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ファイルの存在と削除権限を確認してください</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Gemini AI API Errors -->
+                    <div class="error-category" style="margin-top: 20px;">
+                        <h5 style="background: #6f42c1; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">🤖 Gemini AI API エラー (AI001-AI010)</h5>
+                        <div style="border: 2px solid #6f42c1; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
+                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                                <tr>
+                                    <th>コード</th>
+                                    <th>エラー内容</th>
+                                    <th>リトライ</th>
+                                    <th>Slack通知</th>
+                                    <th>対応策</th>
+                                </tr>
+                                <tr>
+                                    <td><strong>AI001</strong></td>
+                                    <td>Gemini APIレート制限超過</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>APIクォータを確認し、しばらく待ってからリトライしてください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>AI002</strong></td>
+                                    <td>Gemini API認証失敗</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>GOOGLE_AI_API_KEYを確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>AI003</strong></td>
+                                    <td>Gemini文字起こし失敗</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>音声ファイルの形式・品質を確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>AI004</strong></td>
+                                    <td>Gemini要約生成失敗</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>文字起こし結果の内容を確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>AI005</strong></td>
+                                    <td>Gemini処理ファイルサイズ制限超過</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>音声ファイルを分割するか、圧縮を検討してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>AI006</strong></td>
+                                    <td>Gemini音声形式未対応</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>サポート形式に変換してください: M4A, MP3, WAV</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>AI007</strong></td>
+                                    <td>Gemini処理タイムアウト</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>音声ファイルサイズを小さくするか、分割処理を検討してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>AI008</strong></td>
+                                    <td>GeminiAI応答品質不良</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>音声品質を確認し、必要に応じて手動確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>AI009</strong></td>
+                                    <td>Gemini API接続エラー</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>AI010</strong></td>
+                                    <td>Geminiモデル変更必要</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>フォールバックモデルに自動切り替えしています</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Slack API Errors -->
+                    <div class="error-category" style="margin-top: 20px;">
+                        <h5 style="background: #e91e63; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">💬 Slack API エラー (SL001-SL010)</h5>
+                        <div style="border: 2px solid #e91e63; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
+                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                                <tr>
+                                    <th>コード</th>
+                                    <th>エラー内容</th>
+                                    <th>リトライ</th>
+                                    <th>Slack通知</th>
+                                    <th>対応策</th>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SL001</strong></td>
+                                    <td>Slack Bot認証失敗</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>SLACK_BOT_TOKENを確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SL002</strong></td>
+                                    <td>Slackチャンネルアクセス拒否</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>Botのチャンネルアクセス権限を確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>SL003</strong></td>
+                                    <td>Slackメッセージ投稿失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>メッセージ形式とBot権限を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>SL004</strong></td>
+                                    <td>Slack APIレート制限超過</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>しばらく待ってからリトライしてください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SL005</strong></td>
+                                    <td>Slackチャンネルが存在しない</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>SLACK_CHANNEL_IDを確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SL006</strong></td>
+                                    <td>Slack Bot権限不足</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>Bot Scopesを確認してください: chat:write, files:write</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>SL007</strong></td>
+                                    <td>Slack API接続タイムアウト</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SL008</strong></td>
+                                    <td>Slackメッセージ形式エラー</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>メッセージの構造とブロック形式を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>SL009</strong></td>
+                                    <td>Slackファイルアップロード失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>ファイルサイズと形式を確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SL010</strong></td>
+                                    <td>Slack通知設定無効</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>DISABLE_SLACK_NOTIFICATIONS設定を確認してください</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- System Internal Errors -->
+                    <div class="error-category" style="margin-top: 20px;">
+                        <h5 style="background: #fd7e14; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">⚙️ システム内部エラー (SY001-SY010)</h5>
+                        <div style="border: 2px solid #fd7e14; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
+                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                                <tr>
+                                    <th>コード</th>
+                                    <th>エラー内容</th>
+                                    <th>リトライ</th>
+                                    <th>Slack通知</th>
+                                    <th>対応策</th>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SY001</strong></td>
+                                    <td>システムメモリ不足</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>Vercelのメモリ制限を確認し、ファイルサイズを小さくしてください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>SY002</strong></td>
+                                    <td>システム処理タイムアウト</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>Vercel maxDuration設定を確認してください（現在300秒）</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SY003</strong></td>
+                                    <td>環境変数未設定</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>必要な環境変数がVercelに設定されているか確認してください</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SY004</strong></td>
+                                    <td>設定ファイル読み込み失敗</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>設定ファイルの存在と形式を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>SY005</strong></td>
+                                    <td>一時ファイル作成失敗</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>メモリバッファ処理に切り替えています</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SY006</strong></td>
+                                    <td>JSON解析エラー</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>データ形式を確認してください</td>
+                                </tr>
+                                <tr class="error-warning">
+                                    <td><strong>SY007</strong></td>
+                                    <td>日付フォーマットエラー</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>日付形式を確認してください: YYYY-MM-DD HH:mm:ss</td>
+                                </tr>
+                                <tr class="error-critical">
+                                    <td><strong>SY008</strong></td>
+                                    <td>バリデーションエラー</td>
+                                    <td>❌</td>
+                                    <td>✅</td>
+                                    <td>入力データの形式と必須項目を確認してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>SY009</strong></td>
+                                    <td>未知のエラー</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>ログを確認し、詳細情報を調査してください</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>SY010</strong></td>
+                                    <td>依存サービス停止</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>外部サービスのステータスを確認してください</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
+                        <h5>📊 エラーコード統計</h5>
+                        <ul>
+                            <li><strong>総エラーコード数:</strong> 50種類</li>
+                            <li><strong>リトライ対象:</strong> 26種類（52%）</li>
+                            <li><strong>Slack通知対象:</strong> 28種類（56%）</li>
+                            <li><strong>緊急対応必須:</strong> 21種類（赤色表示）</li>
+                            <li><strong>注意監視:</strong> 11種類（黄色表示）</li>
+                            <li><strong>自動復旧期待:</strong> 18種類（リトライ可能）</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             
             <div class="procedure-box">
