@@ -13,13 +13,14 @@ const config = {
     apiKey: process.env.ZOOM_API_KEY,
     apiSecret: process.env.ZOOM_API_SECRET,
     accountId: process.env.ZOOM_ACCOUNT_ID,
-    // OAuth Configuration
-    clientId: process.env.ZOOM_CLIENT_ID,
-    clientSecret: process.env.ZOOM_CLIENT_SECRET,
+    // OAuth Configuration (Server-to-Server OAuth)
+    // 注意: ZOOM_API_KEY と ZOOM_API_SECRET を OAuth の Client ID/Secret として使用
+    clientId: process.env.ZOOM_API_KEY,  // OAuth Client ID として API Key を使用
+    clientSecret: process.env.ZOOM_API_SECRET,  // OAuth Client Secret として API Secret を使用
     redirectUri: process.env.ZOOM_REDIRECT_URI || 'http://localhost:3000/auth/zoom/callback',
     baseUrl: 'https://api.zoom.us/v2',
     oauthUrl: 'https://zoom.us/oauth',
-    useOAuth: process.env.ZOOM_USE_OAUTH === 'true' // OAuth使用フラグ
+    useOAuth: process.env.ZOOM_USE_OAUTH !== 'false' // デフォルトでOAuth使用
   },
   
   // Google AI Configuration
@@ -150,11 +151,9 @@ const config = {
 // Environment variable validation
 function validateConfig() {
   const requiredEnvVars = [
-    { key: 'ZOOM_API_KEY', description: 'Zoom API Key from Zoom Marketplace' },
-    { key: 'ZOOM_API_SECRET', description: 'Zoom API Secret from Zoom Marketplace' },
+    { key: 'ZOOM_API_KEY', description: 'Zoom OAuth Client ID from Server-to-Server OAuth App' },
+    { key: 'ZOOM_API_SECRET', description: 'Zoom OAuth Client Secret from Server-to-Server OAuth App' },
     { key: 'ZOOM_ACCOUNT_ID', description: 'Zoom Account ID from Zoom Marketplace' },
-    { key: 'ZOOM_CLIENT_ID', description: 'Zoom OAuth Client ID from Server-to-Server OAuth App' },
-    { key: 'ZOOM_CLIENT_SECRET', description: 'Zoom OAuth Client Secret from Server-to-Server OAuth App' },
     { key: 'GOOGLE_AI_API_KEY', description: 'Google AI API Key from Google AI Studio' },
     { key: 'SLACK_BOT_TOKEN', description: 'Slack Bot Token (starts with xoxb-)' },
     { key: 'SLACK_CHANNEL_ID', description: 'Slack Channel ID (starts with C)' }
