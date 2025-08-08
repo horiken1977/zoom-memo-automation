@@ -13,6 +13,7 @@
  * 4. 処理結果統合
  */
 
+const axios = require('axios');
 const ZoomService = require('./zoomService');
 const VideoStorageService = require('./videoStorageService');
 const AudioSummaryService = require('./audioSummaryService');
@@ -28,6 +29,109 @@ class ZoomRecordingService {
   }
 
   /**
+   * 全ユーザーの録画データを取得（本番環境と同じ方法）
+   * @param {string} fromDate - 開始日 (YYYY-MM-DD)
+   * @param {string} toDate - 終了日 (YYYY-MM-DD)  
+   * @param {ExecutionLogger} executionLogger - 実行ログ
+   * @returns {Promise<Array>} 全ユーザーの録画リスト
+   */
+  async getAllUsersRecordings(fromDate, toDate, executionLogger = null) {
+    try {
+      if (executionLogger) {
+        executionLogger.startStep('ZOOM_ALL_USERS_SEARCH');
+      }
+      
+      logger.info(`全ユーザー録画検索開始: ${fromDate} - ${toDate}`);
+      
+      // アクセストークン取得
+      const token = await this.zoomService.getAccessToken();
+      
+      // 全アクティブユーザーを取得
+      const usersResponse = await axios.get('https://api.zoom.us/v2/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          page_size: 300,
+          status: 'active'
+        }
+      });
+      
+      const users = usersResponse.data.users || [];
+      logger.info(`アクティブユーザー取得: ${users.length}名`);
+      
+      const allRecordings = [];
+      let checkedUsers = 0;
+      
+      // 各ユーザーの録画を検索（最大5名まで）
+      for (let i = 0; i < Math.min(users.length, 5); i++) {
+        const user = users[i];
+        checkedUsers++;
+        
+        try {
+          logger.info(`ユーザー ${checkedUsers}/${Math.min(users.length, 5)}: ${user.email}`);
+          
+          const recordingsResponse = await axios.get(`https://api.zoom.us/v2/users/${user.id}/recordings`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            params: {
+              from: fromDate,
+              to: toDate,
+              page_size: 100
+            }
+          });
+          
+          const meetings = recordingsResponse.data.meetings || [];
+          
+          for (const meeting of meetings) {
+            // recording_filesをセット（Zoomの標準形式に合わせる）
+            if (meeting.recording_files && meeting.recording_files.length > 0) {
+              allRecordings.push({
+                id: meeting.id,
+                uuid: meeting.uuid,
+                topic: meeting.topic,
+                start_time: meeting.start_time,
+                duration: meeting.duration,
+                host_email: user.email,
+                recording_files: meeting.recording_files
+              });
+            }
+          }
+          
+        } catch (userError) {
+          logger.warn(`ユーザー ${user.email} の録画取得でエラー:`, userError.response?.data || userError.message);
+        }
+      }
+      
+      if (executionLogger) {
+        executionLogger.completeStep('ZOOM_ALL_USERS_SEARCH', {
+          totalUsers: users.length,
+          checkedUsers: checkedUsers,
+          totalRecordings: allRecordings.length,
+          dateRange: `${fromDate} - ${toDate}`
+        });
+      }
+      
+      logger.info(`全ユーザー録画検索完了: ${allRecordings.length}件の録画を発見`);
+      return allRecordings;
+      
+    } catch (error) {
+      if (executionLogger) {
+        executionLogger.errorStep('ZOOM_ALL_USERS_SEARCH', 'ZM004', error.message, {
+          error: error.message,
+          dateRange: `${fromDate} - ${toDate}`
+        });
+      }
+      
+      logger.error('全ユーザー録画検索エラー:', error.response?.data || error.message);
+      throw ErrorManager.createError('ZM004', { error: error.message, dateRange: `${fromDate} - ${toDate}` });
+    }
+  }
+
+  /**
    * 指定期間のZoom録画リストを取得
    * @param {string} fromDate - 開始日 (YYYY-MM-DD)
    * @param {string} toDate - 終了日 (YYYY-MM-DD)
@@ -40,7 +144,8 @@ class ZoomRecordingService {
         executionLogger.startStep('ZOOM_RECORDINGS_LIST');
       }
 
-      const recordings = await this.zoomService.getAllRecordings(fromDate, toDate);
+      // 本番環境と同じ全ユーザー録画検索を実行
+      const recordings = await this.getAllUsersRecordings(fromDate, toDate, executionLogger);
       
       // 処理可能な録画のみをフィルタリング
       const processableRecordings = recordings.filter(recording => {
