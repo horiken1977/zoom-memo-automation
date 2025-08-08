@@ -23,14 +23,16 @@ class ExecutionLogger {
   }
 
   /**
-   * 実行ステップを記録
+   * 実行ステップを記録（日本語説明付き構造化ログ）
    * @param {string} stepName - ステップ名
    * @param {string} status - SUCCESS/ERROR/WARN/INFO
    * @param {Object} details - 詳細情報
    * @param {string} errorCode - エラーコード（任意）
    * @param {string} errorMessage - エラーメッセージ（任意）
+   * @param {string} sourceInfo - ソース情報（JSファイル名.メソッド名）
+   * @param {string} description - 日本語での処理内容説明
    */
-  logStep(stepName, status, details = {}, errorCode = null, errorMessage = null) {
+  logStep(stepName, status, details = {}, errorCode = null, errorMessage = null, sourceInfo = null, description = null) {
     const now = Date.now();
     const lastStep = this.steps[this.steps.length - 1];
     const stepDuration = lastStep ? now - lastStep.endTime : now - this.startTime;
@@ -41,7 +43,10 @@ class ExecutionLogger {
       startTime: lastStep ? lastStep.endTime : this.startTime,
       endTime: now,
       duration: stepDuration,
-      details: details
+      details: details,
+      // 日本語情報追加
+      description: description || this.getStepDescription(stepName, status),
+      sourceInfo: sourceInfo || this.inferSourceInfo(stepName)
     };
     
     // エラー情報を追加
@@ -52,20 +57,105 @@ class ExecutionLogger {
     
     this.steps.push(step);
     
-    // コンソールログにも出力（軽量版）
+    // コンソールログにも日本語で出力
     const elapsed = Math.floor((now - this.startTime) / 1000);
-    logger.info(`[${this.executionId}] [${elapsed}s] ${stepName}: ${status}${errorCode ? ` (${errorCode})` : ''}`);
+    const statusIcon = this.getStatusIcon(status);
+    const logMessage = description || this.getStepDescription(stepName, status);
+    logger.info(`${statusIcon} [${this.executionId}] [${elapsed}s] ${logMessage}${sourceInfo ? ` (${sourceInfo})` : ''}${errorCode ? ` エラー: ${errorCode}` : ''}`);
     
     return step;
+  }
+
+  /**
+   * ステップの日本語説明を生成
+   */
+  getStepDescription(stepName, status) {
+    const descriptions = {
+      // Zoom関連
+      'ZOOM_RECORDINGS_LIST': 'Zoom録画リスト取得',
+      'ZOOM_ALL_USERS_SEARCH': '全ユーザー録画検索',
+      'PT001_REAL_RECORDING_START': 'PT001実録画処理開始',
+      
+      // 処理フロー
+      'VIDEO_PROCESSING': '動画ファイル処理（ダウンロード→Google Drive保存）',
+      'AUDIO_PROCESSING': '音声ファイル処理（ダウンロード→AI文字起こし・要約）',
+      'RECORDING_COMPLETE_PROCESSING': '録画処理完了',
+      
+      // Slack通知
+      'SLACK_NOTIFICATION': 'Slack通知送信',
+      
+      // ログ保存
+      'PT001_TEST_COMPLETE': 'PT001テスト完了',
+      'EXECUTION_LOG_SAVE': '実行ログGoogle Drive保存',
+      
+      // エラー処理
+      'ERROR_RECOVERY': 'エラー回復処理',
+      'RETRY_PROCESSING': 'リトライ処理実行'
+    };
+
+    const baseDescription = descriptions[stepName] || stepName;
+    
+    switch (status) {
+      case 'SUCCESS':
+        return `✅ ${baseDescription} - 正常完了`;
+      case 'ERROR':
+        return `❌ ${baseDescription} - エラー発生`;
+      case 'WARN':
+        return `⚠️ ${baseDescription} - 警告`;
+      case 'INFO':
+        return `ℹ️ ${baseDescription} - 情報`;
+      default:
+        return `${baseDescription}`;
+    }
+  }
+
+  /**
+   * ステータスアイコンを取得
+   */
+  getStatusIcon(status) {
+    const icons = {
+      'SUCCESS': '✅',
+      'ERROR': '❌',
+      'WARN': '⚠️',
+      'INFO': 'ℹ️'
+    };
+    return icons[status] || '🔧';
+  }
+
+  /**
+   * ソース情報を推測
+   */
+  inferSourceInfo(stepName) {
+    const sourceMapping = {
+      // Zoom関連
+      'ZOOM_RECORDINGS_LIST': 'zoomRecordingService.js.getRecordingsList',
+      'ZOOM_ALL_USERS_SEARCH': 'zoomRecordingService.js.getAllUsersRecordings',
+      
+      // 処理フロー
+      'VIDEO_PROCESSING': 'zoomRecordingService.js.processVideoFile',
+      'AUDIO_PROCESSING': 'zoomRecordingService.js.processAudioFile',
+      'RECORDING_COMPLETE_PROCESSING': 'zoomRecordingService.js.processRecording',
+      
+      // Slack
+      'SLACK_NOTIFICATION': 'slackService.js.sendMeetingSummary',
+      
+      // ログ
+      'PT001_TEST_COMPLETE': 'production-throughput-test.js.runProductionThroughputTest',
+      'EXECUTION_LOG_SAVE': 'executionLogger.js.saveToGoogleDrive'
+    };
+
+    return sourceMapping[stepName] || null;
   }
 
   /**
    * 処理成功をログ記録
    * @param {string} stepName - ステップ名
    * @param {Object} details - 詳細情報
+   * @param {string} sourceInfo - ソース情報（任意）
+   * @param {string} description - 処理説明（任意）
    */
-  logSuccess(stepName, details = {}) {
-    return this.logStep(stepName, 'SUCCESS', details);
+  logSuccess(stepName, details = {}, sourceInfo = null, description = null) {
+    return this.logStep(stepName, 'SUCCESS', details, null, null, sourceInfo, description);
   }
 
   /**
@@ -74,9 +164,10 @@ class ExecutionLogger {
    * @param {string} errorCode - エラーコード
    * @param {string} errorMessage - エラーメッセージ
    * @param {Object} details - 詳細情報
+   * @param {string} sourceInfo - ソース情報（エラー時は詳細に記録）
    */
-  logError(stepName, errorCode, errorMessage, details = {}) {
-    return this.logStep(stepName, 'ERROR', details, errorCode, errorMessage);
+  logError(stepName, errorCode, errorMessage, details = {}, sourceInfo = null) {
+    return this.logStep(stepName, 'ERROR', details, errorCode, errorMessage, sourceInfo);
   }
 
   /**
@@ -84,18 +175,20 @@ class ExecutionLogger {
    * @param {string} stepName - ステップ名
    * @param {string} message - 警告メッセージ
    * @param {Object} details - 詳細情報
+   * @param {string} sourceInfo - ソース情報（任意）
    */
-  logWarning(stepName, message, details = {}) {
-    return this.logStep(stepName, 'WARN', { warning: message, ...details });
+  logWarning(stepName, message, details = {}, sourceInfo = null) {
+    return this.logStep(stepName, 'WARN', { warning: message, ...details }, null, null, sourceInfo);
   }
 
   /**
    * 情報をログ記録
    * @param {string} stepName - ステップ名
    * @param {Object} details - 詳細情報
+   * @param {string} sourceInfo - ソース情報（任意）
    */
-  logInfo(stepName, details = {}) {
-    return this.logStep(stepName, 'INFO', details);
+  logInfo(stepName, details = {}, sourceInfo = null) {
+    return this.logStep(stepName, 'INFO', details, null, null, sourceInfo);
   }
 
   /**
@@ -125,15 +218,16 @@ class ExecutionLogger {
    * @param {string} stepName - ステップ名
    * @param {Object} result - 完了時の結果情報
    * @param {string} status - 完了ステータス（SUCCESS/ERROR/WARN）
+   * @param {string} sourceInfo - ソース情報（任意）
    */
-  completeStep(stepName, result = {}, status = 'SUCCESS') {
+  completeStep(stepName, result = {}, status = 'SUCCESS', sourceInfo = null) {
     const now = Date.now();
     const stepInfo = this.currentSteps.get(stepName);
     
     if (!stepInfo) {
-      logger.warn(`[${this.executionId}] Step "${stepName}" was not started`);
+      logger.warn(`⚠️ [${this.executionId}] ステップ "${stepName}" が開始されていません`);
       // startStepが呼ばれていない場合でも記録
-      return this.logStep(stepName, status, result);
+      return this.logStep(stepName, status, result, null, null, sourceInfo);
     }
     
     const duration = now - stepInfo.startTime;
@@ -144,7 +238,7 @@ class ExecutionLogger {
     };
     
     // ステップ完了を記録
-    const completedStep = this.logStep(stepName, status, details);
+    const completedStep = this.logStep(stepName, status, details, null, null, sourceInfo);
     
     // 進行中のステップから削除
     this.currentSteps.delete(stepName);
@@ -158,13 +252,14 @@ class ExecutionLogger {
    * @param {string} errorCode - エラーコード
    * @param {string} errorMessage - エラーメッセージ
    * @param {Object} details - 詳細情報
+   * @param {string} sourceInfo - エラー発生箇所の詳細ソース情報
    */
-  errorStep(stepName, errorCode, errorMessage, details = {}) {
+  errorStep(stepName, errorCode, errorMessage, details = {}, sourceInfo = null) {
     return this.completeStep(stepName, {
       ...details,
       errorCode,
       errorMessage
-    }, 'ERROR');
+    }, 'ERROR', sourceInfo);
   }
 
   /**

@@ -181,7 +181,7 @@ async function runProductionThroughputTest(res) {
       meetingId: targetRecording.id,
       meetingTopic: targetRecording.topic,
       availableRecordings: availableRecordings.length
-    });
+    }, 'production-throughput-test.js.runProductionThroughputTest');
     
     console.log('\\n📋 処理詳細:');
     console.log(`   - 会議名: ${targetRecording.topic}`);
@@ -248,7 +248,7 @@ async function runProductionThroughputTest(res) {
         totalExecutionTime: Date.now() - startTime,
         allStepsCompleted: true,
         finalStatus: 'SUCCESS'
-      });
+      }, 'production-throughput-test.js.runProductionThroughputTest');
       
       try {
         logSaveResult = await executionLogger.saveToGoogleDrive();

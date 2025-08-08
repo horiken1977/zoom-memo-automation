@@ -112,7 +112,7 @@ class ZoomRecordingService {
           checkedUsers: checkedUsers,
           totalRecordings: allRecordings.length,
           dateRange: `${fromDate} - ${toDate}`
-        });
+        }, 'SUCCESS', 'zoomRecordingService.js.getAllUsersRecordings');
       }
       
       logger.info(`全ユーザー録画検索完了: ${allRecordings.length}件の録画を発見`);
@@ -123,7 +123,7 @@ class ZoomRecordingService {
         executionLogger.errorStep('ZOOM_ALL_USERS_SEARCH', 'ZM004', error.message, {
           error: error.message,
           dateRange: `${fromDate} - ${toDate}`
-        });
+        }, 'zoomRecordingService.js.getAllUsersRecordings');
       }
       
       logger.error('全ユーザー録画検索エラー:', error.response?.data || error.message);
