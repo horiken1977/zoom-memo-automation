@@ -391,6 +391,59 @@ class GoogleDriveService {
   }
 
   /**
+   * バッファから直接Google Driveにアップロード（Vercel対応）
+   * @param {Buffer} buffer - アップロードするバッファ
+   * @param {string} fileName - ファイル名
+   * @param {string} folderId - アップロード先フォルダID
+   * @param {string} mimeType - MIMEタイプ
+   * @param {string} description - ファイル説明
+   * @returns {Promise<Object>} アップロード結果
+   */
+  async uploadFromBuffer(buffer, fileName, folderId = null, mimeType = 'application/octet-stream', description = null) {
+    try {
+      await this.initialize();
+
+      const fileMetadata = {
+        name: fileName,
+        parents: folderId ? [folderId] : undefined,
+        description: description
+      };
+
+      const media = {
+        mimeType: mimeType,
+        body: require('stream').Readable.from(buffer)
+      };
+
+      logger.info(`バッファからGoogle Driveアップロード開始: ${fileName} (${Math.round(buffer.length / 1024 / 1024)}MB)`);
+      const startTime = Date.now();
+
+      const response = await this.drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id, name, size, mimeType, createdTime',
+        supportsAllDrives: true
+      });
+
+      const uploadTime = Math.round((Date.now() - startTime) / 1000);
+      const fileId = response.data.id;
+
+      logger.info(`バッファアップロード成功: ${fileName} (ID: ${fileId}, ${uploadTime}秒)`);
+
+      return {
+        fileId: fileId,
+        fileName: fileName,
+        size: response.data.size,
+        mimeType: response.data.mimeType,
+        createdTime: response.data.createdTime,
+        uploadTime: uploadTime
+      };
+    } catch (error) {
+      logger.error(`バッファアップロード失敗 ${fileName}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * ヘルスチェック
    */
   async healthCheck() {
