@@ -270,13 +270,9 @@ class ExecutionLogger {
       // logsフォルダを作成（存在しない場合）
       const logsFolderId = await this.googleDriveService.createFolderStructure(folderPath);
       
-      // ログファイルをアップロード
-      const uploadResult = await this.googleDriveService.uploadFile(
-        Buffer.from(logJson, 'utf8'),
-        logFileName,
-        'application/json',
-        logsFolderId,
-        `実行ログファイル - ${this.meetingInfo.topic}\n\n` +
+      // ログファイルをバッファからアップロード
+      const logBuffer = Buffer.from(logJson, 'utf8');
+      const description = `実行ログファイル - ${this.meetingInfo.topic}\n\n` +
         `実行ID: ${this.executionId}\n` +
         `会議名: ${this.meetingInfo.topic}\n` +
         `開催日時: ${date.toLocaleString('ja-JP')}\n` +
@@ -285,7 +281,14 @@ class ExecutionLogger {
         `ステップ数: ${logData.summary.totalSteps}\n` +
         `成功: ${logData.summary.successSteps}, エラー: ${logData.summary.errorSteps}\n\n` +
         `自動生成: ${new Date().toLocaleString('ja-JP')}\n` +
-        `システム: Zoom Meeting Automation`
+        `システム: Zoom Meeting Automation`;
+        
+      const uploadResult = await this.googleDriveService.uploadFromBuffer(
+        logBuffer,
+        logFileName,
+        logsFolderId,
+        'application/json',
+        description
       );
 
       // 共有リンクを生成
