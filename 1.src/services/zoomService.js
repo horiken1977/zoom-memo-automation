@@ -161,7 +161,9 @@ class ZoomService {
         page_size: 100
       };
 
-      const response = await axios.get(`${this.baseUrl}/accounts/${this.accountId}/recordings`, {
+      // Server-to-Server OAuth用のエンドポイント
+      // 参考: https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/listAllRecordings
+      const response = await axios.get(`${this.baseUrl}/users/me/recordings`, {
         headers,
         params
       });
@@ -170,6 +172,9 @@ class ZoomService {
       return response.data.meetings || [];
     } catch (error) {
       logger.error('Failed to get recordings:', error.response?.data || error.message);
+      logger.error('HTTP Status:', error.response?.status);
+      logger.error('Request URL:', `${this.baseUrl}/users/me/recordings`);
+      logger.error('Request params:', { fromDate, toDate });
       throw error;
     }
   }
