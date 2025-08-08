@@ -286,16 +286,18 @@ class SlackService {
    */
   extractShortSummary(summary) {
     try {
-      // Slack制限: 単一text要素は3000文字まで、マージン考慮して2800文字
-      const SLACK_TEXT_LIMIT = 2800;
+      // Slack制限: 単一text要素は3000文字まで、マージン考慮して2700文字（エンドマーカー用に余裕を持たせる）
+      const SLACK_TEXT_LIMIT = 2700;
+      const END_MARKER = '\n\n---\n📋 **要約ここまで** ✅';
       
       // 全体の要約を可能な限り表示（短縮しすぎない）
       if (summary.length <= SLACK_TEXT_LIMIT) {
-        return summary; // 制限内なら全文表示
+        return summary + END_MARKER; // 制限内なら全文表示＋エンドマーカー
       }
 
       // 制限を超える場合のみ、文章の区切りで切り詰め
-      const truncated = summary.substring(0, SLACK_TEXT_LIMIT);
+      const availableSpace = SLACK_TEXT_LIMIT - END_MARKER.length;
+      const truncated = summary.substring(0, availableSpace);
       const lastPeriod = Math.max(
         truncated.lastIndexOf('。'),
         truncated.lastIndexOf('．'),
@@ -304,16 +306,16 @@ class SlackService {
       );
       
       // 70%以上の位置で適切な区切りが見つかれば、そこで切る
-      if (lastPeriod > SLACK_TEXT_LIMIT * 0.7) {
-        return truncated.substring(0, lastPeriod + 1);
+      if (lastPeriod > availableSpace * 0.7) {
+        return truncated.substring(0, lastPeriod + 1) + '\n\n---\n📋 **要約途中で切断** ⚠️\n*完全版は添付の実行ログファイルをご確認ください*';
       }
       
       // 適切な区切りが見つからない場合、制限ギリギリで切る
-      return truncated;
+      return truncated + '\n\n---\n📋 **要約途中で切断** ⚠️\n*完全版は添付の実行ログファイルをご確認ください*';
       
     } catch (error) {
       logger.warn('Failed to extract short summary:', error.message);
-      return summary; // エラー時は元の要約をそのまま返す
+      return summary + '\n\n---\n📋 **要約ここまで** ✅'; // エラー時も安全にエンドマーカー追加
     }
   }
 
