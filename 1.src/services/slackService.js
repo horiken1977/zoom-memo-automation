@@ -44,6 +44,12 @@ class SlackService {
       // Slack ブロック形式で整理されたメッセージを作成
       const blocks = this.buildSummaryBlocks(analysisResult);
 
+      // Slack投稿前に要約の完全性を検証
+      const summaryValidation = this.validateSummaryContent(analysisResult, blocks);
+      if (!summaryValidation.isComplete) {
+        logger.warn('Summary content may be truncated:', summaryValidation.warnings);
+      }
+
       const result = await this.client.chat.postMessage({
         channel: this.channelId,
         blocks: blocks,
@@ -53,6 +59,11 @@ class SlackService {
       });
 
       logger.info(`Meeting summary sent to Slack successfully: ${result.ts}`);
+      
+      // 要約が不完全な場合は警告ログ
+      if (!summaryValidation.isComplete) {
+        logger.warn(`Summary truncation detected for meeting: ${analysisResult.meetingInfo.topic}`, summaryValidation.warnings);
+      }
 
       // ファイルとして文字起こし全文も送信（必要に応じて）
       if (analysisResult.transcription && analysisResult.transcription.length > 0) {
@@ -90,7 +101,7 @@ class SlackService {
       fields: [
         {
           type: "mrkdwn",
-          text: `*🕐 開催日時:*\\n${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}`
+          text: `*🕐 開催日時:*\\n${this.formatMeetingStartTime(meetingInfo)}`
         },
         {
           type: "mrkdwn",
@@ -189,29 +200,120 @@ class SlackService {
   }
 
   /**
+   * 要約内容の完全性を検証
+   */
+  validateSummaryContent(analysisResult, blocks) {
+    const warnings = [];
+    let isComplete = true;
+
+    try {
+      // 元の要約の長さをチェック
+      const originalSummary = analysisResult.summary || '';
+      if (originalSummary.length === 0) {
+        warnings.push('Original summary is empty');
+        isComplete = false;
+      }
+
+      // Slackブロック内の要約テキストを取得
+      const summaryBlock = blocks.find(block => 
+        block.type === 'section' && 
+        block.text && 
+        block.text.text && 
+        block.text.text.includes('*📄 要約*')
+      );
+
+      if (summaryBlock) {
+        const slackSummaryText = summaryBlock.text.text.replace(/\*📄 要約\*\\n/, '');
+        
+        // 元の要約と比べて著しく短い場合は警告
+        if (originalSummary.length > 500 && slackSummaryText.length < originalSummary.length * 0.3) {
+          warnings.push(`Summary severely truncated: ${slackSummaryText.length}/${originalSummary.length} characters`);
+          isComplete = false;
+        }
+
+        // 「...」で終わっている場合は不完全
+        if (slackSummaryText.includes('...') || slackSummaryText.includes('。…')) {
+          warnings.push('Summary contains truncation indicators');
+          isComplete = false;
+        }
+      } else {
+        warnings.push('Summary block not found in Slack message');
+        isComplete = false;
+      }
+
+    } catch (error) {
+      warnings.push(`Validation error: ${error.message}`);
+      isComplete = false;
+    }
+
+    return { isComplete, warnings };
+  }
+
+  /**
+   * 会議開始時刻を適切にフォーマット
+   */
+  formatMeetingStartTime(meetingInfo) {
+    try {
+      // 複数の可能な日付フィールドを確認
+      const timeSource = meetingInfo.startTime || meetingInfo.start_time || meetingInfo.recordingStart;
+      
+      if (!timeSource) {
+        return '不明';
+      }
+      
+      const date = new Date(timeSource);
+      if (isNaN(date.getTime())) {
+        // 日付が無効な場合、元の文字列をそのまま返す
+        return timeSource.toString();
+      }
+      
+      return date.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Tokyo'
+      });
+    } catch (error) {
+      logger.warn('Failed to format meeting start time:', error.message);
+      return '日時不明';
+    }
+  }
+
+  /**
    * 要約から重要な部分を抽出
    */
   extractShortSummary(summary) {
     try {
-      // 議論内容の部分を抽出（最大300文字）
-      const discussionMatch = summary.match(/### 議論内容\s*([\s\S]*?)(?=###|$)/);
-      if (discussionMatch) {
-        let discussion = discussionMatch[1].trim();
-        if (discussion.length > 300) {
-          discussion = discussion.substring(0, 300) + '...';
-        }
-        return discussion;
+      // Slack制限: 単一text要素は3000文字まで、マージン考慮して2800文字
+      const SLACK_TEXT_LIMIT = 2800;
+      
+      // 全体の要約を可能な限り表示（短縮しすぎない）
+      if (summary.length <= SLACK_TEXT_LIMIT) {
+        return summary; // 制限内なら全文表示
       }
 
-      // フォールバック: 全体から最初の300文字
-      if (summary.length > 300) {
-        return summary.substring(0, 300) + '...';
+      // 制限を超える場合のみ、文章の区切りで切り詰め
+      const truncated = summary.substring(0, SLACK_TEXT_LIMIT);
+      const lastPeriod = Math.max(
+        truncated.lastIndexOf('。'),
+        truncated.lastIndexOf('．'),
+        truncated.lastIndexOf('\n\n'),
+        truncated.lastIndexOf('\n###')
+      );
+      
+      // 70%以上の位置で適切な区切りが見つかれば、そこで切る
+      if (lastPeriod > SLACK_TEXT_LIMIT * 0.7) {
+        return truncated.substring(0, lastPeriod + 1);
       }
       
-      return summary;
+      // 適切な区切りが見つからない場合、制限ギリギリで切る
+      return truncated;
+      
     } catch (error) {
       logger.warn('Failed to extract short summary:', error.message);
-      return null;
+      return summary; // エラー時は元の要約をそのまま返す
     }
   }
 
