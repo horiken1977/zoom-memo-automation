@@ -391,6 +391,52 @@ class GoogleDriveService {
   }
 
   /**
+   * フォルダ構造を作成（パス形式で指定）
+   * @param {string} folderPath - フォルダパス（例: "99.zoom_memo_recording/2025/08/logs"）
+   * @param {string} baseFolderId - ベースフォルダID（省略時はマイドライブルート）
+   * @returns {Promise<string>} 最終フォルダのID
+   */
+  async createFolderStructure(folderPath, baseFolderId = null) {
+    try {
+      await this.initialize();
+
+      const folders = folderPath.split('/').filter(f => f.trim());
+      let currentFolderId = baseFolderId;
+
+      for (const folderName of folders) {
+        // 現在のフォルダ内で指定名のフォルダを検索
+        const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false` +
+                     (currentFolderId ? ` and '${currentFolderId}' in parents` : '');
+
+        const response = await this.drive.files.list({
+          q: query,
+          fields: 'files(id, name)',
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true
+        });
+
+        if (response.data.files.length > 0) {
+          // フォルダが存在する場合
+          currentFolderId = response.data.files[0].id;
+          logger.info(`既存フォルダ使用: ${folderName} (ID: ${currentFolderId})`);
+        } else {
+          // フォルダが存在しない場合は作成
+          const folderResult = await this.ensureFolder(folderName, currentFolderId);
+          currentFolderId = folderResult.folderId;
+          logger.info(`新規フォルダ作成: ${folderName} (ID: ${currentFolderId})`);
+        }
+      }
+
+      logger.info(`フォルダ構造作成完了: ${folderPath} → ${currentFolderId}`);
+      return currentFolderId;
+
+    } catch (error) {
+      logger.error(`フォルダ構造作成失敗: ${folderPath}`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * バッファから直接Google Driveにアップロード（Vercel対応）
    * @param {Buffer} buffer - アップロードするバッファ
    * @param {string} fileName - ファイル名

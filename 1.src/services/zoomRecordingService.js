@@ -329,7 +329,7 @@ class ZoomRecordingService {
       const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
       
       // Gemini AIで文字起こし・要約処理
-      const analysisResult = await this.audioSummaryService.processAudio(
+      const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
         audioBuffer,
         audioFile.file_name,
         this.extractMeetingInfo(recording)
