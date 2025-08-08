@@ -71,8 +71,8 @@ async function runProductionThroughputTest(res) {
     
     const zoomRecordingService = new ZoomRecordingService();
     
-    // 録画データ取得（過去7日間）
-    const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // 録画データ取得（過去30日間）
+    const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const toDate = new Date().toISOString().split('T')[0];
     
     console.log(`📋 録画リスト取得中... (期間: ${fromDate} ～ ${toDate})`);
@@ -366,18 +366,19 @@ async function runZoomConnectionTest(res) {
   
   try {
     const zoomService = new ZoomService();
+    const zoomRecordingService = new ZoomRecordingService();
     
     // ヘルスチェック
     console.log('Zoom API ヘルスチェック実行中...');
     const healthCheck = await zoomService.healthCheck();
     console.log('Zoom API接続状況:', healthCheck);
     
-    // 録画データ確認
-    const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // 録画データ確認（全ユーザー検索）
+    const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const toDate = new Date().toISOString().split('T')[0];
     
-    console.log(`録画データ検索中... (期間: ${fromDate} ～ ${toDate})`);
-    const recordings = await zoomService.getAllRecordings(fromDate, toDate);
+    console.log(`全ユーザー録画データ検索中... (期間: ${fromDate} ～ ${toDate})`);
+    const recordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate);
     console.log(`検索結果: ${recordings.length}件の録画を発見`);
     
     const totalTime = Date.now() - startTime;
