@@ -22,6 +22,8 @@ module.exports = async function handler(req, res) {
   
   if (testCase === 'PT001') {
     return await runProductionThroughputTest(res);
+  } else if (testCase === 'PT001-quick') {
+    return await runQuickProductionTest(res);  // 最初の録画のみ処理する簡略版
   } else if (testCase === 'PT001a') {
     return await runZoomConnectionTest(res);  // Zoom接続のみテスト
   } else if (testCase === 'debug') {
@@ -611,6 +613,121 @@ async function runJWTFallbackTest(res) {
       executionTime: `${errorTime}ms`,
       conclusion: conclusion,
       nextSteps: nextSteps,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// PT001-quick: 高速版本番テスト（最初の録画のみ処理）
+async function runQuickProductionTest(res) {
+  const startTime = Date.now();
+  const executionId = `PT001-quick-${Date.now()}`;
+  console.log('🚀 PT001-quick: 高速版本番テスト開始', { executionId, timestamp: new Date().toISOString() });
+  
+  try {
+    const zoomRecordingService = new ZoomRecordingService();
+    
+    // 録画データ取得（過去30日間）
+    const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = new Date().toISOString().split('T')[0];
+    
+    console.log(`📋 録画リスト取得中... (期間: ${fromDate} ～ ${toDate})`);
+    
+    // 一時的な実行ログ作成
+    const tempMeetingInfo = {
+      id: 'temp-quick',
+      topic: 'PT001-quick 高速テスト',
+      start_time: new Date().toISOString()
+    };
+    const tempExecutionLogger = new ExecutionLogger(executionId, tempMeetingInfo);
+    
+    const availableRecordings = await zoomRecordingService.getRecordingsList(
+      fromDate, 
+      toDate, 
+      tempExecutionLogger
+    );
+    
+    console.log(`✅ 処理可能な録画: ${availableRecordings.length}件`);
+    
+    if (availableRecordings.length === 0) {
+      console.log('📝 処理可能な録画データなし - テスト完了');
+      
+      const totalTime = Date.now() - startTime;
+      
+      return res.status(200).json({
+        status: 'success',
+        test: 'PT001-quick',
+        message: '高速テスト完了 - 録画データなし',
+        executionTime: `${totalTime}ms`,
+        recordingsFound: 0,
+        searchPeriod: { from: fromDate, to: toDate },
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 最初の録画のみ処理
+    const targetRecording = availableRecordings[0];
+    console.log(`🎯 選択された録画: ${targetRecording.topic} (${targetRecording.id})`);
+    
+    // 実際の会議情報で実行ログを初期化
+    const meetingInfo = {
+      id: targetRecording.id,
+      uuid: targetRecording.uuid,
+      topic: targetRecording.topic,
+      start_time: targetRecording.start_time,
+      duration: targetRecording.duration,
+      host_email: targetRecording.host_email
+    };
+    
+    const executionLogger = new ExecutionLogger(executionId, meetingInfo);
+    
+    // 録画処理実行
+    console.log('🔧 録画処理開始...');
+    const recordingResult = await zoomRecordingService.processRecording(targetRecording, executionLogger);
+    console.log('✅ 録画処理完了');
+    
+    // 実行ログを保存
+    const logSaveResult = await executionLogger.saveToGoogleDrive();
+    console.log('✅ 実行ログ保存完了:', logSaveResult.viewLink);
+    
+    const totalTime = Date.now() - startTime;
+    
+    return res.status(200).json({
+      status: 'success',
+      test: 'PT001-quick',
+      message: '高速版本番テスト成功',
+      executionTime: `${totalTime}ms`,
+      totalSeconds: Math.floor(totalTime / 1000),
+      recordingsFound: availableRecordings.length,
+      processedRecording: {
+        meetingId: recordingResult.meetingId,
+        meetingTopic: recordingResult.meetingTopic,
+        videoSaved: recordingResult.video?.success,
+        videoLink: recordingResult.video?.shareLink,
+        audioProcessed: recordingResult.audio?.success,
+        transcriptionLength: recordingResult.audio?.transcription?.length || 0
+      },
+      executionLog: {
+        saved: logSaveResult.success,
+        viewLink: logSaveResult.viewLink,
+        fileName: logSaveResult.logFileName
+      },
+      searchPeriod: { from: fromDate, to: toDate },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ PT001-quick テストエラー:', error);
+    
+    const errorTime = Date.now() - startTime;
+    
+    return res.status(500).json({
+      status: 'error',
+      test: 'PT001-quick',
+      message: '高速版本番テスト失敗',
+      error: error.message,
+      stack: error.stack,
+      executionTime: `${errorTime}ms`,
       timestamp: new Date().toISOString()
     });
   }
