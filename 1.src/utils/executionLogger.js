@@ -13,11 +13,12 @@ const { ErrorManager } = require('./errorCodes');
 const logger = require('./logger');
 
 class ExecutionLogger {
-  constructor(meetingInfo) {
+  constructor(executionId, meetingInfo) {
+    this.executionId = executionId || `exec_${new Date().toISOString().replace(/[:.]/g, '')}_${meetingInfo?.id || 'unknown'}`;
     this.meetingInfo = meetingInfo;
-    this.executionId = `exec_${new Date().toISOString().replace(/[:.]/g, '')}_${meetingInfo.id}`;
     this.startTime = Date.now();
     this.steps = [];
+    this.currentSteps = new Map(); // 進行中のステップを追跡
     this.googleDriveService = null;
   }
 
@@ -95,6 +96,75 @@ class ExecutionLogger {
    */
   logInfo(stepName, details = {}) {
     return this.logStep(stepName, 'INFO', details);
+  }
+
+  /**
+   * ステップを開始
+   * @param {string} stepName - ステップ名
+   * @param {Object} details - 開始時の詳細情報
+   */
+  startStep(stepName, details = {}) {
+    const now = Date.now();
+    const stepInfo = {
+      stepName,
+      startTime: now,
+      details
+    };
+    
+    this.currentSteps.set(stepName, stepInfo);
+    
+    // 開始ログを出力
+    const elapsed = Math.floor((now - this.startTime) / 1000);
+    logger.info(`[${this.executionId}] [${elapsed}s] ${stepName}: STARTED`);
+    
+    return stepInfo;
+  }
+
+  /**
+   * ステップを完了
+   * @param {string} stepName - ステップ名
+   * @param {Object} result - 完了時の結果情報
+   * @param {string} status - 完了ステータス（SUCCESS/ERROR/WARN）
+   */
+  completeStep(stepName, result = {}, status = 'SUCCESS') {
+    const now = Date.now();
+    const stepInfo = this.currentSteps.get(stepName);
+    
+    if (!stepInfo) {
+      logger.warn(`[${this.executionId}] Step "${stepName}" was not started`);
+      // startStepが呼ばれていない場合でも記録
+      return this.logStep(stepName, status, result);
+    }
+    
+    const duration = now - stepInfo.startTime;
+    const details = {
+      ...stepInfo.details,
+      ...result,
+      duration
+    };
+    
+    // ステップ完了を記録
+    const completedStep = this.logStep(stepName, status, details);
+    
+    // 進行中のステップから削除
+    this.currentSteps.delete(stepName);
+    
+    return completedStep;
+  }
+
+  /**
+   * ステップをエラーで完了
+   * @param {string} stepName - ステップ名
+   * @param {string} errorCode - エラーコード
+   * @param {string} errorMessage - エラーメッセージ
+   * @param {Object} details - 詳細情報
+   */
+  errorStep(stepName, errorCode, errorMessage, details = {}) {
+    return this.completeStep(stepName, {
+      ...details,
+      errorCode,
+      errorMessage
+    }, 'ERROR');
   }
 
   /**
@@ -219,7 +289,7 @@ class ExecutionLogger {
       );
 
       // 共有リンクを生成
-      const shareResult = await this.googleDriveService.createShareLink(uploadResult.id);
+      const shareResult = await this.googleDriveService.createShareableLink(uploadResult.id);
       
       const result = {
         success: true,
@@ -287,10 +357,11 @@ class ExecutionLogManager {
   /**
    * 新しい実行ログを開始
    * @param {Object} meetingInfo - 会議情報
+   * @param {string} executionId - 実行ID（オプション）
    * @returns {ExecutionLogger} 実行ログインスタンス
    */
-  static startExecution(meetingInfo) {
-    const logger = new ExecutionLogger(meetingInfo);
+  static startExecution(meetingInfo, executionId = null) {
+    const logger = new ExecutionLogger(executionId, meetingInfo);
     this.activeLoggers.set(logger.executionId, logger);
     return logger;
   }
