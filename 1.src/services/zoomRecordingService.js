@@ -266,11 +266,12 @@ class ZoomRecordingService {
       // 動画ファイルをメモリバッファとして取得
       const videoBuffer = await this.zoomService.downloadFileAsBuffer(videoFile.download_url);
       
-      // Google Driveに保存
-      const saveResult = await this.videoStorageService.saveVideo(
+      // Google Driveに実際のZoom録画を保存
+      const meetingInfo = this.extractMeetingInfo(recording);
+      const saveResult = await this.videoStorageService.saveZoomVideoBuffer(
         videoBuffer,
         videoFile.file_name,
-        this.extractMeetingInfo(recording)
+        meetingInfo
       );
       
       if (executionLogger) {

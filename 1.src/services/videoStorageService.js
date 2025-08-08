@@ -339,6 +339,65 @@ UUID: ${meetingInfo.uuid || 'N/A'}
   }
 
   /**
+   * 実際のZoom録画バッファをGoogle Driveに保存（本番用）
+   * @param {Buffer} videoBuffer - Zoom録画バッファデータ
+   * @param {string} fileName - 保存ファイル名  
+   * @param {Object} meetingInfo - 会議情報
+   * @returns {Promise<Object>} 保存結果
+   */
+  async saveZoomVideoBuffer(videoBuffer, fileName, meetingInfo) {
+    try {
+      logger.info(`実Zoom録画保存開始: ${fileName} (${Math.round(videoBuffer.length / 1024 / 1024)}MB)`);
+
+      // GoogleDriveService初期化
+      await this.googleDriveService.initialize();
+
+      // 年月フォルダ構造を作成・確認
+      const folderStructure = await this.ensureFolderStructure(meetingInfo.start_time);
+
+      // ファイル名生成
+      const finalFileName = this.generateVideoFileName(meetingInfo);
+      
+      // ファイルの説明を生成
+      const description = this.generateVideoDescription(meetingInfo);
+
+      // バッファから直接Google Driveにアップロード
+      const uploadResult = await this.googleDriveService.uploadFromBuffer(
+        videoBuffer,
+        finalFileName,
+        folderStructure.monthFolderId,
+        'video/mp4',
+        description
+      );
+
+      // 共有リンクを作成
+      const shareResult = await this.googleDriveService.createShareableLink(uploadResult.fileId, 'reader');
+
+      logger.info(`実Zoom録画アップロード成功: ${finalFileName} (${uploadResult.fileId})`);
+
+      return {
+        success: true,
+        fileId: uploadResult.fileId,
+        fileName: finalFileName,
+        size: videoBuffer.length,
+        viewLink: shareResult.viewLink,
+        downloadLink: shareResult.downloadLink,
+        folderPath: folderStructure.folderPath,
+        description: description,
+        uploadTime: uploadResult.uploadTime,
+        createdTime: uploadResult.createdTime,
+        mimeType: uploadResult.mimeType,
+        originalFileName: fileName,
+        savedAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      logger.error('実Zoom録画保存エラー:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 保存統計情報を取得
    */
   getSaveStats(result) {
