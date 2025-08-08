@@ -3,6 +3,7 @@
 // 変更: ZoomRecordingServiceで実際のZoom録画データを処理（SampleData使用廃止）
 
 const ZoomRecordingService = require('../1.src/services/zoomRecordingService');
+const ZoomService = require('../1.src/services/zoomService');
 const SlackService = require('../1.src/services/slackService');
 const { ExecutionLogger, ExecutionLogManager } = require('../1.src/utils/executionLogger');
 
