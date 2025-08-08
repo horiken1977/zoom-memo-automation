@@ -121,6 +121,13 @@ async function runProductionThroughputTest(res) {
               totalSize: processableFiles.reduce((sum, file) => sum + file.file_size, 0)
             });
           }
+          
+          // 注意: 本番稼働時のZoom録画削除処理
+          // TODO: 本番稼働時は以下のコメントを外して録画削除を有効化
+          // if (process.env.DELETE_ZOOM_RECORDINGS === 'true') {
+          //   await zoomService.deleteRecording(meeting.uuid);
+          //   console.log(`   - 録画削除: 完了`);
+          // }
         } catch (error) {
           console.log(`   - ファイル詳細取得エラー: ${error.message}`);
         }
