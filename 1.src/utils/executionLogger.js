@@ -292,12 +292,12 @@ class ExecutionLogger {
       );
 
       // 共有リンクを生成
-      const shareResult = await this.googleDriveService.createShareableLink(uploadResult.id);
+      const shareResult = await this.googleDriveService.createShareableLink(uploadResult.fileId);
       
       const result = {
         success: true,
         logFileName: logFileName,
-        fileId: uploadResult.id,
+        fileId: uploadResult.fileId,
         folderPath: folderPath,
         viewLink: shareResult.viewLink,
         downloadLink: shareResult.downloadLink,

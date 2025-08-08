@@ -206,7 +206,7 @@ async function runProductionThroughputTest(res) {
     console.log(`   - 動画リンク: ${recordingResult.video?.shareLink || 'なし'}`);
     console.log(`   - 音声処理: ${recordingResult.audio?.success ? '成功' : '失敗'}`);
     console.log(`   - 要約生成: ${recordingResult.audio?.summary ? '成功' : '失敗'}`);
-    console.log(`   - 文字起こし: ${recordingResult.audio?.transcription?.length || 0}文字`);
+    console.log(`   - 文字起こし: ${recordingResult.audio?.transcription?.transcription?.length || 0}文字`);
 
     // Step 3: Slack通知
     timeTracker.log('Step 3: Slack通知開始');
@@ -217,8 +217,8 @@ async function runProductionThroughputTest(res) {
     // Slack投稿用データを準備（実録画処理結果）
     const slackAnalysisResult = {
       meetingInfo: recordingResult.meetingInfo,
-      summary: recordingResult.audio?.summary,
-      transcription: recordingResult.audio?.transcription,
+      summary: recordingResult.audio?.summary?.summary || recordingResult.audio?.structuredSummary?.summary || '',
+      transcription: recordingResult.audio?.transcription?.transcription || '',
       participants: recordingResult.audio?.summary?.attendees || [],
       actionItems: recordingResult.audio?.summary?.nextActions || [],
       decisions: recordingResult.audio?.summary?.decisions || [],
@@ -231,7 +231,7 @@ async function runProductionThroughputTest(res) {
         videoSaved: recordingResult.video?.success,
         videoLink: recordingResult.video?.shareLink,
         audioProcessed: recordingResult.audio?.success,
-        transcriptionLength: recordingResult.audio?.transcription?.length || 0
+        transcriptionLength: recordingResult.audio?.transcription?.transcription?.length || 0
       }
     };
 
@@ -295,7 +295,7 @@ async function runProductionThroughputTest(res) {
           videoSaved: recordingResult.video?.success,
           videoLink: recordingResult.video?.shareLink,
           audioProcessed: recordingResult.audio?.success,
-          transcriptionLength: recordingResult.audio?.transcription?.length || 0
+          transcriptionLength: recordingResult.audio?.transcription?.transcription?.length || 0
         },
         slackNotification: {
           channel: slackResult.channel,
