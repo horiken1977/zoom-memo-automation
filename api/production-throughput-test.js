@@ -1,11 +1,8 @@
-// 本番環境スルーテスト（Zoom環境接続 + End-to-Endテスト）
-// 目的: Zoom API接続確認 → 録画リスト出力 → ダミーデータでのEnd-to-End処理
-// 安全性: 実際のZoom録画はダウンロードせず、存在確認のみ実施
+// 本番環境スルーテスト（Zoom実録画データ完全処理テスト）
+// 目的: Zoom実録画 → 動画Google Drive保存 → 音声AI処理 → Slack通知の完全フロー
+// 変更: ZoomRecordingServiceで実際のZoom録画データを処理（SampleData使用廃止）
 
-const ZoomService = require('../1.src/services/zoomService');
-const SampleDataService = require('../1.src/services/sampleDataService');
-const AudioSummaryService = require('../1.src/services/audioSummaryService');
-const VideoStorageService = require('../1.src/services/videoStorageService');
+const ZoomRecordingService = require('../1.src/services/zoomRecordingService');
 const SlackService = require('../1.src/services/slackService');
 const { ExecutionLogger, ExecutionLogManager } = require('../1.src/utils/executionLogger');
 
@@ -38,9 +35,10 @@ module.exports = async function handler(req, res) {
 // PT001: 本番環境完全スルーテスト
 async function runProductionThroughputTest(res) {
   const startTime = Date.now();
-  console.log('🚀 PT001: 本番環境スルーテスト開始', new Date().toISOString());
+  const executionId = `PT001-${Date.now()}`;
+  console.log('🚀 PT001: 本番環境実録画処理テスト開始', { executionId, timestamp: new Date().toISOString() });
   
-  // 実行ログ開始（ダミーの会議情報で初期化）
+  // 実行ログ開始（後で実際の会議情報で初期化）
   let executionLogger = null;
   
   // 時間追跡システム
@@ -66,206 +64,147 @@ async function runProductionThroughputTest(res) {
   };
 
   try {
-    // Step 1: Zoom環境接続・録画存在確認
-    timeTracker.log('Step 1: Zoom API接続・録画データ確認開始');
-    console.log('\\n=== Step 1: Zoom環境接続確認 ===');
+    // Step 1: ZoomRecordingService初期化・録画リスト取得
+    timeTracker.log('Step 1: ZoomRecordingService初期化・録画リスト取得開始');
+    console.log('\\n=== Step 1: Zoom実録画データ取得 ===');
     
-    const zoomService = new ZoomService();
+    const zoomRecordingService = new ZoomRecordingService();
     
-    // Zoom APIヘルスチェック
-    console.log('Zoom API ヘルスチェック実行中...');
-    const healthCheck = await zoomService.healthCheck();
-    timeTracker.log('Step 1a: Zoom APIヘルスチェック完了');
-    console.log('✅ Zoom API接続状況:', healthCheck);
-    
-    // 実行ログに記録（後でexecutionLoggerが初期化された後に記録）
-
-    // 録画データ存在確認（過去7日間）
+    // 録画データ取得（過去7日間）
     const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const toDate = new Date().toISOString().split('T')[0];
     
-    console.log(`録画データ検索中... (期間: ${fromDate} ～ ${toDate})`);
-    const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
-    timeTracker.log('Step 1b: Zoom録画データ取得完了');
+    console.log(`📋 録画リスト取得中... (期間: ${fromDate} ～ ${toDate})`);
     
-    console.log('\\n📊 Zoom録画データ一覧:');
-    console.log(`検索結果: ${zoomRecordings.length}件の録画を発見`);
+    // 一時的な実行ログ作成（録画リスト取得用）
+    const tempMeetingInfo = {
+      id: 'temp-pt001',
+      topic: 'PT001 Zoom録画リスト取得',
+      start_time: new Date().toISOString()
+    };
+    const tempExecutionLogger = new ExecutionLogger(executionId, tempMeetingInfo);
     
-    let zoomRecordingDetails = [];
-    if (zoomRecordings.length > 0) {
-      // 各録画の詳細情報を取得（実際のダウンロードは行わない）
-      for (let i = 0; i < Math.min(zoomRecordings.length, 5); i++) {
-        const meeting = zoomRecordings[i];
-        console.log(`\\n${i + 1}. 会議: ${meeting.topic}`);
-        console.log(`   - 会議ID: ${meeting.id}`);
-        console.log(`   - 開始時間: ${meeting.start_time}`);
-        console.log(`   - 時間: ${meeting.duration}分`);
-        console.log(`   - ホスト: ${meeting.host_email}`);
+    const availableRecordings = await zoomRecordingService.getRecordingsList(
+      fromDate, 
+      toDate, 
+      tempExecutionLogger
+    );
+    timeTracker.log('Step 1a: Zoom録画リスト取得完了');
+    
+    console.log('\\n📊 取得結果:');
+    console.log(`✅ 処理可能な録画: ${availableRecordings.length}件`);
+    
+    if (availableRecordings.length > 0) {
+      console.log('\\n📋 録画一覧:');
+      availableRecordings.slice(0, 3).forEach((recording, index) => {
+        console.log(`\\n${index + 1}. 会議: ${recording.topic}`);
+        console.log(`   - 会議ID: ${recording.id}`);
+        console.log(`   - 開始時間: ${recording.start_time}`);
+        console.log(`   - 時間: ${recording.duration}分`);
+        console.log(`   - ホスト: ${recording.host_email}`);
         
-        try {
-          // 録画ファイル詳細取得（ダウンロードはしない）
-          const recordingDetails = await zoomService.getMeetingRecordings(meeting.uuid);
-          const processableFiles = recordingDetails.recording_files?.filter(file => 
-            file.file_type === 'MP4' || file.file_type === 'M4A'
-          ) || [];
-          
-          console.log(`   - 処理可能ファイル数: ${processableFiles.length}件`);
-          processableFiles.forEach((file, index) => {
-            const fileSizeMB = (file.file_size / 1024 / 1024).toFixed(2);
-            console.log(`     ${index + 1}) ${file.file_type} (${fileSizeMB}MB) - ${file.recording_type}`);
-          });
-          
-          if (processableFiles.length > 0) {
-            zoomRecordingDetails.push({
-              meetingId: meeting.id,
-              uuid: meeting.uuid,
-              topic: meeting.topic,
-              startTime: meeting.start_time,
-              duration: meeting.duration,
-              hostEmail: meeting.host_email,
-              fileCount: processableFiles.length,
-              totalSize: processableFiles.reduce((sum, file) => sum + file.file_size, 0)
-            });
-          }
-          
-          // 注意: 本番稼働時のZoom録画削除処理
-          // TODO: 本番稼働時は以下のコメントを外して録画削除を有効化
-          // if (process.env.DELETE_ZOOM_RECORDINGS === 'true') {
-          //   await zoomService.deleteRecording(meeting.uuid);
-          //   console.log(`   - 録画削除: 完了`);
-          // }
-        } catch (error) {
-          console.log(`   - ファイル詳細取得エラー: ${error.message}`);
-        }
-      }
+        const videoFiles = recording.recording_files?.filter(file => file.file_type === 'MP4') || [];
+        const audioFiles = recording.recording_files?.filter(file => ['M4A', 'MP3'].includes(file.file_type)) || [];
+        
+        console.log(`   - 動画ファイル: ${videoFiles.length}件`);
+        console.log(`   - 音声ファイル: ${audioFiles.length}件`);
+        
+        const totalSize = recording.recording_files?.reduce((sum, file) => sum + file.file_size, 0) || 0;
+        console.log(`   - 合計サイズ: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+      });
     } else {
-      console.log('📝 処理可能な録画データなし - ダミーデータでテスト継続');
+      console.log('📝 処理可能な録画データなし');
+      
+      // 録画がない場合の対応
+      const result = {
+        success: false,
+        message: 'PT001テスト: 処理可能な録画データが見つかりませんでした',
+        period: `${fromDate} ～ ${toDate}`,
+        totalDuration: Date.now() - startTime,
+        steps: timeTracker.steps
+      };
+      
+      return res.status(200).json(result);
     }
 
-    timeTracker.log('Step 1: Zoom環境確認完了');
+    timeTracker.log('Step 1: Zoom録画リスト取得完了');
 
-    // Step 2: データ取得（ダミーデータ使用）
-    timeTracker.log('Step 2: テストデータ取得開始（ダミーデータ使用）');
-    console.log('\\n=== Step 2: テストデータ準備 ===');
+    // Step 2: 実録画データ処理
+    timeTracker.log('Step 2: Zoom実録画データ処理開始');
+    console.log('\\n=== Step 2: Zoom実録画データ完全処理 ===');
     
-    const sampleDataService = new SampleDataService();
-    const sampleBufferData = await sampleDataService.getSampleDataAsBuffer();
-    timeTracker.log('Step 2a: サンプル音声データ取得完了');
+    // 最初の録画を処理対象とする（テスト用）
+    const targetRecording = availableRecordings[0];
+    console.log(`🎯 処理対象録画: ${targetRecording.topic}`);
     
-    const meetingInfo = sampleDataService.generateSampleMeetingInfo(sampleBufferData.fileName);
+    // 実際の会議情報で実行ログを開始
+    const actualMeetingInfo = zoomRecordingService.extractMeetingInfo(targetRecording);
+    executionLogger = ExecutionLogManager.startExecution(actualMeetingInfo, executionId);
     
-    // 実行ログを開始（会議情報が取得できたタイミング）
-    executionLogger = ExecutionLogManager.startExecution(meetingInfo);
-    executionLogger.logInfo('PT001_TEST_START', {
-      testType: 'Production Throughput Test',
-      dataSource: 'Sample Data',
-      zoomRecordingsFound: zoomRecordingDetails.length
+    executionLogger.logInfo('PT001_REAL_RECORDING_START', {
+      testType: 'Production Throughput Test - Real Recording',
+      meetingId: targetRecording.id,
+      meetingTopic: targetRecording.topic,
+      availableRecordings: availableRecordings.length
     });
     
-    // Step 1の結果を実行ログに記録
-    executionLogger.logSuccess('ZOOM_API_CONNECTION', {
-      healthStatus: healthCheck.status,
-      recordingsFound: zoomRecordings.length,
-      recordingDetails: zoomRecordingDetails.length
-    });
+    console.log('\\n📋 処理詳細:');
+    console.log(`   - 会議名: ${targetRecording.topic}`);
+    console.log(`   - 開始時間: ${targetRecording.start_time}`);
+    console.log(`   - 時間: ${targetRecording.duration}分`);
     
-    // 会議情報にZoom情報を追記（スルーテスト用）
-    meetingInfo.zoomTestInfo = {
-      zoomApiHealthy: healthCheck.status === 'healthy',
-      zoomUser: healthCheck.user || 'unknown',
-      availableRecordings: zoomRecordingDetails.length,
-      testDataUsed: true,
-      testReason: zoomRecordings.length === 0 ? 'No Zoom recordings found' : 'Using sample data for safety'
-    };
-    
-    timeTracker.log('Step 2: テストデータ準備完了');
-    console.log('✅ テストデータ準備完了:', meetingInfo.topic);
-    
-    // Step 2を実行ログに記録
-    executionLogger.logSuccess('TEST_DATA_PREPARATION', {
-      fileName: sampleBufferData.fileName,
-      fileSize: sampleBufferData.size,
-      meetingTopic: meetingInfo.topic
-    });
-
-    // Step 3: 音声要約処理（ダミーデータ）
-    timeTracker.log('Step 3: 音声要約処理開始');
-    console.log('\\n=== Step 3: 音声要約処理（スルーテスト） ===');
-    
-    const audioSummaryService = new AudioSummaryService();
-    const analysisResult = await audioSummaryService.processAudioBuffer(
-      sampleBufferData.audioBuffer, 
-      sampleBufferData.fileName, 
-      meetingInfo
+    // 実録画データ処理実行
+    const recordingResult = await zoomRecordingService.processRecording(
+      targetRecording,
+      executionLogger
     );
     
-    timeTracker.log('Step 3: 音声要約処理完了');
-    console.log('✅ 音声要約処理完了');
-    console.log('   - 文字起こし文字数:', analysisResult.transcription?.length || 0);
+    timeTracker.log('Step 2: 実録画データ処理完了');
+    console.log('✅ Zoom実録画処理完了:', recordingResult.success ? '成功' : '失敗');
     
-    // Step 3を実行ログに記録
-    executionLogger.logSuccess('AUDIO_SUMMARY_PROCESSING', {
-      transcriptionLength: analysisResult.transcription?.length || 0,
-      summaryGenerated: !!analysisResult.structuredSummary,
-      processingMethod: 'Sample Data with Gemini AI'
-    });
+    if (!recordingResult.success) {
+      throw new Error(`録画処理失敗: ${recordingResult.error}`);
+    }
+    
+    console.log('\\n📊 処理結果:');
+    console.log(`   - 動画保存: ${recordingResult.video?.success ? '成功' : '失敗'}`);
+    console.log(`   - 動画リンク: ${recordingResult.video?.shareLink || 'なし'}`);
+    console.log(`   - 音声処理: ${recordingResult.audio?.success ? '成功' : '失敗'}`);
+    console.log(`   - 要約生成: ${recordingResult.audio?.summary ? '成功' : '失敗'}`);
+    console.log(`   - 文字起こし: ${recordingResult.audio?.transcription?.length || 0}文字`);
 
-    // Step 4: 動画保存処理（ダミーデータ）
-    timeTracker.log('Step 4: 動画保存処理開始');
-    console.log('\\n=== Step 4: 動画保存処理（スルーテスト） ===');
-    
-    const videoStorageService = new VideoStorageService();
-    const videoSaveResult = await videoStorageService.saveVideoToGoogleDrive(meetingInfo);
-    
-    timeTracker.log('Step 4: 動画保存処理完了');
-    console.log('✅ 動画保存処理完了');
-    console.log('   - 動画保存先:', videoSaveResult.folderPath);
-    
-    // Step 4を実行ログに記録
-    executionLogger.logSuccess('VIDEO_STORAGE', {
-      fileId: videoSaveResult.fileId,
-      fileName: videoSaveResult.fileName,
-      folderPath: videoSaveResult.folderPath,
-      viewLink: videoSaveResult.viewLink
-    });
-
-    // Step 5: Slack投稿（本番チャンネル）
-    timeTracker.log('Step 5: Slack投稿開始（スルーテスト通知）');
-    console.log('\\n=== Step 5: Slack投稿（スルーテスト） ===');
+    // Step 3: Slack通知
+    timeTracker.log('Step 3: Slack通知開始');
+    console.log('\\n=== Step 3: Slack通知（実録画処理結果） ===');
     
     const slackService = new SlackService();
     
-    // Slack投稿用データを準備（スルーテスト情報を含む）
+    // Slack投稿用データを準備（実録画処理結果）
     const slackAnalysisResult = {
-      meetingInfo: meetingInfo,
-      summary: analysisResult.structuredSummary,
-      transcription: analysisResult.transcription,
-      participants: analysisResult.structuredSummary?.attendees || [],
-      actionItems: analysisResult.structuredSummary?.nextActions || [],
-      decisions: analysisResult.structuredSummary?.decisions || [],
-      // スルーテスト専用情報
-      throughputTestInfo: {
-        testType: 'Production Throughput Test (PT001)',
+      meetingInfo: recordingResult.meetingInfo,
+      summary: recordingResult.audio?.summary,
+      transcription: recordingResult.audio?.transcription,
+      participants: recordingResult.audio?.summary?.attendees || [],
+      actionItems: recordingResult.audio?.summary?.nextActions || [],
+      decisions: recordingResult.audio?.summary?.decisions || [],
+      // 実録画処理専用情報
+      realRecordingInfo: {
+        testType: 'PT001: 実録画データ完全処理テスト',
         executionTime: Date.now() - startTime,
-        zoomApiStatus: healthCheck.status,
-        zoomRecordingsFound: zoomRecordings.length,
-        processedRecordings: zoomRecordingDetails.length,
-        testDataUsed: true
+        meetingId: recordingResult.meetingId,
+        meetingTopic: recordingResult.meetingTopic,
+        videoSaved: recordingResult.video?.success,
+        videoLink: recordingResult.video?.shareLink,
+        audioProcessed: recordingResult.audio?.success,
+        transcriptionLength: recordingResult.audio?.transcription?.length || 0
       }
     };
 
     const slackResult = await slackService.sendMeetingSummary(slackAnalysisResult);
-    timeTracker.log('Step 5: Slack投稿完了');
-    console.log('✅ Slack投稿成功');
+    timeTracker.log('Step 3: Slack通知完了');
+    console.log('✅ Slack通知成功');
     console.log('   - チャンネル:', slackResult.channel);
     console.log('   - タイムスタンプ:', slackResult.ts);
-    
-    // Step 5を実行ログに記録
-    executionLogger.logSuccess('SLACK_NOTIFICATION', {
-      channel: slackResult.channel,
-      messageId: slackResult.ts,
-      testType: 'Production Throughput Test'
-    });
 
     // 実行ログを完了してGoogle Driveに保存
     let logSaveResult = null;
@@ -303,30 +242,31 @@ async function runProductionThroughputTest(res) {
         endTime: new Date().toISOString()
       },
       zoomEnvironment: {
-        apiHealth: healthCheck,
-        recordingsFound: zoomRecordings.length,
-        recordingDetails: zoomRecordingDetails.slice(0, 3), // 最大3件まで
+        recordingsFound: availableRecordings.length,
+        recordingDetails: availableRecordings.slice(0, 3).map(rec => ({
+          meetingId: rec.id,
+          topic: rec.topic,
+          startTime: rec.start_time,
+          duration: rec.duration,
+          hostEmail: rec.host_email
+        })),
         searchPeriod: { from: fromDate, to: toDate }
       },
       testExecution: {
-        dataSource: 'sample_data', // 安全のためサンプルデータ使用
-        audioFile: {
-          fileName: sampleBufferData.fileName,
-          size: sampleBufferData.size,
-          mimeType: sampleBufferData.mimeType
-        },
-        videoStorage: {
-          fileId: videoSaveResult.fileId,
-          fileName: videoSaveResult.fileName,
-          viewLink: videoSaveResult.viewLink,
-          downloadLink: videoSaveResult.downloadLink,
-          folderPath: videoSaveResult.folderPath
+        dataSource: 'real_zoom_recording', // 実際のZoom録画データ使用
+        processedRecording: {
+          meetingId: recordingResult.meetingId,
+          meetingTopic: recordingResult.meetingTopic || targetRecording.topic,
+          videoSaved: recordingResult.video?.success,
+          videoLink: recordingResult.video?.shareLink,
+          audioProcessed: recordingResult.audio?.success,
+          transcriptionLength: recordingResult.audio?.transcription?.length || 0
         },
         slackNotification: {
           channel: slackResult.channel,
           messageId: slackResult.ts,
           posted: true,
-          testType: 'production_throughput'
+          testType: 'production_throughput_real_recording'
         }
       },
       executionLog: logSaveResult ? {
@@ -336,7 +276,7 @@ async function runProductionThroughputTest(res) {
         folderPath: logSaveResult.folderPath,
         error: logSaveResult.error
       } : null,
-      note: 'PT001完了: Zoom環境確認→録画リスト取得→サンプルデータでのEnd-to-End処理→本番Slack投稿→実行ログGoogle Drive保存',
+      note: 'PT001完了: Zoom実録画リスト取得→実録画データ処理→動画Google Drive保存→音声AI処理→Slack通知→実行ログGoogle Drive保存',
       timestamp: new Date().toISOString()
     });
 
