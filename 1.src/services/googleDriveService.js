@@ -467,7 +467,8 @@ class GoogleDriveService {
         resource: fileMetadata,
         media: media,
         fields: 'id, name, size, mimeType, createdTime',
-        supportsAllDrives: true
+        supportsAllDrives: true,
+        supportsTeamDrives: true
       });
 
       const uploadTime = Math.round((Date.now() - startTime) / 1000);

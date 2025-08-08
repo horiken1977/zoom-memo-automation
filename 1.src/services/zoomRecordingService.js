@@ -323,7 +323,10 @@ class ZoomRecordingService {
         throw new Error('音声ファイル(M4A/MP3)が見つかりません');
       }
       
-      logger.info(`音声ファイル取得開始: ${audioFile.file_name} (${Math.round(audioFile.file_size / 1024 / 1024)}MB)`);
+      // ファイル名のフォールバック処理
+      const audioFileName = audioFile.file_name || `audio_${recording.id}.${audioFile.file_type.toLowerCase()}`;
+      
+      logger.info(`音声ファイル取得開始: ${audioFileName} (${Math.round(audioFile.file_size / 1024 / 1024)}MB)`);
       
       // 音声ファイルをメモリバッファとして取得
       const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
@@ -331,13 +334,13 @@ class ZoomRecordingService {
       // Gemini AIで文字起こし・要約処理
       const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
         audioBuffer,
-        audioFile.file_name,
+        audioFileName,
         this.extractMeetingInfo(recording)
       );
       
       if (executionLogger) {
         executionLogger.completeStep('AUDIO_PROCESSING', {
-          fileName: audioFile.file_name,
+          fileName: audioFileName,
           fileSize: audioFile.file_size,
           transcriptionLength: analysisResult.transcription?.length || 0,
           summaryGenerated: !!analysisResult.structuredSummary
