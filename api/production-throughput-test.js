@@ -241,6 +241,12 @@ async function runProductionThroughputTest(res) {
       folderPath: recordingResult.video?.folderPath || 'Zoom録画フォルダ',
       uploadTime: Math.floor((Date.now() - startTime) / 1000)
     };
+    
+    // デバッグ用ログ出力
+    console.log('📊 driveResult詳細:');
+    console.log(`   - viewLink: ${driveResult.viewLink}`);
+    console.log(`   - folderPath: ${driveResult.folderPath}`);
+    console.log(`   - recordingResult.video:`, recordingResult.video);
 
     const slackResult = await slackService.sendMeetingSummaryWithRecording(slackAnalysisResult, driveResult);
     timeTracker.log('Step 3: Slack通知完了');

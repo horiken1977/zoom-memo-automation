@@ -626,7 +626,7 @@ ${analysisResult.transcription}
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `🎥 *録画ファイル:* <${driveResult.viewLink}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath}\n⏱️ *開催日時:* ${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}\n🕐 *時間:* ${meetingInfo.duration}分`
+        text: `🎥 *録画ファイル:* <${driveResult.viewLink || 'リンク取得中'}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath || 'Zoom録画フォルダ'}\n⏱️ *開催日時:* ${this.formatMeetingStartTime(meetingInfo)}\n🕐 *時間:* ${meetingInfo.duration}分`
       }
     });
 
@@ -634,13 +634,16 @@ ${analysisResult.transcription}
 
     // 要約セクション
     if (summary) {
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*📝 会議要約*\n${summary}`
-        }
-      });
+      const shortSummary = this.extractShortSummary(summary);
+      if (shortSummary) {
+        blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*📝 会議要約*\n${shortSummary}`
+          }
+        });
+      }
     }
 
     // 参加者情報
