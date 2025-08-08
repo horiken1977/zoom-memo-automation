@@ -560,7 +560,7 @@
                 <h3><span class="status-indicator status-completed"></span>C006: Slack統合機能</h3>
                 <p><strong>説明:</strong> 議事録要約とGoogle Drive録画リンクをSlackチャンネルに自動投稿する機能</p>
                 <p><strong>実装場所:</strong> 1.src/services/slackService.js</p>
-                <p><strong>状態:</strong> ✅ 実装完了（通知制御機能付き）</p>
+                <p><strong>状態:</strong> ✅ 実装完了（運用品質向上機能実装済み）</p>
                 
                 <h4>詳細仕様</h4>
                 <table>
@@ -579,6 +579,10 @@
                     <tr>
                         <td>添付ファイル</td>
                         <td>文字起こし全文（TXTファイル）</td>
+                    </tr>
+                    <tr>
+                        <td>運用品質機能</td>
+                        <td>要約全文表示（2700文字制限）、日付適切表示、エンドマーカー、切断検知</td>
                     </tr>
                     <tr>
                         <td>制御機能</td>
@@ -924,6 +928,7 @@ const shouldNotify = ErrorManager.shouldNotifySlack('ZM001'); // true
                     <ul>
                         <li><strong>構造化ログ:</strong> ExecutionLoggerでエラーコードを自動記録</li>
                         <li><strong>Google Drive保存:</strong> エラー発生時もログを確実に保存</li>
+                        <li><strong>日本語運用対応:</strong> ログステップ日本語説明、ソース情報、ステータスアイコン追加</li>
                         <li><strong>統計機能:</strong> エラー種別ごとの発生頻度を追跡</li>
                         <li><strong>Slack連携:</strong> 重要エラーは自動でSlack通知</li>
                     </ul>

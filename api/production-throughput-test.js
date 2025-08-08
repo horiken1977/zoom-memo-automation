@@ -234,8 +234,15 @@ async function runProductionThroughputTest(res) {
         transcriptionLength: recordingResult.audio?.transcription?.transcription?.length || 0
       }
     };
+    
+    // Google Drive録画リンク情報を準備
+    const driveResult = {
+      viewLink: recordingResult.video?.shareLink,
+      folderPath: recordingResult.video?.folderPath || 'Zoom録画フォルダ',
+      uploadTime: Math.floor((Date.now() - startTime) / 1000)
+    };
 
-    const slackResult = await slackService.sendMeetingSummary(slackAnalysisResult);
+    const slackResult = await slackService.sendMeetingSummaryWithRecording(slackAnalysisResult, driveResult);
     timeTracker.log('Step 3: Slack通知完了');
     console.log('✅ Slack通知成功');
     console.log('   - チャンネル:', slackResult.channel);
