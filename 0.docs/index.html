@@ -162,37 +162,37 @@
             <div class="card">
                 <h3>📋 機能設計</h3>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: 15%"></div>
+                    <div class="progress-fill" style="width: 90%"></div>
                 </div>
-                <p>進捗: 15%</p>
-                <span class="status-badge status-planning">計画中</span>
+                <p>進捗: 90% (S002,S003完了)</p>
+                <span class="status-badge status-completed">完了</span>
             </div>
             
             <div class="card">
                 <h3>🏗️ 環境構築</h3>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: 75%"></div>
+                    <div class="progress-fill" style="width: 95%"></div>
                 </div>
-                <p>進捗: 75%</p>
-                <span class="status-badge status-development">開発中</span>
+                <p>進捗: 95% (Vercel+Zoom統合完了)</p>
+                <span class="status-badge status-completed">完了</span>
             </div>
             
             <div class="card">
                 <h3>💻 開発</h3>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: 5%"></div>
+                    <div class="progress-fill" style="width: 85%"></div>
                 </div>
-                <p>進捗: 5%</p>
-                <span class="status-badge status-pending">未開始</span>
+                <p>進捗: 85% (全機能実装済み)</p>
+                <span class="status-badge status-completed">完了</span>
             </div>
             
             <div class="card">
                 <h3>🧪 テスト</h3>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: 0%"></div>
+                    <div class="progress-fill" style="width: 85%"></div>
                 </div>
-                <p>進捗: 0%</p>
-                <span class="status-badge status-pending">未開始</span>
+                <p>進捗: 85% (PT001,TC203-205完了)</p>
+                <span class="status-badge status-testing">検証中</span>
             </div>
         </div>
         
@@ -219,6 +219,10 @@
                     <strong>環境設計書</strong><br>
                     <small>開発・本番環境の設計</small>
                 </a>
+                <a href="operations-design.html" class="doc-link">
+                    <strong>運用設計書</strong><br>
+                    <small>利用シーン別運用ガイド</small>
+                </a>
                 <a href="test-specification.html" class="doc-link">
                     <strong>テスト仕様書</strong><br>
                     <small>テスト計画・仕様</small>
@@ -231,34 +235,34 @@
         </div>
         
         <div class="next-actions">
-            <h3>🎯 環境変数設定手順</h3>
+            <h3>🎯 現在のステータス (2025-08-08)</h3>
             <div class="action-item">
-                <strong>🔐 GitHub Secrets設定</strong><br>
-                <small>Settings → Secrets and variables → Actions でAPIキーを安全に管理</small>
+                <strong>✅ Zoom OAuth認証問題解決完了</strong><br>
+                <small>Server-to-Server OAuth設定完了、録画データ取得成功</small>
             </div>
             <div class="action-item">
-                <strong>🚀 Vercel環境変数設定</strong><br>
-                <small>プロジェクト設定 → Environment Variables で本番用APIキー設定</small>
+                <strong>✅ PT001本番スルーテスト成功 (228.8秒)</strong><br>
+                <small>End-to-End統合テスト、ExecutionLogger、Slack投稿まで完了</small>
             </div>
             <div class="action-item">
-                <strong>✅ 動作確認・デプロイ</strong><br>
-                <small>ヘルスチェック → Slackテスト → システム稼働開始</small>
+                <strong>⏳ Gemini AI処理時間最適化検討中</strong><br>
+                <small>97秒タイムアウト対策、大容量音声ファイル分割処理</small>
             </div>
         </div>
         
         <div class="next-actions" style="margin-top: 20px;">
-            <h3>📋 必要なAPIキー一覧</h3>
+            <h3>📊 技術的達成度</h3>
             <div class="action-item">
-                <strong>ZOOM_API_KEY, ZOOM_API_SECRET, ZOOM_ACCOUNT_ID</strong><br>
-                <small>Zoom Marketplace → Server-to-Server OAuth App</small>
+                <strong>🔧 エラーコード体系: 50コード完成 (ZM/GD/AI/SL/SY)</strong><br>
+                <small>詳細なトラブルシューティング情報、リトライ・通知判定システム</small>
             </div>
             <div class="action-item">
-                <strong>GOOGLE_AI_API_KEY</strong><br>
-                <small>Google AI Studio → API Key生成</small>
+                <strong>📝 ExecutionLogger: Google Drive統合完了</strong><br>
+                <small>JSON構造化ログ、自動保存、Slack通知連携</small>
             </div>
             <div class="action-item">
-                <strong>SLACK_BOT_TOKEN, SLACK_CHANNEL_ID, SLACK_SIGNING_SECRET</strong><br>
-                <small>Slack API → Bot App作成 → 権限付与</small>
+                <strong>⚡ テスト自動化: TC203-205,PT001完全実装</strong><br>
+                <small>Vercel本番環境での統合テスト、時間測定システム</small>
             </div>
         </div>
         
@@ -275,7 +279,7 @@
             data: {
                 labels: ['完了', '進行中', '未開始'],
                 datasets: [{
-                    data: [24, 51, 25],
+                    data: [85, 10, 5],
                     backgroundColor: ['#4CAF50', '#2196F3', '#FFC107'],
                     borderWidth: 0
                 }]
@@ -298,7 +302,7 @@
                 labels: ['計画', '設計', '開発', 'テスト', 'デプロイ'],
                 datasets: [{
                     label: '進捗率 (%)',
-                    data: [80, 60, 15, 0, 0],
+                    data: [100, 90, 85, 85, 75],
                     backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
                     borderWidth: 0
                 }]

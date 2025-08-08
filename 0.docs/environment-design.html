@@ -168,6 +168,7 @@
         <div class="nav">
             <a href="index.html">🏠 ダッシュボード</a>
             <a href="functional-design.html">📋 機能設計書</a>
+            <a href="operations-design.html">🛠️ 運用設計書</a>
             <a href="test-specification.html">🧪 テスト仕様書</a>
             <a href="claude.md">💬 対話記録</a>
         </div>
@@ -183,39 +184,66 @@ zoom-memo-automation/
 │   ├── functional-design.html          # 機能設計書
 │   ├── environment-design.html         # 環境設計書（本ファイル）
 │   ├── test-specification.html         # テスト仕様書
-│   └── claude.md                       # Claude Code対話記録
+│   ├── claude.md                       # Claude Code対話記録
+│   └── zoom-marketplace-setup-detailed.md  # Zoom API設定詳細手順
 │
 ├── 1.src/                              # プログラムソース用フォルダ
-│   ├── components/                     # Reactコンポーネント
-│   ├── pages/                          # Next.jsページ
-│   ├── 2.tests/api/                  # テスト用APIエンドポイント
-│   ├── lib/                           # ユーティリティライブラリ
-│   ├── types/                         # TypeScript型定義
-│   └── styles/                        # スタイルシート
+│   ├── config/                         # 設定ファイル
+│   │   └── index.js                   # メイン設定（環境変数、プロンプト）
+│   ├── services/                       # サービス層
+│   │   ├── zoomService.js             # Zoom API連携
+│   │   ├── audioSummaryService.js     # 音声処理・要約
+│   │   ├── videoStorageService.js     # 動画保存
+│   │   ├── googleDriveService.js      # Google Drive操作
+│   │   ├── slackService.js            # Slack通知
+│   │   ├── aiService.js               # Gemini AI処理
+│   │   └── sampleDataService.js       # テスト用データ
+│   ├── utils/                          # ユーティリティ
+│   │   ├── errorCodes.js              # エラーコード体系（50コード）
+│   │   ├── executionLogger.js         # Google Drive実行ログ
+│   │   ├── errorHandler.js            # エラーハンドリング
+│   │   └── claudeDocUpdater.js        # ドキュメント自動更新
+│   ├── index.js                        # メインアプリケーション
+│   └── check-env.js                    # 環境変数チェック
 │
 ├── 2.tests/                           # テスト関連
-│   ├── data/                          # テストデータ
-│   │   ├── audio-samples/             # 音声テストファイル
-│   │   ├── mock-responses/            # モックAPIレスポンス
-│   │   └── test-configs/              # テスト設定ファイル
+│   ├── data/                          # テストデータ・結果
+│   │   ├── live-api-test-results-*.json # APIテスト結果
+│   │   └── test-config.json           # テスト設定
 │   └── tools/                         # テストツール類
-│       ├── test-runners/              # テスト実行スクリプト
-│       ├── mocks/                     # モックサーバー
-│       └── automation/                # 自動テストスクリプト
+│       ├── api-connection-test.js     # API接続テスト
+│       ├── production-env-test.js     # 本番環境テスト
+│       └── run-live-api-tests.js      # ライブAPIテスト
 │
 ├── 3.operations/                      # 運用関連の仕組み
 │   ├── src/                          # 運用スクリプト
 │   │   ├── chat-backup.js            # Claude対話記録バックアップ
 │   │   ├── monitor.js                # システム監視
-│   │   └── deploy.js                 # デプロイメント
+│   │   ├── save-conversation.js      # Cipher対話保存
+│   │   └── update-design-docs.js     # ドキュメント自動更新
 │   ├── configs/                      # 設定ファイル
+│   │   └── chat-backup.json          # バックアップ設定
+│   ├── backups/                      # バックアップファイル
 │   └── logs/                         # ログファイル
+│       ├── app.log                   # アプリケーションログ
+│       └── error.log                 # エラーログ
 │
-├── package.json                       # Node.js依存関係
-├── tsconfig.json                      # TypeScript設定
-├── next.config.js                     # Next.js設定
-├── vercel.json                        # Vercel設定
-└── README.md                          # プロジェクト説明
+├── api/                               # Vercel APIエンドポイント
+│   ├── health-check.js               # ヘルスチェック
+│   ├── monitor-recordings-gdrive-test.js # TC203/204/205テスト
+│   ├── monitor-recordings.js         # 本番録画監視
+│   ├── production-throughput-test.js # PT001本番スルーテスト
+│   ├── test-zoom.js                  # Zoom認証・録画テスト
+│   └── claude-*.js                   # Claude関連API
+│
+├── data/                             # データベース・キャッシュ
+│   ├── cipher.db*                    # Cipher対話記録DB
+│
+├── package.json                      # Node.js依存関係
+├── vercel.json                       # Vercel設定（maxDuration: 300秒）
+├── CLAUDE.md                         # プロジェクトガイドライン
+├── README.md                         # プロジェクト説明
+└── REDEPLOY.md                       # デプロイメント手順
             </div>
         </div>
         
@@ -253,16 +281,16 @@ zoom-memo-automation/
                         v18.x LTS
                     </div>
                     <div class="tech-item">
-                        <strong>Next.js</strong><br>
-                        v14.x
+                        <strong>Express.js</strong><br>
+                        v4.18.x (Vercel Functions)
                     </div>
                     <div class="tech-item">
-                        <strong>TypeScript</strong><br>
-                        v5.x
+                        <strong>Google AI</strong><br>
+                        Gemini 2.5 Pro API
                     </div>
                     <div class="tech-item">
-                        <strong>React</strong><br>
-                        v18.x
+                        <strong>Google APIs</strong><br>
+                        Drive v3, Service Account
                     </div>
                 </div>
                 
@@ -301,7 +329,7 @@ zoom-memo-automation/
             <h2>4. 本番環境</h2>
             
             <div class="environment-card">
-                <h3>Vercel デプロイメント <span class="status-badge status-progress">準備中</span></h3>
+                <h3>Vercel デプロイメント <span class="status-badge status-configured">稼働中</span></h3>
                 
                 <h4>設定項目</h4>
                 <table>
@@ -313,11 +341,11 @@ zoom-memo-automation/
                     <tr>
                         <td>プロジェクト名</td>
                         <td>zoom-memo-automation</td>
-                        <td><span class="status-badge status-pending">未設定</span></td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
                     </tr>
                     <tr>
                         <td>フレームワーク</td>
-                        <td>Next.js</td>
+                        <td>Serverless Functions</td>
                         <td><span class="status-badge status-configured">設定済み</span></td>
                     </tr>
                     <tr>
@@ -326,9 +354,14 @@ zoom-memo-automation/
                         <td><span class="status-badge status-configured">設定済み</span></td>
                     </tr>
                     <tr>
-                        <td>ビルドコマンド</td>
-                        <td>npm run build</td>
-                        <td><span class="status-badge status-pending">未設定</span></td>
+                        <td>maxDuration</td>
+                        <td>300秒（5分制限）</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
+                    </tr>
+                    <tr>
+                        <td>Functions制限</td>
+                        <td>12ファンクション（Hobbyプラン）</td>
+                        <td><span class="status-badge status-configured">対応済み</span></td>
                     </tr>
                 </table>
                 
@@ -372,17 +405,17 @@ zoom-memo-automation/
                     <tr>
                         <td>GOOGLE_DRIVE_CREDENTIALS</td>
                         <td>Google Drive サービスアカウント認証情報（JSON）</td>
-                        <td><span class="status-badge status-pending">要設定</span></td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
                     </tr>
                     <tr>
                         <td>GOOGLE_DRIVE_ORG_DOMAIN</td>
-                        <td>Google Drive 組織ドメイン（共有用）</td>
-                        <td><span class="status-badge status-pending">要設定</span></td>
+                        <td>Google Drive 組織ドメイン（grtx.jp）</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
                     </tr>
                     <tr>
                         <td>GOOGLE_DRIVE_RECORDINGS_FOLDER</td>
-                        <td>録画保存用フォルダ名（デフォルト: Zoom_Recordings）</td>
-                        <td><span class="status-badge status-optional">オプション</span></td>
+                        <td>録画保存用フォルダID（動的生成）</td>
+                        <td><span class="status-badge status-configured">設定済み</span></td>
                     </tr>
                 </table>
             </div>
@@ -436,12 +469,14 @@ zoom-memo-automation/
             </div>
             
             <div class="environment-card">
-                <h3>Google Drive Platform <span class="status-badge status-development">実装中</span></h3>
+                <h3>Google Drive Platform <span class="status-badge status-configured">設定済み</span></h3>
                 <ul>
                     <li>✅ Google Cloud Console プロジェクト設定</li>
-                    <li>⏳ サービスアカウント作成 + JSON認証キー</li>
-                    <li>⏳ Drive API有効化</li>
-                    <li>⏳ 組織ドメイン共有権限設定</li>
+                    <li>✅ サービスアカウント作成 + JSON認証キー</li>
+                    <li>✅ Drive API有効化</li>
+                    <li>✅ 組織ドメイン共有権限設定（grtx.jp）</li>
+                    <li>✅ supportsAllDrives: true 設定</li>
+                    <li>✅ 動的フォルダ生成・共有リンク作成</li>
                 </ul>
             </div>
             
@@ -456,39 +491,74 @@ zoom-memo-automation/
             </div>
             
             <div class="environment-card">
-                <h3>AWS Services <span class="status-badge status-pending">未設定</span></h3>
+                <h3>追加システム統合</h3>
                 <ul>
-                    <li>S3 バケット作成（音声ファイル保存用）</li>
-                    <li>IAM ユーザー作成</li>
-                    <li>CloudFront CDN 設定</li>
+                    <li>✅ <strong>ExecutionLogger</strong> - Google Drive構造化ログシステム</li>
+                    <li>✅ <strong>ErrorCodes</strong> - 50コード体系（ZM/GD/AI/SL/SY）</li>
+                    <li>✅ <strong>Cipher MCP</strong> - 対話記録自動保存システム</li>
+                    <li>✅ <strong>Claude Code</strong> - AI開発支援統合</li>
                 </ul>
             </div>
         </div>
         
         <div class="section">
-            <h2>6. CI/CD パイプライン</h2>
+            <h2>6. テスト・デプロイ環境</h2>
             
-            <h3>GitHub Actions <span class="status-badge status-pending">未設定</span></h3>
+            <h3>自動テストシステム <span class="status-badge status-configured">稼働中</span></h3>
             <table>
                 <tr>
-                    <th>ワークフロー</th>
+                    <th>テストケース</th>
+                    <th>実行環境</th>
+                    <th>検証内容</th>
+                    <th>状態</th>
+                </tr>
+                <tr>
+                    <td>PT001本番スルーテスト</td>
+                    <td>Vercel本番環境</td>
+                    <td>End-to-End統合テスト（228.8秒）</td>
+                    <td><span class="status-badge status-configured">成功</span></td>
+                </tr>
+                <tr>
+                    <td>TC203/204/205</td>
+                    <td>Vercel本番環境</td>
+                    <td>音声処理・動画保存・Slack投稿</td>
+                    <td><span class="status-badge status-configured">成功</span></td>
+                </tr>
+                <tr>
+                    <td>Zoom認証テスト</td>
+                    <td>Vercel本番環境</td>
+                    <td>Server-to-Server OAuth認証</td>
+                    <td><span class="status-badge status-configured">成功</span></td>
+                </tr>
+                <tr>
+                    <td>JWT認証フォールバック</td>
+                    <td>Vercel本番環境</td>
+                    <td>レガシー認証システム確認</td>
+                    <td><span class="status-badge status-configured">成功</span></td>
+                </tr>
+            </table>
+
+            <h3>デプロイメント <span class="status-badge status-configured">自動化済み</span></h3>
+            <table>
+                <tr>
+                    <th>方式</th>
                     <th>トリガー</th>
                     <th>処理内容</th>
                 </tr>
                 <tr>
-                    <td>テスト実行</td>
-                    <td>Pull Request</td>
-                    <td>ユニットテスト、統合テスト実行</td>
-                </tr>
-                <tr>
-                    <td>ビルド確認</td>
+                    <td>GitHub → Vercel</td>
                     <td>Push to main</td>
-                    <td>ビルド成功確認</td>
+                    <td>自動デプロイメント（15-30秒）</td>
                 </tr>
                 <tr>
-                    <td>デプロイ</td>
-                    <td>タグ作成</td>
-                    <td>Vercel自動デプロイ</td>
+                    <td>Claude Code統合</td>
+                    <td>コード変更</td>
+                    <td>git commit → push → デプロイ</td>
+                </tr>
+                <tr>
+                    <td>実行ログ保存</td>
+                    <td>テスト実行</td>
+                    <td>Google Drive自動保存</td>
                 </tr>
             </table>
         </div>
@@ -496,24 +566,134 @@ zoom-memo-automation/
         <div class="section">
             <h2>7. 監視・ログ</h2>
             
-            <h3>システム監視 <span class="status-badge status-progress">準備中</span></h3>
+            <h3>実行ログシステム <span class="status-badge status-configured">稼働中</span></h3>
             <ul>
-                <li>Vercel Analytics による性能監視</li>
-                <li>エラー監視（Sentry連携予定）</li>
-                <li>アップタイム監視</li>
+                <li>✅ <strong>ExecutionLogger</strong> - Google Drive構造化ログ保存</li>
+                <li>✅ <strong>時間測定システム</strong> - 各ステップの実行時間記録</li>
+                <li>✅ <strong>エラーコード体系</strong> - 50コードによる詳細エラー分類</li>
+                <li>✅ <strong>Slack通知連携</strong> - ログリンク付き通知</li>
             </ul>
             
-            <h3>ログ管理</h3>
+            <h3>システム監視 <span class="status-badge status-configured">設定済み</span></h3>
             <ul>
-                <li>アプリケーションログ: Vercel Functions ログ</li>
-                <li>アクセスログ: Vercel Analytics</li>
-                <li>エラーログ: Console出力</li>
+                <li>✅ Vercel Functions ログ（Console出力）</li>
+                <li>✅ 実行時間監視（タイムアウト: 300秒）</li>
+                <li>✅ API接続状況監視（Zoom/Google/Slack）</li>
+                <li>✅ メモリ使用量監視（Vercel制限内）</li>
             </ul>
+            
+            <h3>ログ管理体系</h3>
+            <table>
+                <tr>
+                    <th>ログ種別</th>
+                    <th>保存先</th>
+                    <th>形式</th>
+                    <th>保持期間</th>
+                </tr>
+                <tr>
+                    <td>実行ログ</td>
+                    <td>Google Drive</td>
+                    <td>JSON構造化</td>
+                    <td>永続</td>
+                </tr>
+                <tr>
+                    <td>システムログ</td>
+                    <td>Vercel Functions</td>
+                    <td>Console出力</td>
+                    <td>7日間</td>
+                </tr>
+                <tr>
+                    <td>エラーログ</td>
+                    <td>Google Drive + Slack</td>
+                    <td>JSON + 通知</td>
+                    <td>永続</td>
+                </tr>
+                <tr>
+                    <td>対話記録</td>
+                    <td>Cipher DB + バックアップ</td>
+                    <td>Markdown</td>
+                    <td>永続</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>8. 現在のシステム状況（2025-08-08）</h2>
+            
+            <div class="environment-card">
+                <h3>実装完了項目 <span class="status-badge status-configured">稼働準備完了</span></h3>
+                
+                <h4>✅ 認証・API統合</h4>
+                <ul>
+                    <li><strong>Zoom OAuth認証</strong> - Server-to-Server OAuth完全実装</li>
+                    <li><strong>Google AI統合</strong> - Gemini 2.5 Pro、動的モデル選択</li>
+                    <li><strong>Google Drive統合</strong> - サービスアカウント、共有ドライブ対応</li>
+                    <li><strong>Slack統合</strong> - Bot API、ブロックUI形式</li>
+                </ul>
+                
+                <h4>✅ システム機能</h4>
+                <ul>
+                    <li><strong>End-to-End処理</strong> - 録画監視→文字起こし→要約→保存→通知</li>
+                    <li><strong>ExecutionLogger</strong> - Google Drive構造化ログシステム</li>
+                    <li><strong>エラーハンドリング</strong> - 50コードエラー体系、自動リトライ</li>
+                    <li><strong>メモリ最適化</strong> - ファイル操作なし、完全バッファ処理</li>
+                </ul>
+                
+                <h4>✅ 運用・テスト体制</h4>
+                <ul>
+                    <li><strong>自動テスト</strong> - PT001/TC203-205完全実装</li>
+                    <li><strong>本番環境統合</strong> - Vercel Hobbyプラン最適化</li>
+                    <li><strong>対話記録自動化</strong> - Cipher MCP統合</li>
+                    <li><strong>ドキュメント自動更新</strong> - HTML形式、進捗可視化</li>
+                </ul>
+            </div>
+            
+            <div class="environment-card">
+                <h3>技術的成果</h3>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>実装内容</th>
+                        <th>技術的特徴</th>
+                    </tr>
+                    <tr>
+                        <td>処理時間</td>
+                        <td>PT001: 228.8秒成功</td>
+                        <td>Vercel 300秒制限内で安定稼働</td>
+                    </tr>
+                    <tr>
+                        <td>エラー対応</td>
+                        <td>50コード体系実装</td>
+                        <td>ZM/GD/AI/SL/SY分類、詳細トラブルシューティング</td>
+                    </tr>
+                    <tr>
+                        <td>ログシステム</td>
+                        <td>Google Drive統合</td>
+                        <td>JSON構造化、Slack通知連携</td>
+                    </tr>
+                    <tr>
+                        <td>開発効率</td>
+                        <td>Claude Code統合</td>
+                        <td>自動コミット・デプロイ・テスト実行</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="environment-card">
+                <h3>次期改善予定 <span class="status-badge status-progress">検討中</span></h3>
+                <ul>
+                    <li>⏳ <strong>Gemini AI処理最適化</strong> - 97秒タイムアウト対策</li>
+                    <li>⏳ <strong>大容量音声ファイル対応</strong> - 分割処理実装</li>
+                    <li>⏳ <strong>録画削除機能</strong> - 本番環境での自動削除有効化</li>
+                    <li>⏳ <strong>スケール対応</strong> - Vercel Pro版移行検討</li>
+                </ul>
+            </div>
         </div>
         
         <div class="last-updated">
             最終更新: <span id="lastUpdated"></span> | 
-            自動更新: <span id="autoUpdate">有効</span>
+            自動更新: <span id="autoUpdate">有効</span> | 
+            <strong>システム稼働準備完了: 2025-08-08</strong>
         </div>
     </div>
     

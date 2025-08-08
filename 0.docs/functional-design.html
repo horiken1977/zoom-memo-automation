@@ -141,6 +141,7 @@
         <div class="nav">
             <a href="index.html">🏠 ダッシュボード</a>
             <a href="environment-design.html">🏗️ 環境設計書</a>
+            <a href="operations-design.html">🛠️ 運用設計書</a>
             <a href="test-specification.html">🧪 テスト仕様書</a>
             <a href="claude.md">💬 対話記録</a>
         </div>
@@ -651,10 +652,10 @@
             </div>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-planned"></span>S002: 録画別実行ログ出力システム</h3>
+                <h3><span class="status-indicator status-completed"></span>S002: 録画別実行ログ出力システム</h3>
                 <p><strong>説明:</strong> 各録画ファイルの処理実行ログを個別ファイルで Google Drive に自動保存する機能</p>
-                <p><strong>実装場所:</strong> 1.src/utils/executionLogger.js（新規作成）、各サービスクラス</p>
-                <p><strong>状態:</strong> 📋 要実装 - エラーコード体系とあわせて実装予定</p>
+                <p><strong>実装場所:</strong> 1.src/utils/executionLogger.js、PT001テストに統合済み</p>
+                <p><strong>状態:</strong> ✅ 実装完了 - エラーコード体系と完全統合済み</p>
                 
                 <div class="requirement-list">
                     <h4>📋 ログ出力仕様</h4>
@@ -747,55 +748,91 @@
             </div>
 
             <div class="function-card">
-                <h3><span class="status-indicator status-planned"></span>S003: 標準エラーコード体系</h3>
+                <h3><span class="status-indicator status-completed"></span>S003: 標準エラーコード体系</h3>
                 <p><strong>説明:</strong> システム全体で統一されたエラーコード体系を定義・実装</p>
-                <p><strong>実装場所:</strong> 1.src/utils/errorCodes.js（新規作成）</p>
-                <p><strong>状態:</strong> 📋 要設計・実装</p>
+                <p><strong>実装場所:</strong> 1.src/utils/errorCodes.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（50種類の詳細エラーコード定義済み）</p>
                 
                 <div class="requirement-list">
-                    <h4>📋 エラーコード設計方針</h4>
+                    <h4>🎯 実装済みエラーコード体系（50種類）</h4>
                     <table>
                         <tr>
                             <th width="20%">カテゴリ</th>
                             <th width="20%">コード範囲</th>
-                            <th width="60%">内容</th>
+                            <th width="40%">主要エラー例</th>
+                            <th width="20%">定義数</th>
                         </tr>
                         <tr>
                             <td><strong>Zoom API</strong></td>
-                            <td>ZM001-ZM099</td>
-                            <td>認証エラー、レート制限、録画データ取得失敗等</td>
+                            <td>ZM001-ZM010</td>
+                            <td>OAuth認証失敗、レート制限、録画データ取得失敗、権限不足</td>
+                            <td>10種類</td>
                         </tr>
                         <tr>
                             <td><strong>Google Drive</strong></td>
-                            <td>GD001-GD099</td>
-                            <td>認証エラー、アップロード失敗、容量制限等</td>
+                            <td>GD001-GD010</td>
+                            <td>API認証失敗、容量制限、アップロード失敗、共有リンク生成</td>
+                            <td>10種類</td>
                         </tr>
                         <tr>
                             <td><strong>Gemini AI</strong></td>
-                            <td>AI001-AI099</td>
-                            <td>API制限、処理失敗、品質問題等</td>
+                            <td>AI001-AI010</td>
+                            <td>レート制限、文字起こし失敗、要約生成失敗、処理タイムアウト</td>
+                            <td>10種類</td>
                         </tr>
                         <tr>
                             <td><strong>Slack API</strong></td>
-                            <td>SL001-SL099</td>
-                            <td>Bot認証、チャンネルアクセス、投稿失敗等</td>
+                            <td>SL001-SL010</td>
+                            <td>Bot認証失敗、チャンネルアクセス拒否、メッセージ投稿失敗</td>
+                            <td>10種類</td>
                         </tr>
                         <tr>
                             <td><strong>システム内部</strong></td>
-                            <td>SY001-SY099</td>
-                            <td>メモリ不足、タイムアウト、設定エラー等</td>
+                            <td>SY001-SY010</td>
+                            <td>メモリ不足、処理タイムアウト、環境変数未設定、JSON解析エラー</td>
+                            <td>10種類</td>
                         </tr>
                     </table>
                 </div>
 
                 <div class="requirement-list">
-                    <h4>🔧 実装要件</h4>
+                    <h4>✅ 実装済み機能</h4>
                     <ul>
-                        <li><strong>国際化対応:</strong> エラーメッセージの日英対応</li>
-                        <li><strong>詳細情報:</strong> トラブルシューティング情報の付与</li>
-                        <li><strong>重要度分類:</strong> CRITICAL, HIGH, MEDIUM, LOW</li>
-                        <li><strong>リトライ可能性:</strong> 自動リトライ対象かの判定</li>
-                        <li><strong>通知要否:</strong> Slack通知が必要かの判定</li>
+                        <li><strong>国際化対応:</strong> 全エラーメッセージの日英対応完了</li>
+                        <li><strong>トラブルシューティング:</strong> 各エラーに詳細な解決方法を記載</li>
+                        <li><strong>リトライ可能性判定:</strong> 各エラーコードにretryableフラグ設定</li>
+                        <li><strong>Slack通知制御:</strong> 各エラーコードにnotifySlackフラグ設定</li>
+                        <li><strong>ErrorManagerクラス:</strong> エラー管理・操作用ユーティリティ完備</li>
+                    </ul>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>📊 エラーコード設計詳細</h4>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-size: 0.9em;">
+// エラーコード定義例
+ZM001: {
+  code: 'ZM001',
+  message: 'Zoom API認証失敗',
+  messageEn: 'Zoom API authentication failed',
+  retryable: false,
+  notifySlack: true,
+  troubleshooting: 'ZOOM_API_KEY、ZOOM_API_SECRET、ZOOM_ACCOUNT_IDを確認してください'
+}
+
+// ErrorManager使用例
+const error = ErrorManager.createError('ZM001', { userId: 'user123' });
+const isRetryable = ErrorManager.isRetryable('ZM001'); // false
+const shouldNotify = ErrorManager.shouldNotifySlack('ZM001'); // true
+                    </pre>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>🔗 ExecutionLoggerとの統合</h4>
+                    <ul>
+                        <li><strong>構造化ログ:</strong> ExecutionLoggerでエラーコードを自動記録</li>
+                        <li><strong>Google Drive保存:</strong> エラー発生時もログを確実に保存</li>
+                        <li><strong>統計機能:</strong> エラー種別ごとの発生頻度を追跡</li>
+                        <li><strong>Slack連携:</strong> 重要エラーは自動でSlack通知</li>
                     </ul>
                 </div>
             </div>
@@ -953,7 +990,7 @@
         </div>
         
         <div class="last-updated">
-            最終更新: 2025年8月7日 15:30 | S002録画別実行ログ出力システム・S003標準エラーコード体系仕様追加
+            最終更新: 2025年8月8日 17:00 | S002実行ログシステム・S003標準エラーコード体系完全実装完了（50種類のエラーコード定義、ExecutionLogger統合）
         </div>
     </div>
 
