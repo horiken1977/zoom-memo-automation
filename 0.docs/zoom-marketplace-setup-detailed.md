@@ -169,21 +169,26 @@ ZOOM_API_SECRET = [取得したClient Secret]
 
 ### テスト1: 認証テスト
 ```bash
-curl https://zoom-memo-automation.vercel.app/api/test-zoom-auth
+curl https://zoom-memo-automation.vercel.app/api/test-zoom?test=auth
 ```
 
 期待される結果：
 ```json
 {
   "success": true,
-  "message": "OAuth token generated successfully",
-  "tokenLength": 1214
+  "message": "Zoom認証テスト成功",
+  "results": {
+    "tokenGenerated": true,
+    "tokenLength": 1214,
+    "tokenType": "bearer",
+    "expiresIn": 3599
+  }
 }
 ```
 
 ### テスト2: 録画一覧取得テスト
 ```bash
-curl https://zoom-memo-automation.vercel.app/api/test-recordings
+curl https://zoom-memo-automation.vercel.app/api/test-zoom?test=recordings
 ```
 
 期待される結果：
