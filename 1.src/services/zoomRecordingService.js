@@ -290,7 +290,7 @@ class ZoomRecordingService {
         fileName: videoFile.file_name,
         fileSize: videoFile.file_size,
         driveFileId: saveResult.fileId,
-        shareLink: saveResult.shareLink,
+        shareLink: saveResult.viewLink,
         folderPath: saveResult.folderPath
       };
       
