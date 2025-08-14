@@ -1,4 +1,3 @@
-const lamejs = require('lamejs');
 const logger = require('../utils/logger');
 
 /**
@@ -52,8 +51,8 @@ class AudioCompressionService {
       // ノイズリダクション（簡易）
       const denoisedPCM = this.applySimpleDenoising(monoPCM);
       
-      // MP3エンコード（最高圧縮）
-      const compressedBuffer = this.encodeToMP3(denoisedPCM, this.targetSampleRate, this.targetChannels, this.targetBitRate);
+      // 8bit量子化による圧縮（MP3の代替）
+      const compressedBuffer = this.compressPCMTo8Bit(denoisedPCM);
       
       const compressedSize = compressedBuffer.length;
       const compressionRatio = Math.round((1 - compressedSize / originalSize) * 100);
@@ -247,65 +246,47 @@ class AudioCompressionService {
   }
 
   /**
-   * PCMデータをMP3にエンコード
+   * PCMデータを8bit量子化で圧縮（MP3の代替）
    */
-  encodeToMP3(pcmData, sampleRate, channels, bitRate) {
+  compressPCMTo8Bit(pcmData) {
     try {
-      // LameJSエンコーダーを初期化
-      const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitRate);
+      if (!pcmData || pcmData.length === 0) {
+        logger.warn('⚠️ 8bit圧縮: PCMデータが空です');
+        return Buffer.alloc(0);
+      }
       
-      // PCMデータを16bitサンプルの配列に変換（境界チェック付き）
-      const samples = [];
+      // 16bit PCMを8bit PCMに量子化（50%サイズ削減）
+      const compressed = Buffer.alloc(Math.floor(pcmData.length / 2));
+      let outputIndex = 0;
+      
       for (let i = 0; i < pcmData.length - 1; i += 2) {
         try {
-          if (i + 1 < pcmData.length) {
-            samples.push(pcmData.readInt16LE(i));
+          if (i + 1 < pcmData.length && outputIndex < compressed.length) {
+            // 16bit signed値を読み取り
+            const sample16 = pcmData.readInt16LE(i);
+            
+            // 16bit (-32768 to 32767) を 8bit (-128 to 127) に量子化
+            const sample8 = Math.round(sample16 / 256);
+            
+            // 8bit signed値として書き込み
+            compressed.writeInt8(Math.max(-128, Math.min(127, sample8)), outputIndex);
+            outputIndex++;
           }
         } catch (error) {
-          logger.warn(`⚠️ PCM読み取りエラー at ${i}: ${error.message}`);
+          logger.warn(`⚠️ 8bit量子化エラー at ${i}: ${error.message}`);
           break;
         }
       }
       
-      // サンプル数を1152の倍数に調整（MP3フレームサイズ）
-      const frameSize = 1152;
-      const paddedLength = Math.ceil(samples.length / frameSize) * frameSize;
-      while (samples.length < paddedLength) {
-        samples.push(0);
-      }
+      // 実際に使用されたサイズのみを返す
+      const finalCompressed = compressed.slice(0, outputIndex);
       
-      // MP3エンコード
-      const mp3Data = [];
-      for (let i = 0; i < samples.length; i += frameSize) {
-        const chunk = samples.slice(i, i + frameSize);
-        const mp3buf = mp3encoder.encodeBuffer(chunk);
-        if (mp3buf.length > 0) {
-          mp3Data.push(mp3buf);
-        }
-      }
-      
-      // 最終フレーム
-      const finalBuffer = mp3encoder.flush();
-      if (finalBuffer.length > 0) {
-        mp3Data.push(finalBuffer);
-      }
-      
-      // 全MP3データを結合
-      const totalLength = mp3Data.reduce((sum, buf) => sum + buf.length, 0);
-      const mp3Buffer = Buffer.alloc(totalLength);
-      let offset = 0;
-      
-      for (const buf of mp3Data) {
-        buf.copy(mp3Buffer, offset);
-        offset += buf.length;
-      }
-      
-      logger.info(`🎵 MP3エンコード完了: ${mp3Buffer.length}バイト`);
-      return mp3Buffer;
+      logger.info(`🎵 8bit量子化完了: ${pcmData.length} → ${finalCompressed.length}バイト (50%圧縮)`);
+      return finalCompressed;
       
     } catch (error) {
-      logger.error('MP3エンコードエラー:', error);
-      throw new Error(`MP3 encoding failed: ${error.message}`);
+      logger.error('8bit量子化エラー:', error);
+      throw new Error(`8bit compression failed: ${error.message}`);
     }
   }
 
