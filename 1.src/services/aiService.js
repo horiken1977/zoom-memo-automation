@@ -560,6 +560,244 @@ ${transcription}`;
   }
 
   /**
+   * ファイル拡張子からMIMEタイプを取得
+   */
+  getMimeType(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.mp3': 'audio/mp3',
+      '.wav': 'audio/wav',
+      '.m4a': 'audio/aac',
+      '.aac': 'audio/aac',
+      '.ogg': 'audio/ogg',
+      '.flac': 'audio/flac',
+      '.aiff': 'audio/aiff',
+      '.mp4': 'video/mp4',
+      '.mov': 'video/mov',
+      '.avi': 'video/avi',
+      '.mpeg': 'video/mpeg'
+    };
+    return mimeTypes[ext] || 'audio/aac';
+  }
+
+  /**
+   * テキストから構造化要約を抽出（JSONパース失敗時のフォールバック）
+   */
+  extractSummaryFromText(text) {
+    return {
+      overview: text.substring(0, 500) + '...',
+      client: '不明',
+      attendees: [],
+      agenda: [],
+      discussions: [],
+      decisions: [],
+      actionItems: [],
+      nextSteps: [],
+      audioQuality: {
+        clarity: 'unknown',
+        issues: ['JSON形式での解析失敗'],
+        transcriptionConfidence: 'medium'
+      }
+    };
+  }
+
+  /**
+   * 音声データから構造化された会議要約を一度に生成（統合版）
+   * @param {Buffer|string} audioInput - 音声バッファまたはファイルパス
+   * @param {Object} meetingInfo - 会議情報
+   * @param {Object} options - オプション設定
+   * @returns {Promise<Object>} 構造化された分析結果
+   */
+  async processAudioWithStructuredOutput(audioInput, meetingInfo, options = {}) {
+    const startTime = Date.now();
+    const maxRetries = options.maxRetries || 5;
+    const isBuffer = Buffer.isBuffer(audioInput);
+    let lastError = null;
+    
+    logger.info(`Starting unified audio processing for: ${meetingInfo.topic}`);
+    
+    // 音声データの準備
+    let audioData;
+    let mimeType;
+    
+    try {
+      if (isBuffer) {
+        audioData = audioInput.toString('base64');
+        mimeType = options.mimeType || 'audio/aac';
+        logger.info(`Processing audio from buffer: ${audioInput.length} bytes`);
+      } else {
+        // ファイルパスの場合
+        const fileBuffer = await fs.readFile(audioInput);
+        audioData = fileBuffer.toString('base64');
+        mimeType = this.getMimeType(audioInput);
+        logger.info(`Processing audio from file: ${audioInput} (${fileBuffer.length} bytes)`);
+      }
+    } catch (error) {
+      throw new Error(`Failed to prepare audio data: ${error.message}`);
+    }
+    
+    // 統合プロンプト（音声から直接8項目構造化要約を生成）
+    const structuredPrompt = `あなたは会議の音声を分析し、構造化された議事録を作成するAIアシスタントです。
+この音声ファイルを分析し、以下の8項目の構造で日本語の議事録を作成してください。
+
+**出力形式（必ず以下のJSON形式で出力）:**
+{
+  "transcription": "音声の詳細な文字起こし全文",
+  "summary": {
+    "overview": "会議の概要（3-5文）",
+    "client": "クライアント名（例：株式会社○○、○○様）",
+    "attendees": [
+      {
+        "name": "参加者名",
+        "role": "役職・所属",
+        "organization": "会社名"
+      }
+    ],
+    "agenda": ["議題1", "議題2"],
+    "discussions": [
+      {
+        "topic": "議論テーマ",
+        "content": "議論内容",
+        "speaker": "発言者",
+        "timestamp": "MM:SS形式（可能な場合）"
+      }
+    ],
+    "decisions": [
+      {
+        "decision": "決定事項",
+        "reason": "決定理由",
+        "implementationDate": "実施予定日"
+      }
+    ],
+    "actionItems": [
+      {
+        "task": "タスク内容",
+        "assignee": "担当者",
+        "dueDate": "期限（YYYY/MM/DD形式）",
+        "priority": "high/medium/low"
+      }
+    ],
+    "nextSteps": [
+      {
+        "action": "次のステップ",
+        "timeline": "時期"
+      }
+    ],
+    "audioQuality": {
+      "clarity": "excellent/good/fair/poor",
+      "issues": ["音質の問題点"],
+      "transcriptionConfidence": "high/medium/low"
+    }
+  }
+}
+
+**会議情報:**
+- 会議名: ${meetingInfo.topic}
+- 開催日時: ${meetingInfo.startTime}
+- 時間: ${meetingInfo.duration}分
+- 主催者: ${meetingInfo.hostName}
+
+**注意事項:**
+- クライアント名は会話内容から正確に抽出
+- タイムスタンプは可能な限り記載
+- Next Actionは「アクション項目｜担当者｜期限」形式で整理
+- 不明な項目は"不明"または空配列とする
+- 必ずJSON形式で出力すること`;
+
+    // リトライループ
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.ensureModelInitialized();
+        
+        logger.info(`Unified audio processing - Attempt ${attempt}/${maxRetries} for: ${meetingInfo.topic}`);
+        
+        // Gemini APIに一度だけリクエスト
+        const result = await this.model.generateContent([
+          {
+            inlineData: {
+              data: audioData,
+              mimeType: mimeType
+            }
+          },
+          structuredPrompt
+        ]);
+        
+        const response = result.response.text();
+        
+        // JSON形式でパース
+        let parsedResult;
+        try {
+          // JSON部分を抽出（```json```で囲まれている場合がある）
+          const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || response.match(/\{[\s\S]*\}/);
+          const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : response;
+          parsedResult = JSON.parse(jsonText);
+        } catch (parseError) {
+          logger.warn('Failed to parse as JSON, treating as text response');
+          parsedResult = {
+            transcription: response,
+            summary: this.extractSummaryFromText(response)
+          };
+        }
+        
+        // 結果の検証
+        if (!parsedResult.transcription || parsedResult.transcription.length < 50) {
+          throw new Error('Transcription too short or missing');
+        }
+        
+        const processingTime = Date.now() - startTime;
+        logger.info(`Unified audio processing successful on attempt ${attempt} (${processingTime}ms)`);
+        
+        // 成功時の返却データ
+        return {
+          success: true,
+          meetingInfo: meetingInfo,
+          transcription: parsedResult.transcription,
+          structuredSummary: parsedResult.summary,
+          
+          // 後方互換性のための既存フィールド
+          summary: parsedResult.summary.overview || '',
+          participants: parsedResult.summary.attendees || [],
+          actionItems: parsedResult.summary.actionItems || [],
+          decisions: parsedResult.summary.decisions || [],
+          
+          // メタ情報
+          model: this.selectedModel,
+          timestamp: new Date().toISOString(),
+          processingTime: processingTime,
+          attemptsUsed: attempt,
+          audioQuality: parsedResult.summary.audioQuality,
+          apiCallsUsed: 1 // 統合版は常に1回のAPI呼び出し
+        };
+        
+      } catch (error) {
+        lastError = error;
+        logger.error(`Unified audio processing attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+        
+        // 特定のエラーハンドリング
+        if (error.message.includes('500 Internal Server Error')) {
+          logger.warn('Gemini API server error detected (500) - AI009');
+        } else if (error.message.includes('429')) {
+          logger.warn('Rate limit exceeded - AI001');
+        } else if (error.message.includes('401')) {
+          logger.warn('Authentication failed - AI002');
+        }
+        
+        // リトライ前の待機
+        if (attempt < maxRetries) {
+          const waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
+          logger.info(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    // 最終失敗
+    const totalTime = Date.now() - startTime;
+    logger.error(`All ${maxRetries} unified audio processing attempts failed for ${meetingInfo.topic} (${totalTime}ms)`);
+    throw new Error(`Unified audio processing failed after ${maxRetries} attempts: ${lastError.message}`);
+  }
+
+  /**
    * ヘルスチェック
    */
   async healthCheck() {
