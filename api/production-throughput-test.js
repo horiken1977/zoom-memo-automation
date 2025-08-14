@@ -220,17 +220,30 @@ async function runProductionThroughputTest(res) {
       audioKeys: recordingResult.audio ? Object.keys(recordingResult.audio) : [],
       structuredSummary: !!recordingResult.audio?.structuredSummary,
       transcription: !!recordingResult.audio?.transcription,
-      transcriptionLength: recordingResult.audio?.transcription?.transcription?.length || 0
+      transcriptionLength: recordingResult.audio?.transcription?.transcription?.length || 0,
+      // さらに詳細なデバッグ
+      audioSummaryStructure: recordingResult.audio?.summary ? Object.keys(recordingResult.audio.summary) : null,
+      audioAnalysisStructure: recordingResult.audio?.analysis ? Object.keys(recordingResult.audio.analysis) : null
     });
     
     const slackAnalysisResult = {
       meetingInfo: recordingResult.meetingInfo,
-      // 統合AI処理結果から正しくデータを取得
-      summary: recordingResult.audio?.structuredSummary?.summary || recordingResult.audio?.analysis?.summary || '',
-      transcription: recordingResult.audio?.transcription?.transcription || '',
-      participants: recordingResult.audio?.structuredSummary?.attendees || recordingResult.audio?.analysis?.attendees || [],
-      actionItems: recordingResult.audio?.structuredSummary?.nextActions || recordingResult.audio?.analysis?.nextActions || [],
-      decisions: recordingResult.audio?.structuredSummary?.decisions || recordingResult.audio?.analysis?.decisions || [],
+      // データ構造を修正：audioSummaryServiceの戻り値に合わせる
+      summary: recordingResult.audio?.structuredSummary?.summary || 
+               recordingResult.audio?.analysis?.summary || 
+               recordingResult.audio?.summary?.summary || 
+               recordingResult.audio?.summary || '',
+      transcription: recordingResult.audio?.transcription?.transcription || 
+                    recordingResult.audio?.transcription || '',
+      participants: recordingResult.audio?.structuredSummary?.attendees || 
+                   recordingResult.audio?.analysis?.attendees || 
+                   recordingResult.audio?.summary?.attendees || [],
+      actionItems: recordingResult.audio?.structuredSummary?.nextActions || 
+                  recordingResult.audio?.analysis?.nextActions || 
+                  recordingResult.audio?.summary?.nextActions || [],
+      decisions: recordingResult.audio?.structuredSummary?.decisions || 
+                recordingResult.audio?.analysis?.decisions || 
+                recordingResult.audio?.summary?.decisions || [],
       // 音声圧縮統計情報を追加
       compressionStats: recordingResult.audio?.compressionStats,
       // 実録画処理専用情報
@@ -264,11 +277,44 @@ async function runProductionThroughputTest(res) {
       uploadTime: Math.floor((Date.now() - startTime) / 1000)
     };
     
-    const slackResult = await slackService.sendMeetingSummaryWithRecording(slackAnalysisResult, driveResult);
-    timeTracker.log('Step 3: Slack通知完了');
-    console.log('✅ Slack通知成功');
-    console.log('   - チャンネル:', slackResult.channel);
-    console.log('   - タイムスタンプ:', slackResult.ts);
+    let slackResult;
+    try {
+      slackResult = await slackService.sendMeetingSummaryWithRecording(slackAnalysisResult, driveResult);
+      timeTracker.log('Step 3: Slack通知完了');
+      console.log('✅ Slack通知成功');
+      console.log('   - チャンネル:', slackResult.channel);
+      console.log('   - タイムスタンプ:', slackResult.ts);
+      
+      // Slack投稿内容の検証
+      if (!slackAnalysisResult.summary || slackAnalysisResult.summary.length === 0) {
+        console.warn('⚠️ Slack投稿で要約が空です');
+        if (executionLogger) {
+          executionLogger.logWarn('SLACK_EMPTY_SUMMARY', {
+            summaryLength: slackAnalysisResult.summary?.length || 0,
+            transcriptionLength: slackAnalysisResult.transcription?.length || 0,
+            hasStructuredSummary: !!recordingResult.audio?.structuredSummary
+          });
+        }
+      }
+      
+    } catch (slackError) {
+      timeTracker.log('Step 3: Slack通知エラー');
+      console.error('❌ Slack通知エラー:', slackError.message);
+      console.error('❌ Stack:', slackError.stack);
+      
+      // エラー情報を実行ログに記録
+      if (executionLogger) {
+        executionLogger.logError('SLACK_NOTIFICATION_FAILED', 'E_SLACK_001', slackError.message, {
+          errorStack: slackError.stack,
+          slackDataSummary: {
+            summaryLength: slackAnalysisResult.summary?.length || 0,
+            transcriptionLength: slackAnalysisResult.transcription?.length || 0
+          }
+        });
+      }
+      
+      slackResult = { success: false, error: slackError.message };
+    }
 
     // Step 4: Google Drive文書保存
     timeTracker.log('Step 4: Google Drive文書保存開始');
@@ -276,15 +322,31 @@ async function runProductionThroughputTest(res) {
     
     let documentSaveResult = null;
     try {
+      // DocumentStorageServiceの正しいインポート
       const DocumentStorageService = require('../1.src/services/documentStorageService');
+      
+      console.log('🔍 DocumentStorageServiceクラス確認:', {
+        isClass: typeof DocumentStorageService === 'function',
+        methods: DocumentStorageService.prototype ? Object.getOwnPropertyNames(DocumentStorageService.prototype) : 'no prototype'
+      });
+      
       const documentService = new DocumentStorageService();
+      
+      console.log('🔍 documentServiceインスタンス確認:', {
+        hasInstance: !!documentService,
+        methods: Object.getOwnPropertyNames(Object.getPrototypeOf(documentService)),
+        hasSaveDocuments: typeof documentService.saveDocuments === 'function',
+        hasSaveDocumentsToGoogleDrive: typeof documentService.saveDocumentsToGoogleDrive === 'function'
+      });
       
       // 文書保存用データを準備
       const documentData = {
         meetingInfo: recordingResult.meetingInfo,
         transcription: slackAnalysisResult.transcription,
         summary: slackAnalysisResult.summary,
-        structuredSummary: recordingResult.audio?.structuredSummary || recordingResult.audio?.analysis,
+        structuredSummary: recordingResult.audio?.structuredSummary || 
+                          recordingResult.audio?.analysis || 
+                          recordingResult.audio?.summary,
         compressionStats: recordingResult.audio?.compressionStats,
         executionId: executionId
       };
@@ -292,25 +354,52 @@ async function runProductionThroughputTest(res) {
       console.log('📄 文書保存開始:', {
         transcriptionLength: documentData.transcription?.length || 0,
         summaryLength: documentData.summary?.length || 0,
-        hasStructuredSummary: !!documentData.structuredSummary
+        hasStructuredSummary: !!documentData.structuredSummary,
+        summaryType: typeof documentData.summary
       });
       
-      documentSaveResult = await documentService.saveDocuments(documentData, executionLogger);
+      // 利用可能なメソッドを使用
+      const saveMethod = documentService.saveDocuments || 
+                        documentService.saveDocumentsToGoogleDrive || 
+                        documentService.saveToGoogleDrive;
+      
+      if (!saveMethod) {
+        throw new Error('DocumentStorageService: 保存メソッドが見つかりません');
+      }
+      
+      documentSaveResult = await saveMethod.call(documentService, documentData, executionLogger);
       timeTracker.log('Step 4: Google Drive文書保存完了');
       
-      if (documentSaveResult.success) {
+      if (documentSaveResult && documentSaveResult.success) {
         console.log('✅ Google Drive文書保存成功');
         console.log('   - 文字起こし:', documentSaveResult.transcriptionFile?.viewLink || '保存失敗');
         console.log('   - 要約:', documentSaveResult.summaryFile?.viewLink || '保存失敗');
         console.log('   - 構造化要約:', documentSaveResult.structuredSummaryFile?.viewLink || '保存失敗');
       } else {
-        console.error('❌ Google Drive文書保存失敗:', documentSaveResult.error);
+        console.error('❌ Google Drive文書保存失敗:', documentSaveResult?.error || 'レスポンス異常');
+        // エラー情報を実行ログに記録
+        if (executionLogger) {
+          executionLogger.logError('DOCUMENT_SAVE_FAILED', 'E_DOC_001', 
+            documentSaveResult?.error || '文書保存処理失敗', {
+              transcriptionLength: documentData.transcription?.length || 0,
+              summaryLength: documentData.summary?.length || 0
+            });
+        }
       }
       
     } catch (documentError) {
       timeTracker.log('Step 4: Google Drive文書保存エラー');
       console.error('❌ Google Drive文書保存エラー:', documentError.message);
+      console.error('❌ Stack:', documentError.stack);
       documentSaveResult = { success: false, error: documentError.message };
+      
+      // エラー情報を実行ログに記録
+      if (executionLogger) {
+        executionLogger.logError('DOCUMENT_SAVE_ERROR', 'E_DOC_002', documentError.message, {
+          errorStack: documentError.stack,
+          errorType: 'DocumentStorageService initialization or method call failed'
+        });
+      }
     }
 
     // 実行ログを完了してGoogle Driveに保存
