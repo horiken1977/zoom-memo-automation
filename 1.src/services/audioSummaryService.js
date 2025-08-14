@@ -1,4 +1,5 @@
 const AIService = require('./aiService');
+const AudioCompressionService = require('./audioCompressionService');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
@@ -6,6 +7,7 @@ const logger = require('../utils/logger');
 class AudioSummaryService {
   constructor() {
     this.aiService = new AIService();
+    this.audioCompressionService = new AudioCompressionService();
   }
 
   /**
@@ -81,11 +83,26 @@ class AudioSummaryService {
     try {
       debugTimer('processRealAudioBuffer開始', `fileName: ${fileName}, bufferSize: ${audioBuffer.length}`);
       
-      // 1. 音声の文字起こし（Bufferから）
+      // 0. 音声圧縮処理（文字起こし精度向上のため）
+      debugTimer('Step 0: 音声圧縮処理開始');
+      let processedAudioBuffer = audioBuffer;
+      let compressionStats = null;
+      
+      if (this.audioCompressionService.shouldCompress(audioBuffer.length)) {
+        logger.info('🗜️ 大容量音声ファイル検出 - 最高レベル圧縮を実行');
+        const compressionResult = await this.audioCompressionService.compressAudioBuffer(audioBuffer, fileName);
+        processedAudioBuffer = compressionResult.compressedBuffer;
+        compressionStats = compressionResult;
+        debugTimer('Step 0: 音声圧縮完了', `圧縮率: ${compressionResult.compressionRatio}%, ${Math.round(compressionResult.originalSize/1024/1024*100)/100}MB → ${Math.round(compressionResult.compressedSize/1024/1024*100)/100}MB`);
+      } else {
+        debugTimer('Step 0: 音声圧縮スキップ', '10MB未満のため圧縮不要');
+      }
+      
+      // 1. 音声の文字起こし（圧縮済みBufferから）
       debugTimer('Step 1: transcribeAudioFromBuffer開始');
       logger.info('Starting audio transcription from buffer with Gemini...');
       
-      const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(audioBuffer, fileName, meetingInfo);
+      const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(processedAudioBuffer, fileName, meetingInfo);
       debugTimer('Step 1: transcribeAudioFromBuffer完了', `transcription length: ${transcriptionResult?.transcription?.length || 0}`);
       
       // 2. 構造化された要約を生成
@@ -108,6 +125,8 @@ class AudioSummaryService {
         analysis: structuredSummary,
         audioFileName: fileName,
         audioBufferSize: audioBuffer.length,
+        processedAudioBufferSize: processedAudioBuffer.length,
+        compressionStats: compressionStats, // 圧縮統計情報
         meetingInfo: meetingInfo,
         processedAt: new Date().toISOString(),
         totalProcessingTime: totalTime
