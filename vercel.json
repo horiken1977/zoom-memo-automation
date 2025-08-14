@@ -6,47 +6,35 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/0.docs/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/dashboard",
-      "destination": "/0.docs/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/functional-design",
-      "destination": "/0.docs/functional-design.html"
-    },
-    {
-      "source": "/functional-design.html",
-      "destination": "/0.docs/functional-design.html"
+      "destination": "/functional-design.html"
     },
     {
       "source": "/environment-design",
-      "destination": "/0.docs/environment-design.html"
-    },
-    {
-      "source": "/environment-design.html",
-      "destination": "/0.docs/environment-design.html"
+      "destination": "/environment-design.html"
     },
     {
       "source": "/test-specification",
-      "destination": "/0.docs/test-specification.html"
-    },
-    {
-      "source": "/test-specification.html",
-      "destination": "/0.docs/test-specification.html"
+      "destination": "/test-specification.html"
     },
     {
       "source": "/test-specifications",
-      "destination": "/0.docs/test-specification.html"
+      "destination": "/test-specification.html"
     },
     {
       "source": "/operations-design",
-      "destination": "/0.docs/operations-design.html"
+      "destination": "/operations-design.html"
     },
     {
-      "source": "/operations-design.html",
-      "destination": "/0.docs/operations-design.html"
+      "source": "/error-codes",
+      "destination": "/error-codes.html"
     },
     {
       "source": "/claude.md",
