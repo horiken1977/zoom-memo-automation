@@ -2368,6 +2368,28 @@
         // 最終更新日時を設定
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
         
+        // エラーコード詳細一覧の表示/非表示切り替え
+        function toggleErrorCodeDetails() {
+            const detailsDiv = document.getElementById('errorCodeDetails');
+            const button = event.target;
+            
+            if (detailsDiv.style.display === 'none' || detailsDiv.style.display === '') {
+                detailsDiv.style.display = 'block';
+                button.innerHTML = '📖 全エラーコード詳細一覧を非表示';
+                
+                // スムーズスクロール
+                setTimeout(() => {
+                    detailsDiv.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+            } else {
+                detailsDiv.style.display = 'none';
+                button.innerHTML = '📖 全エラーコード詳細一覧を表示/非表示';
+            }
+        }
+        
         // Claude対話記録から自動更新
         async function checkForUpdates() {
             try {
