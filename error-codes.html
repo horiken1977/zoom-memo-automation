@@ -237,6 +237,13 @@
             border: 1px solid #007bff;
             color: #007bff;
             font-weight: bold;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        
+        .test-case:hover {
+            background: #007bff;
+            color: white;
         }
         
         .last-updated {
@@ -333,7 +340,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>Zoom API認証失敗</td>
                         <td><span class="location">zoomService.js</span></td>
-                        <td><span class="test-case">TC001</span><span class="test-case">PT001a</span></td>
+                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_TOKEN_EXPIRED</span></td>
@@ -341,7 +348,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>Zoom OAuthトークン期限切れ</td>
                         <td><span class="location">zoomService.js</span></td>
-                        <td><span class="test-case">TC001</span></td>
+                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_NO_RECORDINGS</span></td>
@@ -349,7 +356,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>指定期間内に録画データなし</td>
                         <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_DOWNLOAD_FAILED</span></td>
@@ -357,7 +364,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>録画ダウンロード失敗</td>
                         <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><span class="test-case">TC201</span></td>
+                        <td><a href="test-specification.html#tc201" class="test-case">TC201</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_INVALID_RESPONSE</span></td>
@@ -365,7 +372,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>Zoom APIレスポンス形式不正</td>
                         <td><span class="location">zoomService.js</span></td>
-                        <td><span class="test-case">TC001</span></td>
+                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_RATE_LIMIT</span></td>
@@ -373,7 +380,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>Zoom APIレート制限</td>
                         <td><span class="location">zoomService.js</span></td>
-                        <td><span class="test-case">TC301</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_FILE_TOO_LARGE</span></td>
@@ -381,7 +388,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>録画ファイルサイズ超過</td>
                         <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><span class="test-case">TC204</span></td>
+                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
                     </tr>
                     <tr data-category="zoom">
                         <td><span class="error-code">E_ZOOM_DELETE_FAILED</span></td>
@@ -389,7 +396,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>Zoom録画削除失敗</td>
                         <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
 
                     <!-- Google Drive関連エラー -->
@@ -399,7 +406,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>Google Drive認証失敗</td>
                         <td><span class="location">googleDriveService.js</span></td>
-                        <td><span class="test-case">TC002</span></td>
+                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
                     </tr>
                     <tr data-category="gdrive">
                         <td><span class="error-code">E_GDRIVE_FOLDER_NOT_FOUND</span></td>
@@ -407,7 +414,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>指定フォルダが見つからない</td>
                         <td><span class="location">googleDriveService.js</span></td>
-                        <td><span class="test-case">TC002</span></td>
+                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
                     </tr>
                     <tr data-category="gdrive">
                         <td><span class="error-code">E_GDRIVE_UPLOAD_FAILED</span></td>
@@ -415,7 +422,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>ファイルアップロード失敗</td>
                         <td><span class="location">videoStorageService.js</span></td>
-                        <td><span class="test-case">TC204</span></td>
+                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
                     </tr>
                     <tr data-category="gdrive">
                         <td><span class="error-code">E_GDRIVE_QUOTA_EXCEEDED</span></td>
@@ -423,7 +430,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>ストレージ容量超過</td>
                         <td><span class="location">googleDriveService.js</span></td>
-                        <td><span class="test-case">TC204</span></td>
+                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
                     </tr>
                     <tr data-category="gdrive">
                         <td><span class="error-code">E_GDRIVE_PERMISSION_DENIED</span></td>
@@ -431,7 +438,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>アクセス権限なし</td>
                         <td><span class="location">googleDriveService.js</span></td>
-                        <td><span class="test-case">TC002</span></td>
+                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
                     </tr>
                     <tr data-category="gdrive">
                         <td><span class="error-code">E_GDRIVE_SHARED_DRIVE</span></td>
@@ -439,7 +446,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>共有ドライブアクセスエラー</td>
                         <td><span class="location">googleDriveService.js</span></td>
-                        <td><span class="test-case">TC002</span></td>
+                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
                     </tr>
                     <tr data-category="gdrive">
                         <td><span class="error-code">E_GDRIVE_DUPLICATE_FILE</span></td>
@@ -447,7 +454,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>重複ファイル存在</td>
                         <td><span class="location">videoStorageService.js</span></td>
-                        <td><span class="test-case">TC204</span></td>
+                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
                     </tr>
 
                     <!-- Slack関連エラー -->
@@ -457,7 +464,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>Slack API認証失敗</td>
                         <td><span class="location">slackService.js</span></td>
-                        <td><span class="test-case">TC003</span></td>
+                        <td><a href="test-specification.html#tc003" class="test-case">TC003</a></td>
                     </tr>
                     <tr data-category="slack">
                         <td><span class="error-code">E_SLACK_CHANNEL_NOT_FOUND</span></td>
@@ -465,7 +472,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>指定チャンネルが見つからない</td>
                         <td><span class="location">slackService.js</span></td>
-                        <td><span class="test-case">TC003</span></td>
+                        <td><a href="test-specification.html#tc003" class="test-case">TC003</a></td>
                     </tr>
                     <tr data-category="slack">
                         <td><span class="error-code">E_SLACK_POST_FAILED</span></td>
@@ -473,7 +480,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>メッセージ投稿失敗</td>
                         <td><span class="location">slackService.js</span></td>
-                        <td><span class="test-case">TC205</span></td>
+                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a></td>
                     </tr>
                     <tr data-category="slack">
                         <td><span class="error-code">E_SLACK_RATE_LIMIT</span></td>
@@ -481,7 +488,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>Slack APIレート制限</td>
                         <td><span class="location">slackService.js</span></td>
-                        <td><span class="test-case">TC301</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
                     </tr>
                     <tr data-category="slack">
                         <td><span class="error-code">E_SLACK_MESSAGE_TOO_LONG</span></td>
@@ -489,7 +496,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>メッセージ長超過</td>
                         <td><span class="location">slackService.js</span></td>
-                        <td><span class="test-case">TC003</span></td>
+                        <td><a href="test-specification.html#tc003" class="test-case">TC003</a></td>
                     </tr>
 
                     <!-- Gemini AI関連エラー -->
@@ -499,7 +506,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>Gemini API認証失敗</td>
                         <td><span class="location">aiService.js</span></td>
-                        <td><span class="test-case">TC004</span></td>
+                        <td><a href="test-specification.html#tc004" class="test-case">TC004</a></td>
                     </tr>
                     <tr data-category="gemini">
                         <td><span class="error-code">E_GEMINI_PROCESSING</span></td>
@@ -507,7 +514,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>AI処理エラー</td>
                         <td><span class="location">aiService.js</span></td>
-                        <td><span class="test-case">TC203</span></td>
+                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
                     </tr>
                     <tr data-category="gemini">
                         <td><span class="error-code">E_GEMINI_TIMEOUT</span></td>
@@ -515,7 +522,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>AI処理タイムアウト</td>
                         <td><span class="location">audioSummaryService.js</span></td>
-                        <td><span class="test-case">TC203</span></td>
+                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
                     </tr>
                     <tr data-category="gemini">
                         <td><span class="error-code">E_GEMINI_QUOTA</span></td>
@@ -523,7 +530,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>API利用上限超過</td>
                         <td><span class="location">aiService.js</span></td>
-                        <td><span class="test-case">TC301</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
                     </tr>
                     <tr data-category="gemini">
                         <td><span class="error-code">E_GEMINI_INVALID_FORMAT</span></td>
@@ -531,7 +538,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>入力形式不正</td>
                         <td><span class="location">aiService.js</span></td>
-                        <td><span class="test-case">TC004</span></td>
+                        <td><a href="test-specification.html#tc004" class="test-case">TC004</a></td>
                     </tr>
                     <tr data-category="gemini">
                         <td><span class="error-code">E_GEMINI_FILE_TOO_LARGE</span></td>
@@ -539,7 +546,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>音声ファイルサイズ超過</td>
                         <td><span class="location">audioSummaryService.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
 
                     <!-- 認証関連エラー -->
@@ -549,7 +556,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>認証情報未設定</td>
                         <td><span class="location">config/index.js</span></td>
-                        <td><span class="test-case">TC001</span></td>
+                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
                     </tr>
                     <tr data-category="auth">
                         <td><span class="error-code">E_AUTH_INVALID_KEY</span></td>
@@ -557,7 +564,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>APIキー不正</td>
                         <td><span class="location">各サービス</span></td>
-                        <td><span class="test-case">TC001-004</span></td>
+                        <td><a href="test-specification.html#tc001" class="test-case">TC001-004</a></td>
                     </tr>
                     <tr data-category="auth">
                         <td><span class="error-code">E_AUTH_SERVICE_ACCOUNT</span></td>
@@ -565,7 +572,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>サービスアカウント認証失敗</td>
                         <td><span class="location">googleDriveService.js</span></td>
-                        <td><span class="test-case">TC002</span></td>
+                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
                     </tr>
 
                     <!-- ストレージ関連エラー -->
@@ -575,7 +582,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>バッファオーバーフロー</td>
                         <td><span class="location">videoStorageService.js</span></td>
-                        <td><span class="test-case">TC204</span></td>
+                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
                     </tr>
                     <tr data-category="storage">
                         <td><span class="error-code">E_STORAGE_MEMORY_LIMIT</span></td>
@@ -583,7 +590,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>メモリ制限超過</td>
                         <td><span class="location">各サービス</span></td>
-                        <td><span class="test-case">TC204</span></td>
+                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
                     </tr>
                     <tr data-category="storage">
                         <td><span class="error-code">E_STORAGE_FILE_NOT_FOUND</span></td>
@@ -591,7 +598,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>ファイルが見つからない</td>
                         <td><span class="location">各サービス</span></td>
-                        <td><span class="test-case">TC201</span></td>
+                        <td><a href="test-specification.html#tc201" class="test-case">TC201</a></td>
                     </tr>
                     <tr data-category="storage">
                         <td><span class="error-code">E_STORAGE_CORRUPT_FILE</span></td>
@@ -599,7 +606,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>ファイル破損</td>
                         <td><span class="location">audioSummaryService.js</span></td>
-                        <td><span class="test-case">TC203</span></td>
+                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
                     </tr>
 
                     <!-- システム関連エラー -->
@@ -609,7 +616,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>システムタイムアウト</td>
                         <td><span class="location">Vercel環境</span></td>
-                        <td><span class="test-case">TC205</span></td>
+                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_SYSTEM_NETWORK</span></td>
@@ -617,7 +624,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>ネットワークエラー</td>
                         <td><span class="location">各サービス</span></td>
-                        <td><span class="test-case">TC201</span></td>
+                        <td><a href="test-specification.html#tc201" class="test-case">TC201</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_SYSTEM_VERCEL_LIMIT</span></td>
@@ -625,7 +632,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>Vercel実行時間制限</td>
                         <td><span class="location">Vercel環境</span></td>
-                        <td><span class="test-case">TC205</span></td>
+                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_SYSTEM_ENV_MISSING</span></td>
@@ -633,7 +640,7 @@
                         <td><span class="severity severity-critical">Critical</span></td>
                         <td>環境変数未設定</td>
                         <td><span class="location">config/index.js</span></td>
-                        <td><span class="test-case">TC001</span></td>
+                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_SYSTEM_UNEXPECTED</span></td>
@@ -641,7 +648,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>予期しないエラー</td>
                         <td><span class="location">全般</span></td>
-                        <td><span class="test-case">全般</span></td>
+                        <td><a href="test-specification.html" class="test-case">全般</a></td>
                     </tr>
 
                     <!-- テスト関連エラー -->
@@ -651,7 +658,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>テスト環境セットアップ失敗</td>
                         <td><span class="location">テストスクリプト</span></td>
-                        <td><span class="test-case">TC201-205</span></td>
+                        <td><a href="test-specification.html#tc201" class="test-case">TC201-205</a></td>
                     </tr>
                     <tr data-category="test">
                         <td><span class="error-code">E_TEST_DATA_MISSING</span></td>
@@ -659,7 +666,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>テストデータ不足</td>
                         <td><span class="location">テストスクリプト</span></td>
-                        <td><span class="test-case">TC203</span></td>
+                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
                     </tr>
                     <tr data-category="test">
                         <td><span class="error-code">E_TEST_ASSERTION</span></td>
@@ -667,7 +674,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>アサーション失敗</td>
                         <td><span class="location">テストスクリプト</span></td>
-                        <td><span class="test-case">全般</span></td>
+                        <td><a href="test-specification.html" class="test-case">全般</a></td>
                     </tr>
                     <tr data-category="test">
                         <td><span class="error-code">E_PT001_FAILED</span></td>
@@ -675,7 +682,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>本番スルーテスト失敗</td>
                         <td><span class="location">production-throughput-test.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
 
                     <!-- 実行ログ関連エラー -->
@@ -685,7 +692,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>実行ログ保存失敗</td>
                         <td><span class="location">executionLogger.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_LOG_FOLDER_CREATE</span></td>
@@ -693,7 +700,7 @@
                         <td><span class="severity severity-low">Low</span></td>
                         <td>ログフォルダ作成失敗</td>
                         <td><span class="location">executionLogger.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
 
                     <!-- 音声圧縮関連エラー -->
@@ -703,7 +710,7 @@
                         <td><span class="severity severity-medium">Medium</span></td>
                         <td>音声圧縮処理失敗</td>
                         <td><span class="location">audioCompressionService.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_AUDIO_BUFFER_OVERFLOW</span></td>
@@ -711,7 +718,7 @@
                         <td><span class="severity severity-high">High</span></td>
                         <td>音声バッファオーバーフロー</td>
                         <td><span class="location">audioCompressionService.js</span></td>
-                        <td><span class="test-case">PT001</span></td>
+                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
                 </tbody>
             </table>

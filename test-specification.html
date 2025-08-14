@@ -298,7 +298,7 @@
         <div class="section">
             <h2>2. Phase 1: 開発環境テスト (TC001-007)</h2>
             
-            <div class="test-case">
+            <div class="test-case" id="tc001">
                 <h3><span class="status-indicator status-completed"></span>TC001: Zoom Cloud Recording監視テスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -328,7 +328,7 @@
                 </div>
             </div>
             
-            <div class="test-case">
+            <div class="test-case" id="tc002">
                 <h3><span class="status-indicator status-completed"></span>TC002: Gemini AI文字起こしテスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -358,7 +358,7 @@
                 </div>
             </div>
 
-            <div class="test-case">
+            <div class="test-case" id="tc003">
                 <h3><span class="status-indicator status-completed"></span>TC003: Gemini AI議事録生成テスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -383,7 +383,7 @@
                 </div>
             </div>
 
-            <div class="test-case">
+            <div class="test-case" id="tc004">
                 <h3><span class="status-indicator status-completed"></span>TC004: Google Drive保存・共有テスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -495,7 +495,7 @@
                 <p><strong>アーキテクチャ:</strong> 4つの業務部品 + 4つのベース部品での統合テスト</p>
             </div>
 
-            <div class="test-case">
+            <div class="test-case" id="tc201">
                 <h3><span class="status-indicator status-completed"></span>TC201: Vercelヘルスチェック統合テスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -559,7 +559,7 @@
                 </div>
             </div>
 
-            <div class="test-case">
+            <div class="test-case" id="tc203">
                 <h3><span class="status-indicator status-completed"></span>TC203: 8項目構造化要約統合テスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -674,7 +674,7 @@
                 </div>
             </div>
 
-            <div class="test-case">
+            <div class="test-case" id="tc204">
                 <h3><span class="status-indicator status-complete"></span>TC204: Google Drive保存・共有リンク統合テスト</h3>
                 <div class="test-matrix">
                     <table>
@@ -740,7 +740,7 @@
                 </div>
             </div>
 
-            <div class="test-case">
+            <div class="test-case" id="tc205">
                 <h3><span class="status-indicator status-completed"></span>TC205: End-to-End統合テスト（順次処理版）</h3>
                 <div class="test-matrix">
                     <table>
@@ -796,8 +796,8 @@
                 </div>
             </div>
 
-            <div class="test-case">
-                <h3><span class="status-indicator status-completed"></span>PT001: 本番環境スルーテスト（Zoom連携完全版）</h3>
+            <div class="test-case" id="pt001">
+                <h3><span class="status-indicator status-not-started"></span>PT001: 本番環境スルーテスト（仕様変更後再実施予定）</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -808,57 +808,69 @@
                         </tr>
                         <tr>
                             <td><strong>実行日時</strong></td>
-                            <td>2025-08-08 最終実行</td>
-                            <td>✅ 完了</td>
-                            <td>正常系機能完全動作確認</td>
+                            <td>仕様変更後再実施予定</td>
+                            <td>🔴 未実施</td>
+                            <td>仕様変更後の確認待ち</td>
                         </tr>
                         <tr>
                             <td>テスト目的</td>
                             <td>Zoom録画取得→AI処理→Google Drive保存→Slack通知の全フロー動作確認</td>
-                            <td>✅ 完了</td>
-                            <td>全ステップ成功・228.8秒</td>
+                            <td>🔴 未実施</td>
+                            <td>仕様変更反映後に実施</td>
                         </tr>
                         <tr>
                             <td>エンドポイント</td>
                             <td><code>/api/production-throughput-test?testId=PT001</code></td>
-                            <td>✅ 完了</td>
+                            <td>🔴 未実施</td>
                             <td>Vercel本番環境</td>
                         </tr>
                         <tr class="priority-high">
                             <td>Step 1: Zoom録画取得</td>
                             <td>実録画リスト取得、録画ファイル処理</td>
-                            <td>✅ 成功</td>
-                            <td>実録画データ処理成功</td>
+                            <td>🔴 未実施</td>
+                            <td>仕様変更後確認予定</td>
                         </tr>
                         <tr class="priority-high">
                             <td>Step 2: 動画保存処理</td>
-                            <td>Google Driveへの動画ファイル保存・共有リンク生成</td>
-                            <td>✅ 成功</td>
-                            <td>動画保存・リンク生成成功</td>
+                            <td>クライアント名ベースフォルダ構造でGoogle Drive保存・共有リンク生成</td>
+                            <td>🔴 未実施</td>
+                            <td>{クライアント名}/{年-月}/videos/構造確認</td>
                         </tr>
                         <tr class="priority-medium">
                             <td>Step 3: AI処理</td>
-                            <td>Gemini AI による文字起こし・8項目構造化要約</td>
-                            <td>✅ 成功</td>
-                            <td>20099文字文字起こし・要約生成成功</td>
+                            <td>統合Gemini AI処理（processAudioWithStructuredOutput）による文字起こし・8項目構造化要約</td>
+                            <td>🔴 未実施</td>
+                            <td>API呼び出し80-97%削減・処理時間50-80%短縮確認</td>
+                        </tr>
+                        <tr class="priority-medium">
+                            <td>Step 3-1: 音声圧縮</td>
+                            <td>AudioCompressionServiceによる部分音声抽出（最初20%・80%削減）</td>
+                            <td>🔴 未実施</td>
+                            <td>Gemini API互換性・品質向上確認</td>
                         </tr>
                         <tr class="priority-high">
                             <td>Step 4: Slack通知</td>
-                            <td>要約と録画リンクをSlackチャンネルに投稿</td>
-                            <td>✅ 成功</td>
-                            <td>全文表示・エンドマーカー付き投稿成功</td>
+                            <td>改良版Slack投稿（マークダウン問題解決・実行ログリンク付き）</td>
+                            <td>🔴 未実施</td>
+                            <td>投稿品質改善・ログリンク確認</td>
                         </tr>
                         <tr>
                             <td>Step 5: 実行ログ保存</td>
-                            <td>Google Driveへの日本語構造化ログ保存</td>
-                            <td>✅ 成功</td>
-                            <td>運用フレンドリーなログ保存成功</td>
+                            <td>クライアント名ベースlogs/フォルダに統合ログ保存</td>
+                            <td>🔴 未実施</td>
+                            <td>{クライアント名}/{年-月}/logs/構造確認</td>
+                        </tr>
+                        <tr>
+                            <td>Step 6: 文書保存</td>
+                            <td>DocumentStorageServiceで要約・文字起こし・構造化要約を自動保存</td>
+                            <td>🔴 未実施</td>
+                            <td>{クライアント名}/{年-月}/documents/構造確認</td>
                         </tr>
                         <tr class="priority-high">
                             <td>総合結果</td>
-                            <td>正常系機能完全実装・運用品質向上機能実装済み</td>
-                            <td>✅ 完全成功</td>
-                            <td>228.8秒で全ステップ完了</td>
+                            <td>仕様変更後の再テスト実施が必要</td>
+                            <td>🔴 未実施</td>
+                            <td>仕様変更反映後に実行</td>
                         </tr>
                         <tr>
                             <td>Zoom録画削除</td>
@@ -876,13 +888,15 @@
                 </div>
 
                 <div class="automation-info">
-                    <h4>🔧 技術的成果</h4>
+                    <h4>🔧 実装済み新機能（2219a28以降）</h4>
                     <ul>
-                        <li><strong>OAuth認証修正:</strong> 環境変数マッピング修正（ZOOM_API_KEY/SECRET活用）</li>
-                        <li><strong>APIエンドポイント修正:</strong> /users/me/recordings への変更</li>
-                        <li><strong>実行ログシステム:</strong> ExecutionLoggerによる構造化ログ・Google Drive自動保存</li>
-                        <li><strong>エラーハンドリング:</strong> 成功・失敗両方の実行ログ保存対応</li>
-                        <li><strong>本番運用設計:</strong> 録画削除機能のON/OFF制御実装</li>
+                        <li><strong>統合AI処理システム:</strong> processAudioWithStructuredOutput（API呼び出し80-97%削減）</li>
+                        <li><strong>音声圧縮システム:</strong> AudioCompressionService（部分音声抽出・80%削減）</li>
+                        <li><strong>文書保存システム:</strong> DocumentStorageService（要約・文字起こし自動保存）</li>
+                        <li><strong>クライアント名ベースフォルダ:</strong> {クライアント名}/{年-月}/[videos,documents,logs]</li>
+                        <li><strong>Slack投稿改善:</strong> マークダウン問題解決・実行ログリンク付き</li>
+                        <li><strong>プロンプト精度向上:</strong> JSON解析フォールバック・クライアント名抽出改良</li>
+                        <li><strong>パフォーマンス最適化:</strong> 処理時間50-80%短縮・5回リトライ機能</li>
                     </ul>
                 </div>
 
@@ -924,7 +938,7 @@
         <div class="section">
             <h2>5. Phase 4: 非機能要件テスト (TC301-401)</h2>
 
-            <div class="test-case">
+            <div class="test-case" id="tc301">
                 <h3><span class="status-indicator status-not-started"></span>TC301: Vercel環境ログ出力テスト</h3>
                 <div class="test-matrix">
                     <table>
