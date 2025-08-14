@@ -98,23 +98,30 @@ class AudioSummaryService {
         debugTimer('Step 0: 音声圧縮スキップ', '10MB未満のため圧縮不要');
       }
       
-      // 1. 音声の文字起こし（圧縮済みBufferから）
-      debugTimer('Step 1: transcribeAudioFromBuffer開始');
-      logger.info('Starting audio transcription from buffer with Gemini...');
+      // 1. 統合AI処理（文字起こし＋構造化要約を1回のAPI呼び出しで実行、5回リトライ付き）
+      debugTimer('Step 1: processAudioWithStructuredOutput開始（統合AI処理）');
+      logger.info('Starting unified audio processing with Gemini (transcription + structured summary)...');
       
-      const transcriptionResult = await this.aiService.transcribeAudioFromBuffer(processedAudioBuffer, fileName, meetingInfo);
-      debugTimer('Step 1: transcribeAudioFromBuffer完了', `transcription length: ${transcriptionResult?.transcription?.length || 0}`);
+      const unifiedResult = await this.aiService.processAudioWithStructuredOutput(processedAudioBuffer, fileName, meetingInfo);
+      debugTimer('Step 1: processAudioWithStructuredOutput完了', `transcription length: ${unifiedResult?.transcription?.length || 0}, summary generated: ${!!unifiedResult?.structuredSummary}`);
       
-      // 2. 構造化された要約を生成
-      debugTimer('Step 2: generateStructuredSummary開始');
-      logger.info('Generating structured summary...');
-      const structuredSummary = await this.generateStructuredSummary(transcriptionResult);
-      debugTimer('Step 2: generateStructuredSummary完了');
+      // 統合結果から個別データを抽出（後方互換性のため）
+      const transcriptionResult = {
+        transcription: unifiedResult.transcription,
+        meetingInfo: unifiedResult.meetingInfo,
+        fileName: fileName,
+        timestamp: unifiedResult.timestamp,
+        audioBufferSize: unifiedResult.audioBufferSize,
+        model: unifiedResult.model,
+        attempt: unifiedResult.attempt
+      };
+      
+      const structuredSummary = unifiedResult.structuredSummary;
 
-      // 3. 結果の検証
-      debugTimer('Step 3: validateProcessingResult開始');
+      // 2. 結果の検証
+      debugTimer('Step 2: validateProcessingResult開始');
       this.validateProcessingResult({ transcription: transcriptionResult, structuredSummary: structuredSummary });
-      debugTimer('Step 3: validateProcessingResult完了');
+      debugTimer('Step 2: validateProcessingResult完了');
       
       const totalTime = debugTimer('processRealAudioBuffer完了');
       
@@ -129,7 +136,11 @@ class AudioSummaryService {
         compressionStats: compressionStats, // 圧縮統計情報
         meetingInfo: meetingInfo,
         processedAt: new Date().toISOString(),
-        totalProcessingTime: totalTime
+        totalProcessingTime: totalTime,
+        // 統合AI処理の追加情報
+        apiCallReduction: '50%', // 2回→1回のAPI呼び出し削減
+        retryCapability: '5回リトライ対応',
+        unifiedProcessing: true
       };
 
     } catch (error) {
