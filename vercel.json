@@ -6,35 +6,35 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/index.html"
+      "destination": "/public/index.html"
     },
     {
       "source": "/dashboard",
-      "destination": "/index.html"
+      "destination": "/public/index.html"
     },
     {
       "source": "/functional-design",
-      "destination": "/functional-design.html"
+      "destination": "/public/functional-design.html"
     },
     {
       "source": "/environment-design",
-      "destination": "/environment-design.html"
+      "destination": "/public/environment-design.html"
     },
     {
       "source": "/test-specification",
-      "destination": "/test-specification.html"
+      "destination": "/public/test-specification.html"
     },
     {
       "source": "/test-specifications",
-      "destination": "/test-specification.html"
+      "destination": "/public/test-specification.html"
     },
     {
       "source": "/operations-design",
-      "destination": "/operations-design.html"
+      "destination": "/public/operations-design.html"
     },
     {
       "source": "/error-codes",
-      "destination": "/error-codes.html"
+      "destination": "/public/error-codes.html"
     },
     {
       "source": "/claude.md",
