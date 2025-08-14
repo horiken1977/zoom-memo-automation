@@ -82,7 +82,7 @@ class SlackService {
    * 要約用のSlackブロックを構築
    */
   buildSummaryBlocks(analysisResult) {
-    const { meetingInfo, summary, participants, actionItems, decisions } = analysisResult;
+    const { meetingInfo, summary, participants, decisions } = analysisResult;
     
     const blocks = [];
 
@@ -151,24 +151,7 @@ class SlackService {
       });
     }
 
-    // アクションアイテム
-    if (actionItems.length > 0) {
-      const actionText = actionItems
-        .map((item, index) => {
-          const priority = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
-          const dueDate = item.dueDate ? ` (期限: ${item.dueDate})` : '';
-          return `${index + 1}. ${priority} ${item.task}\\n   👤 ${item.assignee || '未指定'}${dueDate}`;
-        })
-        .join('\\n\\n');
-
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*📋 Next Actions*\\n${actionText}`
-        }
-      });
-    }
+    // アクションアイテム（宿題セクション）は削除
 
     // 要約（短縮版）
     if (summary) {
@@ -288,7 +271,7 @@ class SlackService {
     try {
       // Slack制限: 単一text要素は3000文字まで、マージン考慮して2700文字（エンドマーカー用に余裕を持たせる）
       const SLACK_TEXT_LIMIT = 2700;
-      const END_MARKER = '\n\n---\n📋 **要約ここまで** ✅';
+      const END_MARKER = '\n\n---\n📋 要約ここまで ✅';
       
       // 全体の要約を可能な限り表示（短縮しすぎない）
       if (summary.length <= SLACK_TEXT_LIMIT) {
@@ -307,15 +290,15 @@ class SlackService {
       
       // 70%以上の位置で適切な区切りが見つかれば、そこで切る
       if (lastPeriod > availableSpace * 0.7) {
-        return truncated.substring(0, lastPeriod + 1) + '\n\n---\n📋 **要約途中で切断** ⚠️\n*完全版は添付の実行ログファイルをご確認ください*';
+        return truncated.substring(0, lastPeriod + 1) + '\n\n---\n📋 要約途中で切断 ⚠️\n*完全版は添付の実行ログファイルをご確認ください*';
       }
       
       // 適切な区切りが見つからない場合、制限ギリギリで切る
-      return truncated + '\n\n---\n📋 **要約途中で切断** ⚠️\n*完全版は添付の実行ログファイルをご確認ください*';
+      return truncated + '\n\n---\n📋 要約途中で切断 ⚠️\n*完全版は添付の実行ログファイルをご確認ください*';
       
     } catch (error) {
       logger.warn('Failed to extract short summary:', error.message);
-      return summary + '\n\n---\n📋 **要約ここまで** ✅'; // エラー時も安全にエンドマーカー追加
+      return summary + '\n\n---\n📋 要約ここまで ✅'; // エラー時も安全にエンドマーカー追加
     }
   }
 
@@ -515,7 +498,7 @@ ${analysisResult.transcription}
   /**
    * 会議要約と録画リンクをSlackに送信（エラー回復機能付き）
    */
-  async sendMeetingSummaryWithRecording(analysisResult, driveResult) {
+  async sendMeetingSummaryWithRecording(analysisResult, driveResult, executionLogResult = null) {
     const maxRetries = 3;
     let lastError = null;
 
@@ -535,7 +518,7 @@ ${analysisResult.transcription}
         logger.info(`Attempting to send meeting summary to Slack (${attempt}/${maxRetries}): ${analysisResult.meetingInfo.topic}`);
 
         // Slack ブロック形式で整理されたメッセージを作成（録画リンク付き）
-        const blocks = this.buildSummaryBlocksWithRecording(analysisResult, driveResult);
+        const blocks = this.buildSummaryBlocksWithRecording(analysisResult, driveResult, executionLogResult);
 
         const result = await this.client.chat.postMessage({
           channel: this.channelId,
@@ -607,8 +590,8 @@ ${analysisResult.transcription}
   /**
    * 録画リンク付き要約用のSlackブロックを構築
    */
-  buildSummaryBlocksWithRecording(analysisResult, driveResult) {
-    const { meetingInfo, summary, participants, actionItems, decisions } = analysisResult;
+  buildSummaryBlocksWithRecording(analysisResult, driveResult, executionLogResult = null) {
+    const { meetingInfo, summary, participants, decisions } = analysisResult;
     
     const blocks = [];
 
@@ -621,12 +604,19 @@ ${analysisResult.transcription}
       }
     });
 
-    // 録画リンクセクション
+    // 録画リンクセクション（実行ログリンク付き）
+    let linkText = `🎥 *録画ファイル:* <${driveResult.viewLink || 'リンク取得中'}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath || 'Zoom録画フォルダ'}\n⏱️ *開催日時:* ${this.formatMeetingStartTime(meetingInfo)}\n🕐 *時間:* ${meetingInfo.duration}分`;
+    
+    // 実行ログリンクを追加
+    if (executionLogResult && executionLogResult.success && executionLogResult.viewLink) {
+      linkText += `\n📋 *実行ログ:* <${executionLogResult.viewLink}|処理詳細を確認>`;
+    }
+    
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `🎥 *録画ファイル:* <${driveResult.viewLink || 'リンク取得中'}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath || 'Zoom録画フォルダ'}\n⏱️ *開催日時:* ${this.formatMeetingStartTime(meetingInfo)}\n🕐 *時間:* ${meetingInfo.duration}分`
+        text: linkText
       }
     });
 
@@ -676,23 +666,7 @@ ${analysisResult.transcription}
       });
     }
 
-    // アクションアイテム
-    if (actionItems && actionItems.length > 0) {
-      const actionList = actionItems.map((action, index) => {
-        let line = `${index + 1}. ${action.task}`;
-        if (action.assignee) line += ` (担当: ${action.assignee})`;
-        if (action.dueDate) line += ` [期限: ${action.dueDate}]`;
-        return line;
-      }).join('\n');
-      
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*📋 Next Action*\n${actionList}`
-        }
-      });
-    }
+    // アクションアイテム（宿題セクション）は削除
 
     // フッター
     blocks.push({

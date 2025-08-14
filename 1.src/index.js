@@ -11,6 +11,7 @@ const AIService = require('./services/aiService');
 const SlackService = require('./services/slackService');
 const GoogleDriveService = require('./services/googleDriveService');
 const DocumentStorageService = require('./services/documentStorageService');
+const { ExecutionLogger } = require('./utils/executionLogger');
 
 class ZoomMemoAutomation {
   constructor() {
@@ -176,16 +177,29 @@ class ZoomMemoAutomation {
     const startTime = Date.now();
     logger.meetingStart(recording);
 
+    // 実行ログを開始
+    const executionLogger = new ExecutionLogger(`meeting_${recording.id}_${Date.now()}`, recording);
+    
     try {
+      executionLogger.logSuccess('MEETING_PROCESSING_START', { 
+        meetingTopic: recording.topic,
+        meetingId: recording.id 
+      });
       // Slackに処理開始通知
       const processingMessageTs = await this.slackService.sendProcessingNotification(recording);
 
       // 1. 録画ファイルをダウンロード
       logger.info(`Downloading recording for meeting: ${recording.topic}`);
+      executionLogger.startStep('RECORDING_DOWNLOAD');
       const recordingInfo = await this.zoomService.downloadRecording(recording);
+      executionLogger.completeStep('RECORDING_DOWNLOAD', { 
+        audioFilePath: recordingInfo.audioFilePath,
+        videoFilePath: recordingInfo.videoFilePath 
+      });
 
       // 2. 統合AI処理実行（文字起こし+要約を一括実行）
       logger.info(`Starting unified AI processing for: ${recording.topic}`);
+      executionLogger.startStep('AI_PROCESSING');
       const aiBuffer = await fs.readFile(recordingInfo.audioFilePath);
       const analysisResult = await this.aiService.processAudioWithStructuredOutput(
         aiBuffer,
@@ -195,13 +209,24 @@ class ZoomMemoAutomation {
           maxRetries: 5
         }
       );
+      executionLogger.completeStep('AI_PROCESSING', { 
+        transcriptionLength: analysisResult.transcription?.length,
+        participantCount: analysisResult.participants?.length,
+        processingTime: analysisResult.processingTime 
+      });
 
       // 3. Google Driveに録画保存
       logger.info(`Saving recording to Google Drive: ${recording.topic}`);
+      executionLogger.startStep('RECORDING_SAVE');
       const driveResult = await this.googleDriveService.saveRecording(
         recordingInfo.videoFilePath || recordingInfo.audioFilePath,
         recordingInfo.meetingInfo
       );
+      executionLogger.completeStep('RECORDING_SAVE', { 
+        fileId: driveResult.fileId,
+        fileName: driveResult.fileName,
+        viewLink: driveResult.viewLink 
+      });
 
       // 4. 要約・文字起こしをGoogle Driveに保存
       logger.info(`Saving documents to Google Drive: ${recording.topic}`);
@@ -243,11 +268,20 @@ class ZoomMemoAutomation {
         logger.error(`Structured summary save failed: ${structuredResult.reason.message}`);
       }
 
-      // 5. Slackに要約と録画リンクを送信
-      logger.info(`Sending summary and recording link to Slack: ${recording.topic}`);
-      await this.slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult);
+      // 5. 実行ログを保存
+      logger.info(`Saving execution log for: ${recording.topic}`);
+      executionLogger.startStep('EXECUTION_LOG_SAVE');
+      const executionLogResult = await executionLogger.saveToGoogleDrive();
+      executionLogger.completeStep('EXECUTION_LOG_SAVE', { 
+        logFileId: executionLogResult.fileId,
+        logFileName: executionLogResult.logFileName 
+      });
 
-      // 6. 一時ファイルのクリーンアップ（安全モードでは実行しない）
+      // 6. Slackに要約と録画リンクを送信（実行ログリンク付き）
+      logger.info(`Sending summary and recording link to Slack: ${recording.topic}`);
+      await this.slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult, executionLogResult);
+
+      // 7. 一時ファイルのクリーンアップ（安全モードでは実行しない）
       if (!config.productionTest.enableSafeMode) {
         await this.cleanupTempFiles([recordingInfo.audioFilePath, recordingInfo.videoFilePath]);
       } else {
@@ -258,6 +292,21 @@ class ZoomMemoAutomation {
       logger.meetingComplete(recording, processingTime);
 
     } catch (error) {
+      // エラーログを記録
+      if (executionLogger) {
+        executionLogger.logError('MEETING_PROCESSING_ERROR', 'SY009', error.message, { 
+          errorStack: error.stack,
+          meetingTopic: recording.topic 
+        });
+        
+        // エラー時でも実行ログを保存
+        try {
+          await executionLogger.saveToGoogleDrive();
+        } catch (logError) {
+          logger.error('Failed to save execution log after error:', logError.message);
+        }
+      }
+      
       logger.meetingError(recording, error);
       throw error;
     }
