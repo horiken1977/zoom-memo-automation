@@ -581,12 +581,89 @@ ${transcription}`;
   }
 
   /**
+   * 会議名からクライアント名を抽出
+   */
+  extractClientFromMeetingName(meetingTopic) {
+    if (!meetingTopic) return '不明';
+    
+    // パターン1: 「○○様_」形式（最も確実）
+    const pattern1 = meetingTopic.match(/^([一-龯ァ-ヶー\w]+様)_/);
+    if (pattern1) {
+      return pattern1[1];
+    }
+    
+    // パターン2: 「株式会社○○_」形式
+    const pattern2 = meetingTopic.match(/^(株式会社[一-龯ァ-ヶー\w]+)_/);
+    if (pattern2) {
+      return pattern2[1];
+    }
+    
+    // パターン3: 「○○株式会社_」形式
+    const pattern3 = meetingTopic.match(/^([一-龯ァ-ヶー\w]+株式会社)_/);
+    if (pattern3) {
+      return pattern3[1];
+    }
+    
+    // パターン4: 「○○社_」形式
+    const pattern4 = meetingTopic.match(/^([一-龯ァ-ヶー\w]+社)_/);
+    if (pattern4) {
+      return pattern4[1];
+    }
+    
+    // パターン5: 「○○グループ_」形式
+    const pattern5 = meetingTopic.match(/^([一-龯ァ-ヶー\w]+グループ)_/);
+    if (pattern5) {
+      return pattern5[1];
+    }
+    
+    // パターン6: 「○○_」形式（汎用、企業名の可能性が高い場合）
+    const pattern6 = meetingTopic.match(/^([一-龯ァ-ヶー\w]{2,10})_/);
+    if (pattern6) {
+      const candidate = pattern6[1];
+      // 一般的な単語を除外
+      const excludeWords = ['会議', '定例', '打合せ', '打ち合わせ', 'MTG', 'ミーティング', '相談', '説明会'];
+      if (!excludeWords.includes(candidate)) {
+        return candidate + '様'; // 敬称を付加
+      }
+    }
+    
+    return '不明';
+  }
+
+  /**
    * テキストから構造化要約を抽出（JSONパース失敗時のフォールバック）
    */
   extractSummaryFromText(text) {
+    // クライアント名の抽出を試行
+    let clientName = '不明';
+    
+    // パターン1: 「○○様」形式
+    const clientPattern1 = text.match(/([一-龯ァ-ヶー\w]+)様/);
+    if (clientPattern1) {
+      clientName = clientPattern1[1] + '様';
+    } else {
+      // パターン2: 「株式会社○○」形式
+      const clientPattern2 = text.match(/(株式会社[一-龯ァ-ヶー\w]+)/);
+      if (clientPattern2) {
+        clientName = clientPattern2[1];
+      } else {
+        // パターン3: 「○○株式会社」形式
+        const clientPattern3 = text.match(/([一-龯ァ-ヶー\w]+株式会社)/);
+        if (clientPattern3) {
+          clientName = clientPattern3[1];
+        } else {
+          // パターン4: 「○○社」形式
+          const clientPattern4 = text.match(/([一-龯ァ-ヶー\w]+)社/);
+          if (clientPattern4) {
+            clientName = clientPattern4[1] + '社';
+          }
+        }
+      }
+    }
+    
     return {
       overview: text.substring(0, 500) + '...',
-      client: '不明',
+      client: clientName,
       attendees: [],
       agenda: [],
       discussions: [],
@@ -595,7 +672,7 @@ ${transcription}`;
       nextSteps: [],
       audioQuality: {
         clarity: 'unknown',
-        issues: ['JSON形式での解析失敗'],
+        issues: ['JSON形式での解析失敗', 'フォールバック処理で基本情報のみ抽出'],
         transcriptionConfidence: 'medium'
       }
     };
@@ -637,72 +714,89 @@ ${transcription}`;
     }
     
     // 統合プロンプト（音声から直接8項目構造化要約を生成）
-    const structuredPrompt = `あなたは会議の音声を分析し、構造化された議事録を作成するAIアシスタントです。
-この音声ファイルを分析し、以下の8項目の構造で日本語の議事録を作成してください。
+    const structuredPrompt = `# 音声会議分析システム
 
-**出力形式（必ず以下のJSON形式で出力）:**
-{
-  "transcription": "音声の詳細な文字起こし全文",
-  "summary": {
-    "overview": "会議の概要（3-5文）",
-    "client": "クライアント名（例：株式会社○○、○○様）",
-    "attendees": [
-      {
-        "name": "参加者名",
-        "role": "役職・所属",
-        "organization": "会社名"
-      }
-    ],
-    "agenda": ["議題1", "議題2"],
-    "discussions": [
-      {
-        "topic": "議論テーマ",
-        "content": "議論内容",
-        "speaker": "発言者",
-        "timestamp": "MM:SS形式（可能な場合）"
-      }
-    ],
-    "decisions": [
-      {
-        "decision": "決定事項",
-        "reason": "決定理由",
-        "implementationDate": "実施予定日"
-      }
-    ],
-    "actionItems": [
-      {
-        "task": "タスク内容",
-        "assignee": "担当者",
-        "dueDate": "期限（YYYY/MM/DD形式）",
-        "priority": "high/medium/low"
-      }
-    ],
-    "nextSteps": [
-      {
-        "action": "次のステップ",
-        "timeline": "時期"
-      }
-    ],
-    "audioQuality": {
-      "clarity": "excellent/good/fair/poor",
-      "issues": ["音質の問題点"],
-      "transcriptionConfidence": "high/medium/low"
-    }
-  }
-}
+あなたは音声ファイルから**正確なJSON形式**で構造化議事録を生成する専門AIです。
 
+## 重要: 出力形式
+- **絶対に** JSON形式のみで回答してください
+- マークダウンブロック（\`\`\`json）は不要です
+- 説明文は一切不要です
+- { から } まで、純粋なJSONのみを出力してください
+
+## 分析対象
 **会議情報:**
 - 会議名: ${meetingInfo.topic}
 - 開催日時: ${meetingInfo.startTime}
 - 時間: ${meetingInfo.duration}分
 - 主催者: ${meetingInfo.hostName}
 
-**注意事項:**
-- クライアント名は会話内容から正確に抽出
-- タイムスタンプは可能な限り記載
-- Next Actionは「アクション項目｜担当者｜期限」形式で整理
-- 不明な項目は"不明"または空配列とする
-- 必ずJSON形式で出力すること`;
+## 出力JSON構造
+以下の構造で正確にJSONを生成してください：
+
+{
+  "transcription": "音声の完全な文字起こし（全ての発言を含む）",
+  "summary": {
+    "overview": "会議の目的と結論の要約（3-5文で簡潔に）",
+    "client": "相手企業名（「○○株式会社」「○○様」「○○社」など、実際の会話から抽出）",
+    "attendees": [
+      {
+        "name": "参加者の氏名",
+        "role": "役職名",
+        "organization": "所属会社名"
+      }
+    ],
+    "agenda": ["議題項目1", "議題項目2"],
+    "discussions": [
+      {
+        "topic": "議論のテーマ",
+        "content": "議論の内容要約",
+        "speaker": "主な発言者",
+        "timestamp": "MM:SS"
+      }
+    ],
+    "decisions": [
+      {
+        "decision": "決定された事項",
+        "reason": "決定に至った理由",
+        "implementationDate": "実施時期"
+      }
+    ],
+    "actionItems": [
+      {
+        "task": "具体的なタスク内容",
+        "assignee": "担当者名",
+        "dueDate": "YYYY/MM/DD",
+        "priority": "high"
+      }
+    ],
+    "nextSteps": [
+      {
+        "action": "次に実行すべきアクション",
+        "timeline": "実施時期"
+      }
+    ],
+    "audioQuality": {
+      "clarity": "excellent",
+      "issues": [],
+      "transcriptionConfidence": "high"
+    }
+  }
+}
+
+## クライアント名抽出の重要指示
+- 会話内で言及される相手企業名を**必ず**抽出してください
+- 「○○様」「○○社」「○○株式会社」「○○グループ」など、実際の表現をそのまま使用
+- 会議名からも企業名を推測してください（例：「毎日放送様_第5回共通言語MTG」→「毎日放送様」）
+- 不明な場合のみ"不明"とする
+
+## データ品質基準
+- 全ての配列は、該当項目がない場合は空配列 [] にする
+- 不明な文字列項目は "不明" にする
+- 日付形式は厳密に YYYY/MM/DD または YYYY-MM-DD にする
+- priorityは high/medium/low のいずれかにする
+
+**再度強調: 返答は純粋なJSONデータのみです。説明は一切不要です。**`;
 
     // リトライループ
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -724,24 +818,63 @@ ${transcription}`;
         
         const response = result.response.text();
         
-        // JSON形式でパース
+        // JSON形式でパース（複数のフォールバック手法）
         let parsedResult;
         try {
-          // JSON部分を抽出（```json```で囲まれている場合がある）
-          const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || response.match(/\{[\s\S]*\}/);
-          const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : response;
-          parsedResult = JSON.parse(jsonText);
-        } catch (parseError) {
-          logger.warn('Failed to parse as JSON, treating as text response');
-          parsedResult = {
-            transcription: response,
-            summary: this.extractSummaryFromText(response)
-          };
+          // 手法1: レスポンス全体をJSONとしてパース
+          parsedResult = JSON.parse(response);
+        } catch (parseError1) {
+          try {
+            // 手法2: マークダウンブロックを除去してパース
+            const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+              parsedResult = JSON.parse(jsonMatch[1]);
+            } else {
+              throw new Error('No JSON block found');
+            }
+          } catch (parseError2) {
+            try {
+              // 手法3: { } で囲まれた部分を抽出してパース
+              const jsonObjectMatch = response.match(/\{[\s\S]*\}/);
+              if (jsonObjectMatch) {
+                parsedResult = JSON.parse(jsonObjectMatch[0]);
+              } else {
+                throw new Error('No JSON object found');
+              }
+            } catch (parseError3) {
+              // 手法4: テキストクリーニング後にパース
+              try {
+                const cleanedText = response
+                  .replace(/```json/g, '')
+                  .replace(/```/g, '')
+                  .replace(/^\s*[\r\n]/gm, '')
+                  .trim();
+                parsedResult = JSON.parse(cleanedText);
+              } catch (parseError4) {
+                logger.warn(`All JSON parsing attempts failed, using fallback. Errors: ${parseError1.message}, ${parseError2.message}, ${parseError3.message}, ${parseError4.message}`);
+                
+                // フォールバック: テキストベースの構造化データ生成
+                parsedResult = {
+                  transcription: response.length > 100 ? response : `文字起こし解析失敗: ${response}`,
+                  summary: this.extractSummaryFromText(response)
+                };
+              }
+            }
+          }
         }
         
-        // 結果の検証
+        // 結果の検証と追加改善
         if (!parsedResult.transcription || parsedResult.transcription.length < 50) {
           throw new Error('Transcription too short or missing');
+        }
+        
+        // クライアント名が「不明」の場合、会議名から抽出を試行
+        if (parsedResult.summary && (!parsedResult.summary.client || parsedResult.summary.client === '不明')) {
+          const clientFromMeetingName = this.extractClientFromMeetingName(meetingInfo.topic);
+          if (clientFromMeetingName !== '不明') {
+            parsedResult.summary.client = clientFromMeetingName;
+            logger.info(`Client name extracted from meeting topic: ${clientFromMeetingName}`);
+          }
         }
         
         const processingTime = Date.now() - startTime;
