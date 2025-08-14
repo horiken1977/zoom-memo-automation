@@ -160,21 +160,42 @@ class AudioCompressionService {
    * ステレオからモノラルに変換
    */
   convertToMono(pcmData) {
+    // バッファ境界チェック
+    if (!pcmData || pcmData.length === 0) {
+      logger.warn('⚠️ モノラル変換: 空のPCMデータ');
+      return Buffer.alloc(0);
+    }
+    
     // 16bit PCMと仮定して、2チャンネルを1チャンネルに変換
     if (pcmData.length % 4 !== 0) {
       // 奇数長の場合はそのまま返す（既にモノラルと仮定）
+      logger.info(`🎧 モノラル変換スキップ: ${pcmData.length}バイト（既にモノラル形式）`);
       return pcmData;
     }
     
     const monoLength = Math.floor(pcmData.length / 2);
     const mono = Buffer.alloc(monoLength);
     
+    // 安全な範囲でのモノラル変換
     for (let i = 0; i < monoLength; i += 2) {
-      // 左チャンネル（i）と右チャンネル（i+2）の平均を取る
-      const left = pcmData.readInt16LE(i * 2);
-      const right = pcmData.readInt16LE(i * 2 + 2);
-      const average = Math.floor((left + right) / 2);
-      mono.writeInt16LE(average, i);
+      const leftOffset = i * 2;
+      const rightOffset = i * 2 + 2;
+      
+      // バッファ境界チェック
+      if (leftOffset + 1 >= pcmData.length || rightOffset + 1 >= pcmData.length) {
+        logger.warn(`⚠️ モノラル変換: バッファ境界到達 at ${i}/${monoLength}`);
+        break;
+      }
+      
+      try {
+        const left = pcmData.readInt16LE(leftOffset);
+        const right = pcmData.readInt16LE(rightOffset);
+        const average = Math.floor((left + right) / 2);
+        mono.writeInt16LE(average, i);
+      } catch (error) {
+        logger.warn(`⚠️ モノラル変換エラー at ${i}: ${error.message}`);
+        break;
+      }
     }
     
     logger.info(`🎧 モノラル変換: ${pcmData.length} → ${mono.length}バイト`);
@@ -185,20 +206,39 @@ class AudioCompressionService {
    * 簡易ノイズリダクション
    */
   applySimpleDenoising(pcmData) {
+    // バッファ境界チェック
+    if (!pcmData || pcmData.length < 2) {
+      logger.warn('⚠️ ノイズリダクション: PCMデータが小さすぎます');
+      return pcmData;
+    }
+    
     // 簡易ローパスフィルター：高周波ノイズを除去
     const filtered = Buffer.alloc(pcmData.length);
     
     for (let i = 0; i < pcmData.length - 2; i += 2) {
-      if (i === 0) {
-        filtered.writeInt16LE(pcmData.readInt16LE(i), i);
-      } else {
-        // 前後のサンプルとの平均でスムージング
-        const prev = pcmData.readInt16LE(i - 2);
-        const current = pcmData.readInt16LE(i);
-        const next = i + 2 < pcmData.length ? pcmData.readInt16LE(i + 2) : current;
-        
-        const smoothed = Math.floor((prev * 0.25 + current * 0.5 + next * 0.25));
-        filtered.writeInt16LE(smoothed, i);
+      // バッファ境界チェック
+      if (i + 1 >= pcmData.length) {
+        break;
+      }
+      
+      try {
+        if (i === 0) {
+          filtered.writeInt16LE(pcmData.readInt16LE(i), i);
+        } else {
+          // 前後のサンプルとの平均でスムージング
+          const prev = i >= 2 ? pcmData.readInt16LE(i - 2) : 0;
+          const current = pcmData.readInt16LE(i);
+          const next = i + 2 < pcmData.length ? pcmData.readInt16LE(i + 2) : current;
+          
+          const smoothed = Math.floor((prev * 0.25 + current * 0.5 + next * 0.25));
+          filtered.writeInt16LE(smoothed, i);
+        }
+      } catch (error) {
+        logger.warn(`⚠️ ノイズリダクションエラー at ${i}: ${error.message}`);
+        // エラー時は元の値をコピー
+        if (i + 1 < pcmData.length) {
+          filtered.writeInt16LE(pcmData.readInt16LE(i), i);
+        }
       }
     }
     
@@ -214,11 +254,16 @@ class AudioCompressionService {
       // LameJSエンコーダーを初期化
       const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitRate);
       
-      // PCMデータを16bitサンプルの配列に変換
+      // PCMデータを16bitサンプルの配列に変換（境界チェック付き）
       const samples = [];
-      for (let i = 0; i < pcmData.length; i += 2) {
-        if (i + 1 < pcmData.length) {
-          samples.push(pcmData.readInt16LE(i));
+      for (let i = 0; i < pcmData.length - 1; i += 2) {
+        try {
+          if (i + 1 < pcmData.length) {
+            samples.push(pcmData.readInt16LE(i));
+          }
+        } catch (error) {
+          logger.warn(`⚠️ PCM読み取りエラー at ${i}: ${error.message}`);
+          break;
         }
       }
       
