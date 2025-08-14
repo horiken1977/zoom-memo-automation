@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機能設計書 - Zoom Memo Automation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .nav {
+            background: #667eea;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+        
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .function-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .function-card h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-planned { background: #ffc107; }
+        .status-development { background: #007bff; }
+        .status-completed { background: #28a745; }
+        .status-testing { background: #fd7e14; }
+        
+        .requirement-list {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .last-updated {
+            text-align: right;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 機能設計書</h1>
+            <p>Zoom Memo Automation システム</p>
+        </div>
+        
+        <div class="nav">
+            <a href="index.html">🏠 ダッシュボード</a>
+            <a href="environment-design.html">🏗️ 環境設計書</a>
+            <a href="operations-design.html">🛠️ 運用設計書</a>
+            <a href="test-specification.html">🧪 テスト仕様書</a>
+            <a href="claude.md">💬 対話記録</a>
+        </div>
+        
+        <div class="section">
+            <h2>1. システム概要</h2>
+            <p>Zoom Memo Automationは、Zoomクラウド録画を定期監視し、新しい録画を検知すると自動で文字起こし・要約を生成し、Google Driveに保存してSlackに通知するシステムです。</p>
+            <p><strong>【2025年8月6日更新】</strong> システム全体を責任分離された部品化サービスアーキテクチャに再設計しました。</p>
+            
+            <div class="requirement-list">
+                <h4>🏗️ 部品化アーキテクチャ構造</h4>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; margin: 15px 0;">
+                    <strong>【上位レイヤー: 業務機能部品】</strong><br/>
+                    📋 <strong>monitor-recordings-gdrive-test.js</strong> (エントリーポイント)<br/>
+                    &nbsp;&nbsp;↓<br/>
+                    📥 <strong>ZoomRecordingService</strong> - Zoom本番録画データ取得・処理（シーケンシャル）<br/>
+                    &nbsp;&nbsp;↓<br/>
+                    🤖 <strong>AudioSummaryService</strong> - 音声ファイル8項目要約<br/>
+                    &nbsp;&nbsp;↓<br/>
+                    💾 <strong>VideoStorageService</strong> - Google Drive保存・共有リンク<br/>
+                    &nbsp;&nbsp;↓<br/>
+                    💬 <strong>MeetingNotificationService</strong> - Slack構造化投稿<br/>
+                    <br/>
+                    <strong>【テスト・開発用】</strong><br/>
+                    📋 <strong>SampleDataService</strong> - Google Drive sampleデータ取得（開発・テスト用）<br/>
+                    <br/>
+                    <strong>【下位レイヤー: 基盤サービス部品】</strong><br/>
+                    🔧 <strong>googleDriveService.js</strong> - Google Drive API操作<br/>
+                    🔧 <strong>aiService.js</strong> - Gemini AI文字起こし・要約<br/>
+                    🔧 <strong>slackService.js</strong> - Slack API投稿<br/>
+                    🔧 <strong>zoomService.js</strong> - Zoom API録画取得<br/>
+                </div>
+            </div>
+            
+            <div class="requirement-list">
+                <h4>🔄 部品化処理フロー</h4>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; margin: 15px 0;">
+                    <strong>【Step 1: Zoom録画取得】ZoomRecordingService (シーケンシャル処理)</strong><br/>
+                    &nbsp;&nbsp;• Zoom API経由で録画リスト取得<br/>
+                    &nbsp;&nbsp;• 動画ファイル取得 → Google Drive保存 → 共有リンク生成<br/>
+                    &nbsp;&nbsp;• 音声ファイル取得 → メモリバッファ処理<br/>
+                    &nbsp;&nbsp;• Vercel制約対応（メモリ効率・300秒制限）<br/>
+                    <br/>
+                    <strong>【Step 2: AI要約処理】AudioSummaryService</strong><br/>
+                    &nbsp;&nbsp;• ダウンロード済み音声ファイルをGeminiで文字起こし<br/>
+                    &nbsp;&nbsp;• <strong>8項目構造化要約</strong>を生成:<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;1. クライアント名<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;2. 会議目的<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;3. 出席者名・社名<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;4. 資料<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;5. 論点・議論内容（詳細）<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;6. 結論・決定事項<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;7. 宿題<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;8. Next Action / Due Date<br/>
+                    <br/>
+                    <strong>【Step 3: 動画保存】VideoStorageService</strong><br/>
+                    &nbsp;&nbsp;• 音声ファイルをGoogle Drive本番フォルダ (1Q_KNzjRFzd_n5ktbouZix2Hs13qfTP7a) に保存<br/>
+                    &nbsp;&nbsp;• 年/月フォルダ構造を自動作成<br/>
+                    &nbsp;&nbsp;• 組織内共有リンクを生成<br/>
+                    <br/>
+                    <strong>【Step 4: 通知送信】MeetingNotificationService</strong><br/>
+                    &nbsp;&nbsp;• 8項目構造化要約 + 動画共有リンクを統合<br/>
+                    &nbsp;&nbsp;• フォーマットされたSlackメッセージを送信<br/>
+                    &nbsp;&nbsp;• 処理開始・エラー通知機能も提供<br/>
+                    <br/>
+                    <strong>【Step 5: クリーンアップ】</strong><br/>
+                    &nbsp;&nbsp;• 一時ファイルの自動削除<br/>
+                    &nbsp;&nbsp;• 処理結果ログの記録
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>2. 部品化コア機能</h2>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>P001: ZoomRecordingService（本番録画処理部品）</h3>
+                <p><strong>説明:</strong> Zoom API経由で実際の録画データを取得し、シーケンシャル処理で効率的に動画・音声を処理する部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/zoomRecordingService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>シーケンシャル処理フロー</h4>
+                <table>
+                    <tr>
+                        <th>ステップ</th>
+                        <th>処理内容</th>
+                        <th>メモリ効率</th>
+                        <th>備考</th>
+                    </tr>
+                    <tr>
+                        <td>1. 録画リスト取得</td>
+                        <td>Zoom API からprocessableRecordingsを取得</td>
+                        <td>軽量</td>
+                        <td>処理可能な録画のみフィルタリング</td>
+                    </tr>
+                    <tr>
+                        <td>2. 動画処理</td>
+                        <td>MP4ダウンロード → Google Drive保存 → 共有リンク取得</td>
+                        <td>中程度</td>
+                        <td>メモリバッファ使用、保存後すぐ解放</td>
+                    </tr>
+                    <tr>
+                        <td>3. 音声処理</td>
+                        <td>M4A/MP3ダウンロード → Gemini AI処理 → メモリ破棄</td>
+                        <td>高負荷</td>
+                        <td>音声はGoogle Driveに保存しない</td>
+                    </tr>
+                    <tr>
+                        <td>4. 結果統合</td>
+                        <td>動画リンク + 音声要約 → Slack投稿用データ生成</td>
+                        <td>軽量</td>
+                        <td>最終的な処理結果をまとめ</td>
+                    </tr>
+                </table>
+                
+                <h4>主要メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド名</th>
+                        <th>機能</th>
+                        <th>戻り値</th>
+                    </tr>
+                    <tr>
+                        <td>getRecordingsList()</td>
+                        <td>指定期間のZoom録画リスト取得</td>
+                        <td>処理可能録画配列</td>
+                    </tr>
+                    <tr>
+                        <td>processRecording()</td>
+                        <td>単一録画の完全処理（動画+音声）</td>
+                        <td>統合処理結果</td>
+                    </tr>
+                    <tr>
+                        <td>processVideoFile()</td>
+                        <td>動画ファイル処理（取得→保存→共有リンク）</td>
+                        <td>動画保存結果</td>
+                    </tr>
+                    <tr>
+                        <td>processAudioFile()</td>
+                        <td>音声ファイル処理（取得→AI処理→破棄）</td>
+                        <td>音声解析結果</td>
+                    </tr>
+                    <tr>
+                        <td>processBatchRecordings()</td>
+                        <td>複数録画の一括処理（シーケンシャル）</td>
+                        <td>一括処理結果</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>P001-DEV: SampleDataService（開発・テスト用）</h3>
+                <p><strong>説明:</strong> Google Drive「99.zoom_memo_recording/sample」フォルダからサンプル音声データを取得する部品（開発・テスト専用）</p>
+                <p><strong>実装場所:</strong> 1.src/services/sampleDataService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（本番では非使用）</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>対象フォルダ</td>
+                        <td>Google Drive: 1Q_KNzjRFzd_n5ktbouZix2Hs13qfTP7a/sample</td>
+                    </tr>
+                    <tr>
+                        <td>検索ファイル</td>
+                        <td>音声ファイル（.m4a, .mp3, .wav）を優先選択</td>
+                    </tr>
+                    <tr>
+                        <td>ダウンロード先</td>
+                        <td>/tmp/sample-data/（一時フォルダ）</td>
+                    </tr>
+                    <tr>
+                        <td>主要メソッド</td>
+                        <td>getSampleData(), downloadSampleFile(), cleanup()</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>P002: AudioSummaryService（音声要約部品）</h3>
+                <p><strong>説明:</strong> 音声ファイルをGeminiで8項目構造化要約を生成する部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/audioSummaryService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>8項目要約構造</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>1. クライアント名</td>
+                        <td>会議内容から推測されるクライアント名・組織名・プロジェクト名</td>
+                    </tr>
+                    <tr>
+                        <td>2. 会議目的</td>
+                        <td>会議が開催された理由・主要目標</td>
+                    </tr>
+                    <tr>
+                        <td>3. 出席者名・社名</td>
+                        <td>発言者から判別される参加者の名前・所属組織・役職</td>
+                    </tr>
+                    <tr>
+                        <td>4. 資料</td>
+                        <td>会議中に言及された資料・文書・データ・画面共有内容</td>
+                    </tr>
+                    <tr>
+                        <td>5. 論点・議論内容</td>
+                        <td>誰がどのような発言をし、どのような論理展開になったか（詳細）</td>
+                    </tr>
+                    <tr>
+                        <td>6. 結論・決定事項</td>
+                        <td>会議で確定した事項・合意に達した内容</td>
+                    </tr>
+                    <tr>
+                        <td>7. 宿題</td>
+                        <td>今後調査・検討が必要な事項・持ち帰り検討項目</td>
+                    </tr>
+                    <tr>
+                        <td>8. Next Action / Due Date</td>
+                        <td>具体的なアクションアイテムと実行期限・担当者</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>P003: VideoStorageService（動画保存部品）</h3>
+                <p><strong>説明:</strong> 動画ファイルをGoogle Driveに保存し、組織内共有リンクを生成する部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/videoStorageService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>保存先フォルダ</td>
+                        <td>99.zoom_memo_recording/{年}/{月}/</td>
+                    </tr>
+                    <tr>
+                        <td>ファイル命名</td>
+                        <td>YYYY-MM-DD_HHMMSS_会議名.mp4</td>
+                    </tr>
+                    <tr>
+                        <td>共有設定</td>
+                        <td>組織ドメイン内で視聴可能リンク生成</td>
+                    </tr>
+                    <tr>
+                        <td>主要メソッド</td>
+                        <td>saveVideoToGoogleDrive(), ensureFolderStructure()</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>P004: MeetingNotificationService（通知部品）</h3>
+                <p><strong>説明:</strong> 8項目構造化要約と動画共有リンクをSlackに投稿する部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/meetingNotificationService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>メッセージ構造</td>
+                        <td>ヘッダー + 基本情報 + 動画リンク + 8項目要約 + フッター</td>
+                    </tr>
+                    <tr>
+                        <td>通知種類</td>
+                        <td>処理開始通知・完了通知・エラー通知</td>
+                    </tr>
+                    <tr>
+                        <td>フォーマット</td>
+                        <td>Slackブロック形式（Markdown対応）</td>
+                    </tr>
+                    <tr>
+                        <td>主要メソッド</td>
+                        <td>sendStructuredMeetingSummary(), buildStructuredSlackMessage()</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>C002: 録画ダウンロード機能</h3>
+                <p><strong>説明:</strong> 検知された録画ファイル（音声・動画）を一時フォルダにダウンロードする機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/zoomService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>ダウンロード対象</td>
+                        <td>音声ファイル（M4A）、動画ファイル（MP4）</td>
+                    </tr>
+                    <tr>
+                        <td>保存先</td>
+                        <td>./recordings（一時フォルダ）</td>
+                    </tr>
+                    <tr>
+                        <td>メタデータ取得</td>
+                        <td>会議名、開始日時、参加者、時間</td>
+                    </tr>
+                    <tr>
+                        <td>ファイル管理</td>
+                        <td>処理完了後自動削除</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>C003: AI文字起こし機能</h3>
+                <p><strong>説明:</strong> ダウンロードした音声ファイルをGoogle Gemini APIで高精度テキストに変換する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/aiService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（動的モデル選択対応）</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>対象ファイル</td>
+                        <td>M4A音声ファイル（優先）、MP4動画ファイル</td>
+                    </tr>
+                    <tr>
+                        <td>使用モデル</td>
+                        <td>Gemini 2.5 Pro → 2.0 Flash → 1.5 Flash（自動フォールバック）</td>
+                    </tr>
+                    <tr>
+                        <td>出力形式</td>
+                        <td>日本語テキスト（話者識別付き）</td>
+                    </tr>
+                    <tr>
+                        <td>プロンプト</td>
+                        <td>システム・ユーザープロンプトによる精度向上</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>C004: AI議事録生成機能</h3>
+                <p><strong>説明:</strong> 文字起こしテキストを解析し、構造化された議事録を自動生成する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/aiService.js（analyzeComprehensively）</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>入力データ</td>
+                        <td>文字起こしテキスト + 会議メタデータ</td>
+                    </tr>
+                    <tr>
+                        <td>出力構造</td>
+                        <td>基本情報、議論内容、決定事項、Next Action & Due Date</td>
+                    </tr>
+                    <tr>
+                        <td>抽出項目</td>
+                        <td>参加者、アクションアイテム（担当者・期限付き）、決定事項</td>
+                    </tr>
+                    <tr>
+                        <td>形式</td>
+                        <td>Markdown構造化文書</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-development"></span>C005: Google Drive保存機能</h3>
+                <p><strong>説明:</strong> 録画ファイルをGoogle Driveの組織フォルダに自動保存し、共有リンクを生成する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/googleDriveService.js</p>
+                <p><strong>状態:</strong> 🔄 実装済み（認証設定待ち）</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>保存対象</td>
+                        <td>MP4動画ファイル、M4A音声ファイル</td>
+                    </tr>
+                    <tr>
+                        <td>フォルダ構造</td>
+                        <td>Zoom_Recordings/2025/07/会議名_日付.mp4</td>
+                    </tr>
+                    <tr>
+                        <td>共有設定</td>
+                        <td>組織ドメイン内で視聴可能リンク生成</td>
+                    </tr>
+                    <tr>
+                        <td>認証方式</td>
+                        <td>Google Cloud サービスアカウント</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>C006: Slack統合機能</h3>
+                <p><strong>説明:</strong> 議事録要約とGoogle Drive録画リンクをSlackチャンネルに自動投稿する機能</p>
+                <p><strong>実装場所:</strong> 1.src/services/slackService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（運用品質向上機能実装済み）</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>メッセージ形式</td>
+                        <td>Slackブロック形式（ヘッダー、基本情報、要約、リンク）</td>
+                    </tr>
+                    <tr>
+                        <td>投稿内容</td>
+                        <td>会議要約、録画リンク、参加者、決定事項、Next Action</td>
+                    </tr>
+                    <tr>
+                        <td>添付ファイル</td>
+                        <td>文字起こし全文（TXTファイル）</td>
+                    </tr>
+                    <tr>
+                        <td>運用品質機能</td>
+                        <td>要約全文表示（2700文字制限）、日付適切表示、エンドマーカー、切断検知</td>
+                    </tr>
+                    <tr>
+                        <td>制御機能</td>
+                        <td>開発モード時の通知無効化（DISABLE_SLACK_NOTIFICATIONS）</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>3. 基盤サービス（共通部品）</h2>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>B001: GoogleDriveService（基盤）</h3>
+                <p><strong>説明:</strong> Google Drive APIの基本操作を提供する共通部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/googleDriveService.js</p>
+                <p><strong>使用部品:</strong> SampleDataService, VideoStorageService</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>提供メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド</th>
+                        <th>機能</th>
+                    </tr>
+                    <tr>
+                        <td>initialize()</td>
+                        <td>サービスアカウント認証・Drive API初期化</td>
+                    </tr>
+                    <tr>
+                        <td>uploadFile()</td>
+                        <td>ファイルアップロード</td>
+                    </tr>
+                    <tr>
+                        <td>createShareableLink()</td>
+                        <td>組織内共有リンク生成</td>
+                    </tr>
+                    <tr>
+                        <td>ensureFolder()</td>
+                        <td>フォルダ存在確認・作成</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>B002: AIService（基盤）</h3>
+                <p><strong>説明:</strong> Google Gemini APIを使用した文字起こし・要約機能を提供する共通部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/aiService.js</p>
+                <p><strong>使用部品:</strong> AudioSummaryService</p>
+                <p><strong>状態:</strong> ✅ 実装完了（動的モデル選択対応）</p>
+                
+                <h4>提供メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド</th>
+                        <th>機能</th>
+                    </tr>
+                    <tr>
+                        <td>transcribeAudio()</td>
+                        <td>音声ファイルの文字起こし</td>
+                    </tr>
+                    <tr>
+                        <td>analyzeComprehensively()</td>
+                        <td>文字起こし結果の総合分析・要約</td>
+                    </tr>
+                    <tr>
+                        <td>initializeModel()</td>
+                        <td>最適なGeminiモデル自動選択</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>B003: SlackService（基盤）</h3>
+                <p><strong>説明:</strong> Slack Web APIを使用した投稿機能を提供する共通部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/slackService.js</p>
+                <p><strong>使用部品:</strong> MeetingNotificationService</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>提供メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド</th>
+                        <th>機能</th>
+                    </tr>
+                    <tr>
+                        <td>sendMessage()</td>
+                        <td>Slackメッセージ投稿</td>
+                    </tr>
+                    <tr>
+                        <td>sendFile()</td>
+                        <td>ファイル付きメッセージ投稿</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>B004: ZoomService（基盤）</h3>
+                <p><strong>説明:</strong> Zoom Cloud Recording APIを使用した録画取得機能を提供する共通部品</p>
+                <p><strong>実装場所:</strong> 1.src/services/zoomService.js</p>
+                <p><strong>使用部品:</strong> ZoomRecordingService, 各種テストエンドポイント</p>
+                <p><strong>状態:</strong> ✅ 実装完了（Vercel対応メソッド追加）</p>
+                
+                <h4>提供メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド名</th>
+                        <th>機能</th>
+                        <th>備考</th>
+                    </tr>
+                    <tr>
+                        <td>downloadFileAsBuffer()</td>
+                        <td>録画ファイルをメモリバッファとしてダウンロード</td>
+                        <td><strong>NEW:</strong> Vercel環境対応</td>
+                    </tr>
+                </table>
+                
+                <h4>従来メソッド</h4>
+                <table>
+                    <tr>
+                        <th>メソッド</th>
+                        <th>機能</th>
+                    </tr>
+                    <tr>
+                        <td>monitorNewRecordings()</td>
+                        <td>新しい録画データの監視・取得</td>
+                    </tr>
+                    <tr>
+                        <td>downloadRecording()</td>
+                        <td>録画ファイルのダウンロード</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>4. 支援・運用機能</h2>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S001: エラーハンドリング・通知システム</h3>
+                <p><strong>説明:</strong> 処理中のエラーを自動検知し、Slackにエラー通知を送信する機能</p>
+                <p><strong>実装場所:</strong> 1.src/utils/logger.js、1.src/services/slackService.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>対象エラー</td>
+                        <td>API接続エラー、ファイル処理エラー、AI処理エラー</td>
+                    </tr>
+                    <tr>
+                        <td>通知形式</td>
+                        <td>Slackエラーメッセージ（エラー内容・コンテキスト付き）</td>
+                    </tr>
+                    <tr>
+                        <td>ログ記録</td>
+                        <td>3.operations/logs/app.log（Winston使用）</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S002: 録画別実行ログ出力システム</h3>
+                <p><strong>説明:</strong> 各録画ファイルの処理実行ログを個別ファイルで Google Drive に自動保存する機能</p>
+                <p><strong>実装場所:</strong> 1.src/utils/executionLogger.js、PT001テストに統合済み</p>
+                <p><strong>状態:</strong> ✅ 実装完了 - エラーコード体系と完全統合済み</p>
+                
+                <div class="requirement-list">
+                    <h4>📋 ログ出力仕様</h4>
+                    <table>
+                        <tr>
+                            <th width="25%">項目</th>
+                            <th width="75%">仕様</th>
+                        </tr>
+                        <tr>
+                            <td><strong>ログファイル名</strong></td>
+                            <td><code>YYYYMMDD_HHMMSS_{会議名}_{MeetingID}_execution.log</code><br>
+                            例: <code>20250807_143021_1on1Meeting_12345_execution.log</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>保存場所</strong></td>
+                            <td>Google Drive: <code>99.zoom_memo_recording/{年}/{月}/logs/</code><br>
+                            動画保存フォルダと同じ階層構造でlogsフォルダを自動作成</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ログ内容</strong></td>
+                            <td>
+                                • 処理開始・終了時刻<br>
+                                • 各ステップの成功・失敗状況<br>
+                                • 失敗時のエラーコード（専用体系）<br>
+                                • 処理時間・ファイルサイズ等の性能データ<br>
+                                • <strong>詳細ログは除外（容量・性能最適化）</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>ログレベル</strong></td>
+                            <td>
+                                • <code>SUCCESS</code>: 処理成功<br>
+                                • <code>ERROR</code>: 処理失敗<br>
+                                • <code>INFO</code>: 重要情報（開始・終了・パフォーマンス）<br>
+                                • <code>WARN</code>: 警告（リトライ・代替処理等）
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>🔧 実装要件</h4>
+                    <ul>
+                        <li><strong>軽量化:</strong> 詳細ログ・デバッグ情報は出力しない（処理速度・容量最適化）</li>
+                        <li><strong>構造化:</strong> JSON形式でログ出力（解析・可視化対応）</li>
+                        <li><strong>自動アップロード:</strong> 処理完了時に Google Drive へ自動保存</li>
+                        <li><strong>エラーコード連携:</strong> 標準化されたエラーコード体系との統合</li>
+                        <li><strong>フォルダ自動作成:</strong> 年/月/logsの階層構造を自動生成</li>
+                    </ul>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>📊 ログフォーマット例</h4>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-size: 0.9rem;">
+{
+  "executionId": "exec_20250807_143021_12345",
+  "meetingInfo": {
+    "id": "12345",
+    "topic": "1on1 Meeting", 
+    "startTime": "2025-08-07T14:30:21.000Z"
+  },
+  "steps": [
+    {
+      "step": "zoom_data_fetch",
+      "status": "SUCCESS",
+      "startTime": "2025-08-07T14:30:21.100Z",
+      "endTime": "2025-08-07T14:30:25.200Z",
+      "duration": 4100,
+      "details": { "fileSize": "74.3MB" }
+    },
+    {
+      "step": "gemini_transcription", 
+      "status": "ERROR",
+      "startTime": "2025-08-07T14:30:25.300Z",
+      "endTime": "2025-08-07T14:32:10.100Z", 
+      "duration": 104800,
+      "errorCode": "AI001",
+      "errorMessage": "Gemini API rate limit exceeded"
+    }
+  ],
+  "summary": {
+    "overallStatus": "ERROR",
+    "totalDuration": 108900,
+    "successSteps": 1,
+    "errorSteps": 1
+  }
+}
+                    </pre>
+                </div>
+            </div>
+
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S003: 標準エラーコード体系</h3>
+                <p><strong>説明:</strong> システム全体で統一されたエラーコード体系を定義・実装</p>
+                <p><strong>実装場所:</strong> 1.src/utils/errorCodes.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了（50種類の詳細エラーコード定義済み）</p>
+                
+                <div class="requirement-list">
+                    <h4>🎯 実装済みエラーコード体系（50種類）</h4>
+                    <table>
+                        <tr>
+                            <th width="20%">カテゴリ</th>
+                            <th width="20%">コード範囲</th>
+                            <th width="40%">主要エラー例</th>
+                            <th width="20%">定義数</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Zoom API</strong></td>
+                            <td>ZM001-ZM010</td>
+                            <td>OAuth認証失敗、レート制限、録画データ取得失敗、権限不足</td>
+                            <td>10種類</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Google Drive</strong></td>
+                            <td>GD001-GD010</td>
+                            <td>API認証失敗、容量制限、アップロード失敗、共有リンク生成</td>
+                            <td>10種類</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gemini AI</strong></td>
+                            <td>AI001-AI010</td>
+                            <td>レート制限、文字起こし失敗、要約生成失敗、処理タイムアウト</td>
+                            <td>10種類</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Slack API</strong></td>
+                            <td>SL001-SL010</td>
+                            <td>Bot認証失敗、チャンネルアクセス拒否、メッセージ投稿失敗</td>
+                            <td>10種類</td>
+                        </tr>
+                        <tr>
+                            <td><strong>システム内部</strong></td>
+                            <td>SY001-SY010</td>
+                            <td>メモリ不足、処理タイムアウト、環境変数未設定、JSON解析エラー</td>
+                            <td>10種類</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>✅ 実装済み機能</h4>
+                    <ul>
+                        <li><strong>国際化対応:</strong> 全エラーメッセージの日英対応完了</li>
+                        <li><strong>トラブルシューティング:</strong> 各エラーに詳細な解決方法を記載</li>
+                        <li><strong>リトライ可能性判定:</strong> 各エラーコードにretryableフラグ設定</li>
+                        <li><strong>Slack通知制御:</strong> 各エラーコードにnotifySlackフラグ設定</li>
+                        <li><strong>ErrorManagerクラス:</strong> エラー管理・操作用ユーティリティ完備</li>
+                    </ul>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>📊 エラーコード設計詳細</h4>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-size: 0.9em;">
+// エラーコード定義例
+ZM001: {
+  code: 'ZM001',
+  message: 'Zoom API認証失敗',
+  messageEn: 'Zoom API authentication failed',
+  retryable: false,
+  notifySlack: true,
+  troubleshooting: 'ZOOM_API_KEY、ZOOM_API_SECRET、ZOOM_ACCOUNT_IDを確認してください'
+}
+
+// ErrorManager使用例
+const error = ErrorManager.createError('ZM001', { userId: 'user123' });
+const isRetryable = ErrorManager.isRetryable('ZM001'); // false
+const shouldNotify = ErrorManager.shouldNotifySlack('ZM001'); // true
+                    </pre>
+                </div>
+
+                <div class="requirement-list">
+                    <h4>🔗 ExecutionLoggerとの統合</h4>
+                    <ul>
+                        <li><strong>構造化ログ:</strong> ExecutionLoggerでエラーコードを自動記録</li>
+                        <li><strong>Google Drive保存:</strong> エラー発生時もログを確実に保存</li>
+                        <li><strong>日本語運用対応:</strong> ログステップ日本語説明、ソース情報、ステータスアイコン追加</li>
+                        <li><strong>統計機能:</strong> エラー種別ごとの発生頻度を追跡</li>
+                        <li><strong>Slack連携:</strong> 重要エラーは自動でSlack通知</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S004: ヘルスチェック機能</h3>
+                <p><strong>説明:</strong> 全外部API（Zoom・Gemini・Slack・Google Drive）の接続状況をチェックする機能</p>
+                <p><strong>実装場所:</strong> api/health-check.js</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>チェック対象</td>
+                        <td>Zoom API、Google AI API、Slack API、Google Drive API</td>
+                    </tr>
+                    <tr>
+                        <td>実行方法</td>
+                        <td>手動実行（GET /api/health-check）</td>
+                    </tr>
+                    <tr>
+                        <td>応答形式</td>
+                        <td>JSON（各サービスの状態・レスポンス時間）</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="function-card">
+                <h3><span class="status-indicator status-completed"></span>S005: Claude対話記録システム</h3>
+                <p><strong>説明:</strong> 開発過程のClaude Codeとの対話を記録し、設計書を自動更新するシステム</p>
+                <p><strong>実装場所:</strong> 3.operations/ClaudeScriptLogging/</p>
+                <p><strong>状態:</strong> ✅ 実装完了</p>
+                
+                <h4>詳細仕様</h4>
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>内容</th>
+                    </tr>
+                    <tr>
+                        <td>記録方式</td>
+                        <td>手動記録（save-conversation.js）+ 自動監視（claude-monitor）</td>
+                    </tr>
+                    <tr>
+                        <td>保存先</td>
+                        <td>0.docs/claude.md（要約）、詳細ログ</td>
+                    </tr>
+                    <tr>
+                        <td>自動更新</td>
+                        <td>設計書HTML最終更新日時の自動反映</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>4. システム仕様</h2>
+            
+            <h3>📊 実行モードとパフォーマンス</h3>
+            <div class="function-card">
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>仕様</th>
+                        <th>実測値</th>
+                    </tr>
+                    <tr>
+                        <td>監視間隔</td>
+                        <td>30分間隔（設定可能）</td>
+                        <td>設定通り動作</td>
+                    </tr>
+                    <tr>
+                        <td>処理対象期間</td>
+                        <td>過去24時間以内の録画</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>音声認識処理時間</td>
+                        <td>録音時間に依存</td>
+                        <td>要測定</td>
+                    </tr>
+                    <tr>
+                        <td>同時処理可能数</td>
+                        <td>1セッション（順次処理）</td>
+                        <td>実装済み</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <h3>🔐 セキュリティ・プライバシー</h3>
+            <div class="function-card">
+                <ul>
+                    <li>✅ <strong>API認証トークン管理:</strong> 環境変数による安全な管理</li>
+                    <li>✅ <strong>一時ファイル削除:</strong> 処理完了後の自動クリーンアップ</li>
+                    <li>🔄 <strong>Google Drive組織内共有:</strong> ドメイン制限付きリンク生成</li>
+                    <li>📋 <strong>録音データ暗号化:</strong> 計画中（現在はローカル一時保存のみ）</li>
+                </ul>
+            </div>
+            
+            <h3>⚡ 可用性・信頼性</h3>
+            <div class="function-card">
+                <ul>
+                    <li>✅ <strong>ヘルスチェック:</strong> 全外部API接続状況の監視</li>
+                    <li>✅ <strong>エラー通知:</strong> Slack自動通知システム</li>
+                    <li>✅ <strong>ログ記録:</strong> Winston使用（app.log）</li>
+                    <li>📋 <strong>リトライ機能:</strong> 要実装（現在は単発実行）</li>
+                    <li>📋 <strong>稼働率監視:</strong> 要測定</li>
+                </ul>
+            </div>
+            
+            <h3>🛠️ 技術スタック</h3>
+            <div class="function-card">
+                <table>
+                    <tr>
+                        <th>カテゴリ</th>
+                        <th>技術</th>
+                        <th>バージョン</th>
+                    </tr>
+                    <tr>
+                        <td>ランタイム</td>
+                        <td>Node.js</td>
+                        <td>18.x LTS</td>
+                    </tr>
+                    <tr>
+                        <td>AI・機械学習</td>
+                        <td>Google Gemini API</td>
+                        <td>2.5 Pro / 2.0 Flash</td>
+                    </tr>
+                    <tr>
+                        <td>外部API統合</td>
+                        <td>Zoom API v2, Slack Web API, Google Drive API v3</td>
+                        <td>最新版</td>
+                    </tr>
+                    <tr>
+                        <td>認証</td>
+                        <td>Server-to-Server OAuth 2.0, Bot Token, Service Account</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>インフラ</td>
+                        <td>Vercel Serverless Functions</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>監視・ログ</td>
+                        <td>node-cron, Winston</td>
+                        <td>最新版</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="last-updated">
+            最終更新: 2025年8月8日 18:35 | ZoomRecordingService追加・シーケンシャル処理フロー設計反映（本番Zoom環境対応、メモリ効率最適化）
+        </div>
+    </div>
+
+</body>
+</html>
