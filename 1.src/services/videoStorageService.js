@@ -151,8 +151,8 @@ class VideoStorageService {
       // Step 4: GoogleDriveService初期化
       await this.googleDriveService.initialize();
 
-      // Step 5: 年月フォルダ構造を作成・確認
-      const folderStructure = await this.ensureFolderStructure(meetingInfo.start_time);
+      // Step 5: クライアント名フォルダ構造を作成・確認
+      const folderStructure = await this.ensureClientFolderStructure(meetingInfo);
 
       // Step 6: ファイル名生成
       const fileName = this.generateVideoFileName(meetingInfo);
@@ -205,7 +205,135 @@ class VideoStorageService {
   }
 
   /**
-   * 年月フォルダ構造を作成・確認
+   * クライアント名からフォルダ名を生成
+   */
+  extractClientName(meetingInfo) {
+    // 1. 会議名からクライアント名を抽出
+    if (meetingInfo.topic) {
+      // パターン1: 「○○様_」形式
+      const pattern1 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+様)_/);
+      if (pattern1) {
+        return pattern1[1];
+      }
+      
+      // パターン2: 「株式会社○○_」形式
+      const pattern2 = meetingInfo.topic.match(/^(株式会社[一-龯ァ-ヶー\w]+)_/);
+      if (pattern2) {
+        return pattern2[1];
+      }
+      
+      // パターン3: 「○○株式会社_」形式
+      const pattern3 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+株式会社)_/);
+      if (pattern3) {
+        return pattern3[1];
+      }
+      
+      // パターン4: 「○○社_」形式
+      const pattern4 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+社)_/);
+      if (pattern4) {
+        return pattern4[1];
+      }
+      
+      // パターン5: 「○○グループ_」形式
+      const pattern5 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+グループ)_/);
+      if (pattern5) {
+        return pattern5[1];
+      }
+      
+      // パターン6: 「○○_」形式（汎用）
+      const pattern6 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]{2,15})_/);
+      if (pattern6) {
+        const candidate = pattern6[1];
+        // 一般的な単語を除外
+        const excludeWords = ['会議', '定例', '打合せ', '打ち合わせ', 'MTG', 'ミーティング', '相談', '説明会'];
+        if (!excludeWords.includes(candidate)) {
+          return candidate + '様';
+        }
+      }
+    }
+    
+    // 2. AIで抽出されたクライアント名がある場合（構造化要約結果から）
+    if (meetingInfo.summary && meetingInfo.summary.client && meetingInfo.summary.client !== '不明') {
+      return meetingInfo.summary.client;
+    }
+    
+    // 3. フォールバック: 年月フォルダ
+    const date = new Date(meetingInfo.start_time || new Date());
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  /**
+   * クライアント名ベースのフォルダ構造を作成・確認
+   */
+  async ensureClientFolderStructure(meetingInfo) {
+    try {
+      // クライアント名を抽出
+      const clientName = this.extractClientName(meetingInfo);
+      logger.info(`Extracted client name for folder: ${clientName}`);
+
+      logger.info(`Looking for base folder: ${this.recordingsFolder}`);
+
+      // ベースフォルダの存在確認
+      let baseFolderInfo;
+      try {
+        baseFolderInfo = await this.googleDriveService.drive.files.get({
+          fileId: this.recordingsFolder,
+          fields: 'id, name',
+          supportsAllDrives: true
+        });
+        logger.info(`Base folder confirmed: ${baseFolderInfo.data.name} (${this.recordingsFolder})`);
+      } catch (error) {
+        logger.error(`Base folder not found by ID: ${this.recordingsFolder}, error: ${error.message}`);
+        
+        // フォルダIDが無効な場合、フォルダ名で検索（フォールバック）
+        const folderQuery = `name='${this.recordingsFolder}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        const folderResponse = await this.googleDriveService.drive.files.list({
+          q: folderQuery,
+          fields: 'files(id, name)',
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true
+        });
+        
+        if (folderResponse.data.files.length === 0) {
+          throw new Error(`Recording folder not found: ${this.recordingsFolder}`);
+        }
+        
+        this.recordingsFolder = folderResponse.data.files[0].id;
+        baseFolderInfo = { data: folderResponse.data.files[0] };
+        logger.info(`Base folder found by name: ${baseFolderInfo.data.name} (${this.recordingsFolder})`);
+      }
+
+      // クライアント名フォルダを確保
+      const clientFolderId = await this.googleDriveService.ensureFolder(clientName, this.recordingsFolder);
+      logger.info(`Client folder ensured: ${clientName} (${clientFolderId})`);
+      
+      // 年月サブフォルダを作成（クライアントフォルダ内）
+      const date = new Date(meetingInfo.start_time || new Date());
+      const year = date.getFullYear().toString();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const yearMonth = `${year}-${month}`;
+      
+      const yearMonthFolderId = await this.googleDriveService.ensureFolder(yearMonth, clientFolderId);
+      logger.info(`Year-month subfolder ensured: ${yearMonth} (${yearMonthFolderId})`);
+
+      return {
+        baseFolderId: this.recordingsFolder,
+        clientFolderId: clientFolderId,
+        monthFolderId: yearMonthFolderId,
+        folderPath: `${baseFolderInfo.data.name}/${clientName}/${yearMonth}`,
+        clientName: clientName
+      };
+
+    } catch (error) {
+      logger.error('Failed to ensure client folder structure:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 年月フォルダ構造を作成・確認（レガシー、後方互換性用）
    */
   async ensureFolderStructure(startTime) {
     try {
@@ -352,8 +480,8 @@ UUID: ${meetingInfo.uuid || 'N/A'}
       // GoogleDriveService初期化
       await this.googleDriveService.initialize();
 
-      // 年月フォルダ構造を作成・確認
-      const folderStructure = await this.ensureFolderStructure(meetingInfo.start_time);
+      // クライアント名フォルダ構造を作成・確認
+      const folderStructure = await this.ensureClientFolderStructure(meetingInfo);
 
       // ファイル名生成
       const finalFileName = this.generateVideoFileName(meetingInfo);

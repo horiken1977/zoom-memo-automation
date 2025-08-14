@@ -324,6 +324,66 @@ class ExecutionLogger {
   }
 
   /**
+   * 会議情報からクライアント名を抽出（VideoStorageServiceと同じロジック）
+   */
+  extractClientName() {
+    // 1. 会議名からクライアント名を抽出
+    if (this.meetingInfo.topic) {
+      // パターン1: 「○○様_」形式
+      const pattern1 = this.meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+様)_/);
+      if (pattern1) {
+        return pattern1[1];
+      }
+      
+      // パターン2: 「株式会社○○_」形式
+      const pattern2 = this.meetingInfo.topic.match(/^(株式会社[一-龯ァ-ヶー\w]+)_/);
+      if (pattern2) {
+        return pattern2[1];
+      }
+      
+      // パターン3: 「○○株式会社_」形式
+      const pattern3 = this.meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+株式会社)_/);
+      if (pattern3) {
+        return pattern3[1];
+      }
+      
+      // パターン4: 「○○社_」形式
+      const pattern4 = this.meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+社)_/);
+      if (pattern4) {
+        return pattern4[1];
+      }
+      
+      // パターン5: 「○○グループ_」形式
+      const pattern5 = this.meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+グループ)_/);
+      if (pattern5) {
+        return pattern5[1];
+      }
+      
+      // パターン6: 「○○_」形式（汎用）
+      const pattern6 = this.meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]{2,15})_/);
+      if (pattern6) {
+        const candidate = pattern6[1];
+        // 一般的な単語を除外
+        const excludeWords = ['会議', '定例', '打合せ', '打ち合わせ', 'MTG', 'ミーティング', '相談', '説明会'];
+        if (!excludeWords.includes(candidate)) {
+          return candidate + '様';
+        }
+      }
+    }
+    
+    // 2. AIで抽出されたクライアント名がある場合（summary情報から）
+    if (this.meetingInfo.summary && this.meetingInfo.summary.client && this.meetingInfo.summary.client !== '不明') {
+      return this.meetingInfo.summary.client;
+    }
+    
+    // 3. フォールバック: 年月フォルダ
+    const date = new Date(this.meetingInfo.start_time || new Date());
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  /**
    * ログファイル名を生成
    * @returns {string} ログファイル名
    */
@@ -356,11 +416,12 @@ class ExecutionLogger {
       const logFileName = this.generateLogFileName();
       const logJson = JSON.stringify(logData, null, 2);
 
-      // 保存先フォルダパス（動画保存と同じ構造）
+      // 保存先フォルダパス（クライアント名ベース構造）
+      const clientName = this.extractClientName();
       const date = new Date(this.meetingInfo.start_time || new Date());
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
-      const folderPath = `99.zoom_memo_recording/${year}/${month}/logs`;
+      const folderPath = `99.zoom_memo_recording/${clientName}/${year}-${month}/logs`;
 
       // logsフォルダを作成（存在しない場合）
       const logsFolderId = await this.googleDriveService.createFolderStructure(folderPath);

@@ -10,6 +10,7 @@ const ZoomService = require('./services/zoomService');
 const AIService = require('./services/aiService');
 const SlackService = require('./services/slackService');
 const GoogleDriveService = require('./services/googleDriveService');
+const DocumentStorageService = require('./services/documentStorageService');
 
 class ZoomMemoAutomation {
   constructor() {
@@ -17,6 +18,7 @@ class ZoomMemoAutomation {
     this.aiService = new AIService();
     this.slackService = new SlackService();
     this.googleDriveService = new GoogleDriveService();
+    this.documentStorageService = new DocumentStorageService();
     
     this.lastCheckFile = path.join(__dirname, '..', '3.operations', 'configs', 'last-check.json');
     this.isProcessing = false;
@@ -182,23 +184,64 @@ class ZoomMemoAutomation {
       logger.info(`Downloading recording for meeting: ${recording.topic}`);
       const recordingInfo = await this.zoomService.downloadRecording(recording);
 
-      // 2. 文字起こしと分析実行
-      logger.info(`Starting transcription and analysis for: ${recording.topic}`);
-      const transcriptionResult = await this.aiService.transcribeAudio(
-        recordingInfo.audioFilePath, 
-        recordingInfo.meetingInfo
+      // 2. 統合AI処理実行（文字起こし+要約を一括実行）
+      logger.info(`Starting unified AI processing for: ${recording.topic}`);
+      const aiBuffer = await fs.readFile(recordingInfo.audioFilePath);
+      const analysisResult = await this.aiService.processAudioWithStructuredOutput(
+        aiBuffer,
+        recordingInfo.meetingInfo,
+        {
+          mimeType: recordingInfo.audioMimeType || 'audio/aac',
+          maxRetries: 5
+        }
       );
 
-      // 3. 包括的な分析実行
-      logger.info(`Analyzing meeting content: ${recording.topic}`);
-      const analysisResult = await this.aiService.analyzeComprehensively(transcriptionResult);
-
-      // 4. Google Driveに録画保存
+      // 3. Google Driveに録画保存
       logger.info(`Saving recording to Google Drive: ${recording.topic}`);
       const driveResult = await this.googleDriveService.saveRecording(
         recordingInfo.videoFilePath || recordingInfo.audioFilePath,
         recordingInfo.meetingInfo
       );
+
+      // 4. 要約・文字起こしをGoogle Driveに保存
+      logger.info(`Saving documents to Google Drive: ${recording.topic}`);
+      const documentResults = await Promise.allSettled([
+        this.documentStorageService.saveSummaryToGoogleDrive(
+          analysisResult,
+          recordingInfo.meetingInfo,
+          config.googleDrive.recordingsFolder
+        ),
+        this.documentStorageService.saveTranscriptionToGoogleDrive(
+          analysisResult,
+          recordingInfo.meetingInfo,
+          config.googleDrive.recordingsFolder
+        ),
+        this.documentStorageService.saveStructuredSummaryToGoogleDrive(
+          analysisResult,
+          recordingInfo.meetingInfo,
+          config.googleDrive.recordingsFolder
+        )
+      ]);
+
+      // 保存結果をログ出力
+      const [summaryResult, transcriptionResult, structuredResult] = documentResults;
+      if (summaryResult.status === 'fulfilled') {
+        logger.info(`Summary saved: ${summaryResult.value.fileName} (${summaryResult.value.fileId})`);
+      } else {
+        logger.error(`Summary save failed: ${summaryResult.reason.message}`);
+      }
+      
+      if (transcriptionResult.status === 'fulfilled') {
+        logger.info(`Transcription saved: ${transcriptionResult.value.fileName} (${transcriptionResult.value.fileId})`);
+      } else {
+        logger.error(`Transcription save failed: ${transcriptionResult.reason.message}`);
+      }
+      
+      if (structuredResult.status === 'fulfilled') {
+        logger.info(`Structured summary saved: ${structuredResult.value.fileName} (${structuredResult.value.fileId})`);
+      } else {
+        logger.error(`Structured summary save failed: ${structuredResult.reason.message}`);
+      }
 
       // 5. Slackに要約と録画リンクを送信
       logger.info(`Sending summary and recording link to Slack: ${recording.topic}`);
