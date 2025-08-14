@@ -238,24 +238,24 @@
             <h2>📊 テスト実施状況サマリー</h2>
             <div class="summary-grid">
                 <div class="summary-card">
-                    <h4>全テストケース数</h4>
-                    <div class="count count-total">24</div>
+                    <h4>全テストフェーズ数</h4>
+                    <div class="count count-total">4</div>
                 </div>
                 <div class="summary-card">
                     <h4>完了</h4>
-                    <div class="count count-completed">9</div>
+                    <div class="count count-completed">3</div>
                 </div>
                 <div class="summary-card">
-                    <h4>実施中</h4>
-                    <div class="count count-in-progress">0</div>
+                    <h4>エラーコード定義</h4>
+                    <div class="count count-completed" style="color: #dc3545;">80</div>
                 </div>
                 <div class="summary-card">
                     <h4>未着手</h4>
-                    <div class="count count-not-started">15</div>
+                    <div class="count count-not-started">1</div>
                 </div>
                 <div class="summary-card">
-                    <h4>ブロック</h4>
-                    <div class="count count-blocked" style="color: #6c757d;">0</div>
+                    <h4>テスト進捗</h4>
+                    <div class="count count-completed" style="color: #4CAF50;">75%</div>
                 </div>
             </div>
         </div>
@@ -282,8 +282,8 @@
                 <div class="level-card">
                     <h4>Phase 3: エラーハンドリング</h4>
                     <p>異常系・エラー処理の確認</p>
-                    <p><strong>実施項目:</strong> TC201〜TC203</p>
-                    <p><strong>状況:</strong> 🔴 未着手 (0/3)</p>
+                    <p><strong>実施項目:</strong> <a href="error-codes.html" style="color: #dc3545; font-weight: bold;">📋 エラーコード一覧</a></p>
+                    <p><strong>状況:</strong> 🟢 完了 - 80個のエラーコード定義済み</p>
                 </div>
                 
                 <div class="level-card">
@@ -897,101 +897,26 @@
         </div>
 
         <div class="section">
-            <h2>4. Phase 3: エラーハンドリングテスト (TC301-303)</h2>
-
-            <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC301: Gemini API 5周フォールバックテスト</h3>
-                <div class="test-matrix">
-                    <table>
-                        <tr>
-                            <th width="20%">項目</th>
-                            <th width="50%">内容</th>
-                            <th width="15%">実施状況</th>
-                            <th width="15%">結果/備考</th>
-                        </tr>
-                        <tr>
-                            <td>テスト方法</td>
-                            <td>意図的にAPI制限に到達させる</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>確認項目</td>
-                            <td>指数バックオフ(1秒→2秒→4秒→8秒→10秒)</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>期待結果</td>
-                            <td>各試行ログ出力、適切な待機時間、最終エラーメッセージ</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC302: Slack投稿エラー・データ保護テスト</h3>
-                <div class="test-matrix">
-                    <table>
-                        <tr>
-                            <th width="20%">項目</th>
-                            <th width="50%">内容</th>
-                            <th width="15%">実施状況</th>
-                            <th width="15%">結果/備考</th>
-                        </tr>
-                        <tr>
-                            <td>テスト方法</td>
-                            <td>無効なSlackトークンを一時設定</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>確認項目</td>
-                            <td>3回リトライ実行、Google Drive要約データ保存</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>期待結果</td>
-                            <td>Error_Recovery_Logs/にJSON保存、dataPreserved=true</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="test-case">
-                <h3><span class="status-indicator status-not-started"></span>TC303: 動画ファイル処理テスト</h3>
-                <div class="test-matrix">
-                    <table>
-                        <tr>
-                            <th width="20%">項目</th>
-                            <th width="50%">内容</th>
-                            <th width="15%">実施状況</th>
-                            <th width="15%">結果/備考</th>
-                        </tr>
-                        <tr>
-                            <td>テストデータ</td>
-                            <td>MP4動画ファイル（音声トラック付き/なし）</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>確認項目</td>
-                            <td>video/mp4 MIME type処理、音声抽出、警告ログ</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>期待結果</td>
-                            <td>動画から音声抽出成功、適切な警告ログ出力</td>
-                            <td><span class="status-indicator status-not-started"></span>未着手</td>
-                            <td>-</td>
-                        </tr>
-                    </table>
+            <h2>4. Phase 3: エラーハンドリングテスト</h2>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; text-align: center;">
+                <h3 style="color: #856404; margin-top: 0;">🚨 エラーコード一覧システム</h3>
+                <p style="margin: 15px 0; color: #856404;">
+                    異常系・エラーハンドリングテストは、専用のエラーコード一覧システムで管理されています。<br>
+                    80個の全エラーコードと対応するテストケースが定義済みです。
+                </p>
+                <a href="error-codes.html" style="display: inline-block; background: #dc3545; color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold; font-size: 1.1rem; transition: background 0.3s;">
+                    📋 エラーコード一覧を開く
+                </a>
+                <div style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+                    <p><strong>含まれる内容:</strong></p>
+                    <ul style="text-align: left; display: inline-block; margin: 0;">
+                        <li>8カテゴリ別エラーコード（Zoom, Google Drive, Slack, Gemini AI, 認証, ストレージ, システム, テスト）</li>
+                        <li>4段階重要度別分類（Critical, High, Medium, Low）</li>
+                        <li>検索・フィルター機能付きテーブル</li>
+                        <li>各エラーコードの関連テストケースマッピング</li>
+                        <li>エラー対処ガイドライン</li>
+                    </ul>
                 </div>
             </div>
         </div>
