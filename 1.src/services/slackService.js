@@ -648,11 +648,15 @@ ${analysisResult.transcription}
     // 後方互換性（従来の概要形式）
     if (!meetingPurpose && summary) {
       if (typeof summary === 'string') {
-        meetingPurpose = this.extractShortSummary(summary);
+        // 一時的にコメントアウト: 完全な要約を表示するためテスト
+        // meetingPurpose = this.extractShortSummary(summary);
+        meetingPurpose = summary; // 完全な要約を表示
       } else if (summary.overview) {
         meetingPurpose = summary.overview;
       } else if (summary.summary) {
-        meetingPurpose = this.extractShortSummary(summary.summary);
+        // 一時的にコメントアウト: 完全な要約を表示するためテスト
+        // meetingPurpose = this.extractShortSummary(summary.summary);
+        meetingPurpose = summary.summary; // 完全な要約を表示
       }
     }
     
@@ -727,13 +731,40 @@ ${analysisResult.transcription}
         if (typeof discussion === 'string') {
           return `${index + 1}. ${discussion}`;
         } else {
-          let topicText = discussion.topicTitle || discussion.topic || discussion.content || discussion;
+          // 一時的コメントアウト: 簡潔版
+          // let topicText = discussion.topicTitle || discussion.topic || discussion.content || discussion;
+          // if (discussion.timeRange) {
+          //   topicText += ` (${discussion.timeRange.startTime || ''}-${discussion.timeRange.endTime || ''})`;
+          // }
+          // return `${index + 1}. ${topicText}`;
+          
+          // 詳細版: 保存要約と同じ詳細な内容を表示
+          let detailedText = `${index + 1}. **${discussion.topicTitle || discussion.topic || '論点'}**`;
+          
           if (discussion.timeRange) {
-            topicText += ` (${discussion.timeRange.startTime || ''}-${discussion.timeRange.endTime || ''})`;
+            detailedText += `\n⏱️ 時間: ${discussion.timeRange.startTime || ''} ～ ${discussion.timeRange.endTime || ''}`;
           }
-          return `${index + 1}. ${topicText}`;
+          
+          if (discussion.background) {
+            detailedText += `\n📝 背景: ${discussion.background}`;
+          }
+          
+          if (discussion.speakers && discussion.speakers.length > 0) {
+            detailedText += `\n👥 主要発言者:`;
+            discussion.speakers.slice(0, 2).forEach((speaker) => {
+              if (speaker.name && speaker.statement) {
+                detailedText += `\n• **${speaker.name}**: ${speaker.statement.substring(0, 100)}${speaker.statement.length > 100 ? '...' : ''}`;
+              }
+            });
+          }
+          
+          if (discussion.conclusion) {
+            detailedText += `\n✅ 結論: ${discussion.conclusion}`;
+          }
+          
+          return detailedText;
         }
-      }).join('\n');
+      }).join('\n\n');
       
       blocks.push({
         type: "section",
