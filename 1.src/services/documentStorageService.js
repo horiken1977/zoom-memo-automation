@@ -420,6 +420,127 @@ ${transcriptionData.audioQuality ? `
 ---
 このファイルはZoom Meeting Automationにより自動生成されました。`;
   }
+
+  /**
+   * 統合ドキュメント保存メソッド（中央集約型）
+   * リトライ機能付きで文字起こし・要約・構造化データを一括保存
+   * @param {Object} audioResult - 音声処理結果
+   * @param {Object} meetingInfo - 会議情報
+   * @param {string} recordingsBaseFolder - 保存先ベースフォルダID
+   * @returns {Object} 保存結果
+   */
+  async saveDocuments(audioResult, meetingInfo, recordingsBaseFolder) {
+    const maxRetries = 3;
+    const savedDocuments = [];
+    const errors = [];
+    let lastError = null;
+
+    logger.info(`Starting unified document save for: ${meetingInfo.topic}`);
+
+    // 保存するドキュメントタイプを定義
+    const documentsToSave = [];
+    
+    // 1. 文字起こしデータがある場合
+    if (audioResult.transcription) {
+      documentsToSave.push({
+        type: 'transcription',
+        data: audioResult.transcription,
+        method: 'saveTranscriptionToGoogleDrive'
+      });
+    }
+
+    // 2. 要約データがある場合（複数の可能な構造に対応）
+    if (audioResult.structuredSummary || audioResult.analysis || audioResult.summary) {
+      const summaryData = audioResult.structuredSummary || audioResult.analysis || { summary: audioResult.summary };
+      documentsToSave.push({
+        type: 'summary',
+        data: summaryData,
+        method: 'saveSummaryToGoogleDrive'
+      });
+    }
+
+    // 3. 構造化データがある場合
+    if (audioResult.structuredSummary) {
+      documentsToSave.push({
+        type: 'structured',
+        data: audioResult.structuredSummary,
+        method: 'saveStructuredSummaryToGoogleDrive'
+      });
+    }
+
+    logger.info(`Planning to save ${documentsToSave.length} document types: ${documentsToSave.map(d => d.type).join(', ')}`);
+
+    // 各ドキュメントタイプを順次保存（リトライ付き）
+    for (const document of documentsToSave) {
+      let saveSuccess = false;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logger.info(`Saving ${document.type} - Attempt ${attempt}/${maxRetries}`);
+          
+          let saveResult;
+          switch (document.method) {
+            case 'saveTranscriptionToGoogleDrive':
+              saveResult = await this.saveTranscriptionToGoogleDrive(document.data, meetingInfo, recordingsBaseFolder);
+              break;
+            case 'saveSummaryToGoogleDrive':
+              saveResult = await this.saveSummaryToGoogleDrive(document.data, meetingInfo, recordingsBaseFolder);
+              break;
+            case 'saveStructuredSummaryToGoogleDrive':
+              saveResult = await this.saveStructuredSummaryToGoogleDrive(document.data, meetingInfo, recordingsBaseFolder);
+              break;
+            default:
+              throw new Error(`Unknown save method: ${document.method}`);
+          }
+
+          savedDocuments.push(saveResult);
+          logger.info(`Successfully saved ${document.type} on attempt ${attempt}`);
+          saveSuccess = true;
+          break;
+
+        } catch (error) {
+          lastError = error;
+          logger.warn(`Failed to save ${document.type} on attempt ${attempt}/${maxRetries}: ${error.message}`);
+          
+          // 最後の試行でない場合は待機
+          if (attempt < maxRetries) {
+            const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            logger.info(`Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+      }
+
+      if (!saveSuccess) {
+        const errorInfo = {
+          type: document.type,
+          error: lastError.message,
+          allAttemptsFailed: true
+        };
+        errors.push(errorInfo);
+        logger.error(`All ${maxRetries} attempts failed for ${document.type}: ${lastError.message}`);
+      }
+    }
+
+    // 結果の集計
+    const result = {
+      success: savedDocuments.length > 0,
+      totalRequested: documentsToSave.length,
+      totalSaved: savedDocuments.length,
+      totalFailed: errors.length,
+      savedDocuments: savedDocuments,
+      errors: errors,
+      timestamp: new Date().toISOString()
+    };
+
+    if (errors.length > 0) {
+      logger.warn(`Document save completed with ${errors.length} errors out of ${documentsToSave.length} total attempts`);
+    } else {
+      logger.info(`All ${savedDocuments.length} documents saved successfully`);
+    }
+
+    return result;
+  }
 }
 
 module.exports = DocumentStorageService;

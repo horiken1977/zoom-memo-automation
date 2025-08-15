@@ -591,7 +591,7 @@ ${analysisResult.transcription}
    * 録画リンク付き要約用のSlackブロックを構築
    */
   buildSummaryBlocksWithRecording(analysisResult, driveResult, executionLogResult = null) {
-    const { meetingInfo, summary, participants, decisions } = analysisResult;
+    const { meetingInfo, summary, participants, decisions, actionItems } = analysisResult;
     
     const blocks = [];
 
@@ -604,12 +604,28 @@ ${analysisResult.transcription}
       }
     });
 
-    // 録画リンクセクション（実行ログリンク付き）
+    // 録画・文書リンクセクション（強化版）
     let linkText = `🎥 *録画ファイル:* <${driveResult.viewLink || 'リンク取得中'}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath || 'Zoom録画フォルダ'}\n⏱️ *開催日時:* ${this.formatMeetingStartTime(meetingInfo)}\n🕐 *時間:* ${meetingInfo.duration}分`;
+    
+    // 文書リンクを追加
+    if (driveResult.documentLinks && driveResult.documentLinks.length > 0) {
+      linkText += `\n\n📄 *生成された文書:*`;
+      driveResult.documentLinks.forEach(doc => {
+        const typeEmoji = doc.type === 'transcription' ? '📝' : 
+                         doc.type === 'summary' ? '📋' : 
+                         doc.type === 'structured' ? '📊' : '📄';
+        const typeName = doc.type === 'transcription' ? '文字起こし' : 
+                        doc.type === 'summary' ? '要約' : 
+                        doc.type === 'structured' ? '構造化要約' : doc.type;
+        linkText += `\n${typeEmoji} <${doc.viewLink}|${typeName}>`;
+      });
+    }
     
     // 実行ログリンクを追加
     if (executionLogResult && executionLogResult.success && executionLogResult.viewLink) {
       linkText += `\n📋 *実行ログ:* <${executionLogResult.viewLink}|処理詳細を確認>`;
+    } else if (driveResult.logLink) {
+      linkText += `\n📋 *実行ログ:* <${driveResult.logLink}|処理詳細を確認>`;
     }
     
     blocks.push({
@@ -622,64 +638,219 @@ ${analysisResult.transcription}
 
     blocks.push({ type: "divider" });
 
-    // 要約セクション
+    // 8項目構造化要約の表示（改善版）
+    
+    // 1. 会議目的・概要
     if (summary) {
-      const shortSummary = this.extractShortSummary(summary);
-      if (shortSummary) {
+      let summaryText = '';
+      
+      // summaryが文字列の場合とオブジェクトの場合に対応
+      if (typeof summary === 'string') {
+        summaryText = this.extractShortSummary(summary);
+      } else if (summary.overview) {
+        summaryText = summary.overview;
+      } else if (summary.summary) {
+        summaryText = this.extractShortSummary(summary.summary);
+      }
+      
+      if (summaryText) {
         blocks.push({
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*📝 会議要約*\n${shortSummary}`
+            text: `*📝 会議概要・目的*\n${summaryText}`
           }
         });
       }
     }
 
-    // 参加者情報
+    // 2. クライアント名
+    const clientName = analysisResult.structuredSummary?.client || 
+                      analysisResult.summary?.client || 
+                      analysisResult.analysis?.client || 
+                      this.extractClientFromMeetingName(meetingInfo.topic);
+    
+    if (clientName && clientName !== '不明') {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*🏢 クライアント*\n${clientName}`
+        }
+      });
+    }
+
+    // 3. 参加者情報（出席者名・社名）
     if (participants && participants.length > 0) {
-      const participantList = participants.map(p => 
-        `• ${p.name}${p.role ? ` (${p.role})` : ''}`
-      ).join('\n');
+      const participantList = participants.map(p => {
+        let participantStr = `• ${p.name || p}`;
+        if (p.role) participantStr += ` (${p.role})`;
+        if (p.organization) participantStr += ` - ${p.organization}`;
+        return participantStr;
+      }).join('\n');
       
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*👥 参加者*\n${participantList}`
+          text: `*👥 出席者名・社名*\n${participantList}`
         }
       });
     }
 
-    // 決定事項
+    // 4. 議論内容・論点
+    const discussions = analysisResult.structuredSummary?.discussions || 
+                       analysisResult.summary?.discussions || 
+                       analysisResult.analysis?.discussions || [];
+    
+    if (discussions && discussions.length > 0) {
+      const discussionList = discussions.slice(0, 3).map((discussion, index) => {
+        if (typeof discussion === 'string') {
+          return `${index + 1}. ${discussion}`;
+        } else {
+          return `${index + 1}. ${discussion.topic || discussion.content || discussion}`;
+        }
+      }).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*💭 主な論点・議論内容*\n${discussionList}${discussions.length > 3 ? '\n...（他にもあり）' : ''}`
+        }
+      });
+    }
+
+    // 5. 決定事項・結論
     if (decisions && decisions.length > 0) {
-      const decisionList = decisions.map((decision, index) => 
-        `${index + 1}. ${decision.decision}`
-      ).join('\n');
+      const decisionList = decisions.map((decision, index) => {
+        if (typeof decision === 'string') {
+          return `${index + 1}. ${decision}`;
+        } else {
+          return `${index + 1}. ${decision.decision || decision.content || decision}`;
+        }
+      }).join('\n');
       
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*✅ 決定事項*\n${decisionList}`
+          text: `*✅ 決定事項・結論*\n${decisionList}`
         }
       });
     }
 
-    // アクションアイテム（宿題セクション）は削除
+    // 6. 宿題・検討事項
+    const homework = analysisResult.structuredSummary?.homework || 
+                    analysisResult.summary?.homework || 
+                    analysisResult.analysis?.homework || [];
+    
+    if (homework && homework.length > 0) {
+      const homeworkList = homework.map((item, index) => {
+        if (typeof item === 'string') {
+          return `${index + 1}. ${item}`;
+        } else {
+          return `${index + 1}. ${item.task || item.content || item}`;
+        }
+      }).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*📚 宿題・検討事項*\n${homeworkList}`
+        }
+      });
+    }
+
+    // 7. Next Action / Due Date
+    if (actionItems && actionItems.length > 0) {
+      const actionList = actionItems.map((action, index) => {
+        if (typeof action === 'string') {
+          return `${index + 1}. ${action}`;
+        } else {
+          let actionStr = `${index + 1}. ${action.task || action.action || action}`;
+          if (action.assignee) actionStr += ` (担当: ${action.assignee})`;
+          if (action.dueDate) actionStr += ` [期限: ${action.dueDate}]`;
+          return actionStr;
+        }
+      }).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*⚡ Next Action / Due Date*\n${actionList}`
+        }
+      });
+    }
+
+    // 処理統計情報
+    const compressionStats = analysisResult.compressionStats;
+    const realRecordingInfo = analysisResult.realRecordingInfo;
+    
+    if (realRecordingInfo || compressionStats) {
+      let statsText = '';
+      
+      if (realRecordingInfo) {
+        statsText += `📊 *処理統計:*\n`;
+        statsText += `• 文字起こし: ${realRecordingInfo.transcriptionLength || 0}文字\n`;
+        statsText += `• 処理時間: ${Math.floor((realRecordingInfo.executionTime || 0) / 1000)}秒\n`;
+        statsText += `• 文書保存: ${realRecordingInfo.documentsSaved || 0}件\n`;
+        if (realRecordingInfo.errors > 0) {
+          statsText += `• エラー: ${realRecordingInfo.errors}件\n`;
+        }
+      }
+      
+      if (compressionStats) {
+        statsText += `🗜️ *音声圧縮:* ${compressionStats.compressionRatio}% (${Math.round(compressionStats.originalSize/1024/1024*100)/100}MB→${Math.round(compressionStats.compressedSize/1024/1024*100)/100}MB)\n`;
+      }
+      
+      if (statsText) {
+        blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: statsText.trim()
+          }
+        });
+      }
+    }
 
     // フッター
+    const footerText = realRecordingInfo?.testType || 'Zoom Meeting Automation';
     blocks.push({
       type: "context",
       elements: [
         {
           type: "mrkdwn",
-          text: `🤖 自動生成 | 📅 ${new Date().toLocaleString('ja-JP')} | 📊 処理時間: ${driveResult.uploadTime || 0}秒`
+          text: `🤖 ${footerText} | 📅 ${new Date().toLocaleString('ja-JP')} | 📊 処理時間: ${driveResult.uploadTime || 0}秒`
         }
       ]
     });
 
     return blocks;
+  }
+
+  /**
+   * 会議名からクライアント名を抽出（SlackService内部用）
+   */
+  extractClientFromMeetingName(meetingTopic) {
+    if (!meetingTopic) return '不明';
+    
+    // パターン1: 「○○様_」形式
+    const pattern1 = meetingTopic.match(/^([一-龯ァ-ヶー\\w]+様)_/);
+    if (pattern1) return pattern1[1];
+    
+    // パターン2: 「株式会社○○_」形式
+    const pattern2 = meetingTopic.match(/^(株式会社[一-龯ァ-ヶー\\w]+)_/);
+    if (pattern2) return pattern2[1];
+    
+    // パターン3: 「○○株式会社_」形式
+    const pattern3 = meetingTopic.match(/^([一-龯ァ-ヶー\\w]+株式会社)_/);
+    if (pattern3) return pattern3[1];
+    
+    return '不明';
   }
 
   /**
@@ -736,6 +907,141 @@ ${analysisResult.transcription}
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * エラー通知を送信（管理者向け）
+   * @param {Object} errorInfo - エラー情報
+   * @param {string} errorInfo.type - エラータイプ
+   * @param {string} errorInfo.error - エラーメッセージ
+   * @param {Object} errorInfo.meetingInfo - 会議情報
+   * @param {string} errorInfo.executionId - 実行ID
+   * @param {Object} errorInfo.context - 追加コンテキスト
+   */
+  async sendErrorNotification(errorInfo) {
+    try {
+      logger.info(`Sending error notification to Slack: ${errorInfo.type}`);
+
+      // エラー通知専用のブロック形式メッセージを作成
+      const blocks = [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: '🚨 システムエラー通知',
+            emoji: true
+          }
+        },
+        {
+          type: 'section',
+          fields: [
+            {
+              type: 'mrkdwn',
+              text: `*エラータイプ:*\n${errorInfo.type}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*発生時刻:*\n${new Date().toLocaleString('ja-JP')}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*実行ID:*\n${errorInfo.executionId || 'N/A'}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*会議名:*\n${errorInfo.meetingInfo?.topic || 'N/A'}`
+            }
+          ]
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*エラー内容:*\n\`\`\`${errorInfo.error.substring(0, 500)}${errorInfo.error.length > 500 ? '...' : ''}\`\`\``
+          }
+        }
+      ];
+
+      // コンテキスト情報がある場合は追加
+      if (errorInfo.context && Object.keys(errorInfo.context).length > 0) {
+        const contextText = Object.entries(errorInfo.context)
+          .map(([key, value]) => `• ${key}: ${value}`)
+          .join('\n');
+        
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*追加情報:*\n${contextText}`
+          }
+        });
+      }
+
+      // フッター情報
+      blocks.push({
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `🤖 Zoom Meeting Automation - Error Notification`
+          }
+        ]
+      });
+
+      // エラー通知を送信（通常のチャンネルに送信、または管理者チャンネルがあれば変更可能）
+      const result = await this.client.chat.postMessage({
+        channel: this.channelId, // TODO: 管理者専用チャンネルがあれば変更
+        blocks: blocks,
+        text: `🚨 システムエラー: ${errorInfo.type}` // フォールバック用テキスト
+      });
+
+      logger.info('Error notification sent to Slack successfully');
+      return { 
+        success: true,
+        ts: result.ts,
+        channel: result.channel,
+        type: 'error_notification'
+      };
+
+    } catch (error) {
+      logger.error('Failed to send error notification to Slack:', error.message);
+      return {
+        success: false,
+        error: error.message,
+        type: 'error_notification_failed'
+      };
+    }
+  }
+
+  /**
+   * Slack投稿でエラーが発生した場合の緊急ログ記録
+   * @param {Object} originalData - 投稿しようとしていたデータ
+   * @param {string} slackError - Slackエラーメッセージ
+   */
+  async logSlackFailure(originalData, slackError) {
+    try {
+      const emergencyLog = {
+        timestamp: new Date().toISOString(),
+        type: 'SLACK_SEND_FAILURE_EMERGENCY_LOG',
+        slackError: slackError,
+        originalMeetingTopic: originalData.meetingInfo?.topic,
+        summaryLength: originalData.summary?.length || 0,
+        transcriptionLength: originalData.transcription?.length || 0,
+        hasDocumentLinks: !!originalData.documentLinks,
+        executionId: originalData.executionId
+      };
+
+      // 緊急ログをコンソールに出力
+      logger.error('=== SLACK FAILURE EMERGENCY LOG ===');
+      logger.error(JSON.stringify(emergencyLog, null, 2));
+      logger.error('=== END EMERGENCY LOG ===');
+
+      return emergencyLog;
+
+    } catch (logError) {
+      logger.error('Failed to create emergency log:', logError.message);
+      return null;
     }
   }
 
