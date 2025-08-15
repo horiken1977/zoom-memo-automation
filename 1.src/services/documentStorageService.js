@@ -377,11 +377,43 @@ ${summaryData.attendees?.map(p => `- ${p.name || p}${p.role ? ` (${p.role})` : '
 ${summaryData.agenda?.map(item => `- ${item.topic || item}${item.description ? `: ${item.description}` : ''}`).join('\n') || '情報なし'}
 
 ## 議論内容
-${summaryData.discussions?.map(d => `### ${d.topic || d.subject || '論点'}
-${d.summary || d.content || d}
-${d.participants ? `**参加者**: ${d.participants.join(', ')}` : ''}
-${d.timestamp ? `**時刻**: ${d.timestamp}` : ''}
-${d.keyPoints ? `**要点**: ${d.keyPoints.join(', ')}` : ''}
+${summaryData.discussions?.map(d => `### ${d.topic || d.subject || '論点'} ${d.category ? `[${d.category}]` : ''}
+**時間**: ${d.startTime || '不明'} ～ ${d.endTime || '不明'} ${d.duration ? `(${d.duration})` : ''}
+
+**背景・経緯**:
+${d.context || d.summary || d.content || d}
+
+**主要な課題・論点**:
+${d.keyIssues?.map(issue => `- ${issue}`).join('\n') || '特になし'}
+
+**参加者と発言内容**:
+${d.participants?.map(p => `
+**${p.speaker || p}** ${p.role ? `(${p.role})` : ''} ${p.stance ? `[${p.stance}]` : ''}
+- 主張: ${p.mainArguments?.join('、') || p.keyPoints?.join('、') || '記録なし'}
+${p.supportingData?.length ? `- 根拠: ${p.supportingData.join('、')}` : ''}
+${p.concerns?.length ? `- 懸念: ${p.concerns.join('、')}` : ''}
+${p.proposals?.length ? `- 提案: ${p.proposals.join('、')}` : ''}
+${p.timestamp ? `- 発言時刻: ${p.timestamp}` : ''}
+`).join('\n') || '参加者情報なし'}
+
+**議論の流れ**:
+${d.logicalFlow || '記録なし'}
+
+**対立する意見**:
+${d.conflictingViews?.map(view => `- ${view.viewpoint} (支持者: ${view.supporters?.join('、') || '不明'}, 根拠: ${view.reasoning || '不明'})`).join('\n') || '対立なし'}
+
+**決定ポイント**:
+${d.decisionPoints?.map(point => `- ${point}`).join('\n') || '特になし'}
+
+**結論・合意事項**:
+${d.outcome || '未解決'}
+
+**必要なアクション**:
+${d.actionRequired?.map(action => `- ${action}`).join('\n') || '特になし'}
+
+**ビジネス影響度**: ${d.businessImpact || '不明'} **優先度**: ${d.priority || '中'}
+
+---
 `).join('\n') || '特になし'}
 
 ## 決定事項
