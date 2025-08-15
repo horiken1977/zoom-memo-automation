@@ -852,41 +852,62 @@ ${transcription}`;
         try {
           // 手法1: レスポンス全体をJSONとしてパース
           parsedResult = JSON.parse(response);
+          logger.info('JSON parsing success with method 1 (direct parse)');
         } catch (parseError1) {
           try {
-            // 手法2: マークダウンブロックを除去してパース
-            const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+            // 手法2: マークダウンブロックを除去してパース（より強力な正規表現）
+            const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
             if (jsonMatch) {
-              parsedResult = JSON.parse(jsonMatch[1]);
+              parsedResult = JSON.parse(jsonMatch[1].trim());
+              logger.info('JSON parsing success with method 2 (markdown block removal)');
             } else {
-              throw new Error('No JSON block found');
+              throw new Error('No JSON markdown block found');
             }
           } catch (parseError2) {
             try {
-              // 手法3: { } で囲まれた部分を抽出してパース
-              const jsonObjectMatch = response.match(/\{[\s\S]*\}/);
-              if (jsonObjectMatch) {
-                parsedResult = JSON.parse(jsonObjectMatch[0]);
+              // 手法3: 最初の { から最後の } までを抽出してパース
+              const jsonStart = response.indexOf('{');
+              const jsonEnd = response.lastIndexOf('}');
+              if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                const jsonContent = response.substring(jsonStart, jsonEnd + 1);
+                parsedResult = JSON.parse(jsonContent);
+                logger.info('JSON parsing success with method 3 (bracket extraction)');
               } else {
-                throw new Error('No JSON object found');
+                throw new Error('No JSON object boundaries found');
               }
             } catch (parseError3) {
-              // 手法4: テキストクリーニング後にパース
               try {
+                // 手法4: マークダウン記号と余計なテキストを除去
                 const cleanedText = response
-                  .replace(/```json/g, '')
+                  .replace(/```json/gi, '')
                   .replace(/```/g, '')
-                  .replace(/^\s*[\r\n]/gm, '')
+                  .replace(/^[^{]*{/s, '{')  // 最初の { より前のテキストを除去
+                  .replace(/}[^}]*$/s, '}') // 最後の } より後のテキストを除去
                   .trim();
                 parsedResult = JSON.parse(cleanedText);
+                logger.info('JSON parsing success with method 4 (text cleaning)');
               } catch (parseError4) {
-                logger.warn(`All JSON parsing attempts failed, using fallback. Errors: ${parseError1.message}, ${parseError2.message}, ${parseError3.message}, ${parseError4.message}`);
-                
-                // フォールバック: テキストベースの構造化データ生成
-                parsedResult = {
-                  transcription: response.length > 100 ? response : `文字起こし解析失敗: ${response}`,
-                  summary: this.extractSummaryFromText(response)
-                };
+                try {
+                  // 手法5: 行頭の ```json と行末の ``` を除去する強力なクリーニング
+                  const lines = response.split('\n');
+                  const filteredLines = lines.filter(line => 
+                    !line.trim().startsWith('```') && 
+                    line.trim() !== '```json' &&
+                    line.trim() !== '```'
+                  );
+                  const cleanedResponse = filteredLines.join('\n').trim();
+                  parsedResult = JSON.parse(cleanedResponse);
+                  logger.info('JSON parsing success with method 5 (line-by-line cleaning)');
+                } catch (parseError5) {
+                  logger.warn(`All JSON parsing attempts failed, using fallback. Errors: Direct(${parseError1.message}), Markdown(${parseError2.message}), Bracket(${parseError3.message}), Cleaning(${parseError4.message}), LineFilter(${parseError5.message})`);
+                  
+                  // フォールバック: テキストベースの構造化データ生成
+                  parsedResult = {
+                    transcription: response.length > 100 ? response : `文字起こし解析失敗: ${response}`,
+                    summary: this.extractSummaryFromText(response)
+                  };
+                  logger.info('Using fallback text-based summary extraction');
+                }
               }
             }
           }

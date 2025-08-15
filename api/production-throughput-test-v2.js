@@ -327,7 +327,7 @@ async function runSequentialProcessingTest(res) {
       if (!slackAnalysisResult.summary || slackAnalysisResult.summary.length === 0) {
         console.warn('⚠️ Slack投稿で要約が空です');
         if (executionLogger) {
-          executionLogger.logWarn('SLACK_EMPTY_SUMMARY', {
+          executionLogger.logWarning('SLACK_EMPTY_SUMMARY', 'Slack投稿で要約が空でした', {
             summaryLength: slackAnalysisResult.summary?.length || 0,
             transcriptionLength: slackAnalysisResult.transcription?.length || 0
           });
