@@ -738,28 +738,67 @@ ${analysisResult.transcription}
           // }
           // return `${index + 1}. ${topicText}`;
           
-          // 詳細版: 保存要約と同じ詳細な内容を表示
+          // 詳細版: AIServiceの7項目構造に対応した詳細表示
           let detailedText = `${index + 1}. **${discussion.topicTitle || discussion.topic || '論点'}**`;
           
           if (discussion.timeRange) {
             detailedText += `\n⏱️ 時間: ${discussion.timeRange.startTime || ''} ～ ${discussion.timeRange.endTime || ''}`;
           }
           
-          if (discussion.background) {
-            detailedText += `\n📝 背景: ${discussion.background}`;
+          // AIServiceのdiscussionFlow構造に対応
+          if (discussion.discussionFlow) {
+            if (discussion.discussionFlow.backgroundContext) {
+              detailedText += `\n📝 背景: ${discussion.discussionFlow.backgroundContext}`;
+            }
+            
+            if (discussion.discussionFlow.keyArguments && discussion.discussionFlow.keyArguments.length > 0) {
+              detailedText += `\n👥 主要発言:`;
+              discussion.discussionFlow.keyArguments.slice(0, 3).forEach((arg) => {
+                if (arg.speaker) {
+                  detailedText += `\n• **${arg.speaker}** (${arg.company || '不明'}) [${arg.timestamp || ''}]:`;
+                  detailedText += `\n  主張: ${arg.argument ? arg.argument.substring(0, 150) : ''}${arg.argument && arg.argument.length > 150 ? '...' : ''}`;
+                  if (arg.reasoning) {
+                    detailedText += `\n  根拠: ${arg.reasoning.substring(0, 100)}${arg.reasoning.length > 100 ? '...' : ''}`;
+                  }
+                  if (arg.reactionFromOthers) {
+                    detailedText += `\n  反応: ${arg.reactionFromOthers.substring(0, 80)}${arg.reactionFromOthers.length > 80 ? '...' : ''}`;
+                  }
+                }
+              });
+            }
+            
+            if (discussion.discussionFlow.logicalProgression) {
+              detailedText += `\n🔄 論理展開: ${discussion.discussionFlow.logicalProgression.substring(0, 200)}${discussion.discussionFlow.logicalProgression.length > 200 ? '...' : ''}`;
+            }
+            
+            if (discussion.discussionFlow.decisionProcess) {
+              detailedText += `\n🎯 決定過程: ${discussion.discussionFlow.decisionProcess.substring(0, 150)}${discussion.discussionFlow.decisionProcess.length > 150 ? '...' : ''}`;
+            }
           }
           
-          if (discussion.speakers && discussion.speakers.length > 0) {
-            detailedText += `\n👥 主要発言者:`;
-            discussion.speakers.slice(0, 2).forEach((speaker) => {
-              if (speaker.name && speaker.statement) {
-                detailedText += `\n• **${speaker.name}**: ${speaker.statement.substring(0, 100)}${speaker.statement.length > 100 ? '...' : ''}`;
-              }
-            });
+          // 後方互換性: 旧構造のspeakers/background/conclusionも参照
+          else {
+            if (discussion.background) {
+              detailedText += `\n📝 背景: ${discussion.background}`;
+            }
+            
+            if (discussion.speakers && discussion.speakers.length > 0) {
+              detailedText += `\n👥 主要発言者:`;
+              discussion.speakers.slice(0, 2).forEach((speaker) => {
+                if (speaker.name && speaker.statement) {
+                  detailedText += `\n• **${speaker.name}**: ${speaker.statement.substring(0, 100)}${speaker.statement.length > 100 ? '...' : ''}`;
+                }
+              });
+            }
+            
+            if (discussion.conclusion) {
+              detailedText += `\n✅ 結論: ${discussion.conclusion}`;
+            }
           }
           
-          if (discussion.conclusion) {
-            detailedText += `\n✅ 結論: ${discussion.conclusion}`;
+          // outcomeは新旧共通
+          if (discussion.outcome) {
+            detailedText += `\n✅ 結論: ${discussion.outcome}`;
           }
           
           return detailedText;
