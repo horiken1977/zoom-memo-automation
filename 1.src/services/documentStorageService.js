@@ -193,7 +193,23 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
       const fileName = this.generateDocumentFileName(meetingInfo, 'summary');
       
       // 要約テキストを整形
+      console.log('🔍 DocumentStorage Debug: summaryData受信確認', {
+        summaryDataType: typeof summaryData,
+        summaryDataKeys: summaryData ? Object.keys(summaryData) : [],
+        hasOverview: !!summaryData?.overview,
+        overviewLength: summaryData?.overview?.length || 0,
+        overviewPreview: summaryData?.overview?.substring(0, 100) || 'なし',
+        hasDiscussions: !!summaryData?.discussions,
+        discussionsCount: summaryData?.discussions?.length || 0
+      });
+      
       const summaryText = this.formatSummaryText(summaryData, meetingInfo);
+      
+      console.log('🔍 DocumentStorage Debug: formatSummaryText結果', {
+        summaryTextLength: summaryText.length,
+        summaryTextPreview: summaryText.substring(0, 200),
+        isEmpty: summaryText.length === 0
+      });
       
       // ファイルの説明を生成
       const description = this.generateDocumentDescription(meetingInfo, 'summary', {
@@ -497,7 +513,16 @@ ${transcriptionData.audioQuality ? `
 
     // 2. 要約データがある場合（複数の可能な構造に対応）
     if (audioResult.structuredSummary || audioResult.analysis || audioResult.summary) {
-      const summaryData = audioResult.structuredSummary || audioResult.analysis || { summary: audioResult.summary };
+      // 重要: audioResult.summaryが直接構造化要約オブジェクトの場合を優先
+      const summaryData = audioResult.summary || audioResult.structuredSummary || audioResult.analysis;
+      console.log('🔍 saveDocuments Debug: 要約データ確認', {
+        hasSummary: !!audioResult.summary,
+        hasStructuredSummary: !!audioResult.structuredSummary,
+        summaryType: typeof summaryData,
+        summaryKeys: summaryData ? Object.keys(summaryData) : [],
+        overviewExists: !!summaryData?.overview
+      });
+      
       documentsToSave.push({
         type: 'summary',
         data: summaryData,
