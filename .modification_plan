@@ -1,0 +1,2 @@
+修正範囲: 1.src/services/slackService.js (11箇所)
+テスト戦略: slackService修正 → production-throughput-test-v2 → Slack投稿内容確認

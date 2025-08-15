@@ -640,32 +640,38 @@ ${analysisResult.transcription}
 
     // 8項目構造化要約の表示（改善版）
     
-    // 1. 会議目的・概要
-    if (summary) {
-      let summaryText = '';
-      
-      // summaryが文字列の場合とオブジェクトの場合に対応
+    // 1. 会議目的（7項目構造対応）
+    let meetingPurpose = analysisResult.structuredSummary?.meetingPurpose || 
+                        analysisResult.summary?.meetingPurpose || 
+                        analysisResult.analysis?.meetingPurpose;
+    
+    // 後方互換性（従来の概要形式）
+    if (!meetingPurpose && summary) {
       if (typeof summary === 'string') {
-        summaryText = this.extractShortSummary(summary);
+        meetingPurpose = this.extractShortSummary(summary);
       } else if (summary.overview) {
-        summaryText = summary.overview;
+        meetingPurpose = summary.overview;
       } else if (summary.summary) {
-        summaryText = this.extractShortSummary(summary.summary);
-      }
-      
-      if (summaryText) {
-        blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*📝 会議概要・目的*\n${summaryText}`
-          }
-        });
+        meetingPurpose = this.extractShortSummary(summary.summary);
       }
     }
+    
+    if (meetingPurpose) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*🎯 会議目的*\n${meetingPurpose}`
+        }
+      });
+    }
 
-    // 2. クライアント名
-    const clientName = analysisResult.structuredSummary?.client || 
+    // 2. クライアント名（7項目構造対応）
+    const clientName = analysisResult.structuredSummary?.clientName || 
+                      analysisResult.summary?.clientName || 
+                      analysisResult.analysis?.clientName ||
+                      // 後方互換性
+                      analysisResult.structuredSummary?.client || 
                       analysisResult.summary?.client || 
                       analysisResult.analysis?.client || 
                       this.extractClientFromMeetingName(meetingInfo.topic);
@@ -680,26 +686,39 @@ ${analysisResult.transcription}
       });
     }
 
-    // 3. 参加者情報（出席者名・社名）
-    if (participants && participants.length > 0) {
-      const participantList = participants.map(p => {
-        let participantStr = `• ${p.name || p}`;
-        if (p.role) participantStr += ` (${p.role})`;
-        if (p.organization) participantStr += ` - ${p.organization}`;
-        return participantStr;
+    // 3. 出席者・会社名（7項目構造対応）
+    let attendeesInfo = analysisResult.structuredSummary?.attendeesAndCompanies || 
+                       analysisResult.summary?.attendeesAndCompanies || 
+                       analysisResult.analysis?.attendeesAndCompanies || 
+                       participants || [];
+    
+    if (attendeesInfo && attendeesInfo.length > 0) {
+      const participantList = attendeesInfo.map(p => {
+        if (typeof p === 'string') {
+          return `• ${p}`;
+        } else {
+          let participantStr = `• ${p.name || p}`;
+          if (p.company || p.organization) participantStr += ` (${p.company || p.organization})`;
+          if (p.role) participantStr += ` - ${p.role}`;
+          return participantStr;
+        }
       }).join('\n');
       
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*👥 出席者名・社名*\n${participantList}`
+          text: `*👥 出席者・会社名*\n${participantList}`
         }
       });
     }
 
-    // 4. 議論内容・論点
-    const discussions = analysisResult.structuredSummary?.discussions || 
+    // 4. 議論内容・論点（7項目構造対応）
+    const discussions = analysisResult.structuredSummary?.discussionsByTopic || 
+                       analysisResult.summary?.discussionsByTopic || 
+                       analysisResult.analysis?.discussionsByTopic ||
+                       // 後方互換性
+                       analysisResult.structuredSummary?.discussions || 
                        analysisResult.summary?.discussions || 
                        analysisResult.analysis?.discussions || [];
     
@@ -708,7 +727,11 @@ ${analysisResult.transcription}
         if (typeof discussion === 'string') {
           return `${index + 1}. ${discussion}`;
         } else {
-          return `${index + 1}. ${discussion.topic || discussion.content || discussion}`;
+          let topicText = discussion.topicTitle || discussion.topic || discussion.content || discussion;
+          if (discussion.timeRange) {
+            topicText += ` (${discussion.timeRange.startTime || ''}-${discussion.timeRange.endTime || ''})`;
+          }
+          return `${index + 1}. ${topicText}`;
         }
       }).join('\n');
       
@@ -716,7 +739,7 @@ ${analysisResult.transcription}
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*💭 主な論点・議論内容*\n${discussionList}${discussions.length > 3 ? '\n...（他にもあり）' : ''}`
+          text: `*💭 論点・議論内容（時系列順）*\n${discussionList}${discussions.length > 3 ? '\n...（他にもあり）' : ''}`
         }
       });
     }
@@ -740,17 +763,24 @@ ${analysisResult.transcription}
       });
     }
 
-    // 6. 宿題・検討事項
-    const homework = analysisResult.structuredSummary?.homework || 
-                    analysisResult.summary?.homework || 
-                    analysisResult.analysis?.homework || [];
+    // 6. Next Action・Due Date（7項目構造対応）
+    const nextActions = analysisResult.structuredSummary?.nextActionsWithDueDate || 
+                       analysisResult.summary?.nextActionsWithDueDate || 
+                       analysisResult.analysis?.nextActionsWithDueDate ||
+                       // 後方互換性
+                       analysisResult.structuredSummary?.homework || 
+                       analysisResult.summary?.homework || 
+                       analysisResult.analysis?.homework || [];
     
-    if (homework && homework.length > 0) {
-      const homeworkList = homework.map((item, index) => {
+    if (nextActions && nextActions.length > 0) {
+      const nextActionsList = nextActions.map((item, index) => {
         if (typeof item === 'string') {
           return `${index + 1}. ${item}`;
         } else {
-          return `${index + 1}. ${item.task || item.content || item}`;
+          let actionText = `${index + 1}. ${item.action || item.task || item.content || item}`;
+          if (item.assignee) actionText += ` (担当: ${item.assignee})`;
+          if (item.dueDate) actionText += ` [期限: ${item.dueDate}]`;
+          return actionText;
         }
       }).join('\n');
       
@@ -758,13 +788,38 @@ ${analysisResult.transcription}
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*📚 宿題・検討事項*\n${homeworkList}`
+          text: `*📋 Next Action・Due Date*\n${nextActionsList}`
         }
       });
     }
 
-    // 7. Next Action / Due Date
-    if (actionItems && actionItems.length > 0) {
+    // 7. 資料（7項目構造対応）
+    const materials = analysisResult.structuredSummary?.materials || 
+                     analysisResult.summary?.materials || 
+                     analysisResult.analysis?.materials || [];
+    
+    if (materials && materials.length > 0) {
+      const materialsList = materials.map((material, index) => {
+        if (typeof material === 'string') {
+          return `${index + 1}. ${material}`;
+        } else {
+          let materialText = `${index + 1}. ${material.materialName || material.name || material.title || material}`;
+          if (material.timestamp) materialText += ` (${material.timestamp})`;
+          return materialText;
+        }
+      }).join('\n');
+      
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*📄 資料*\n${materialsList}`
+        }
+      });
+    }
+    
+    // 従来のactionItemsとの重複排除（後方互換性）
+    if (actionItems && actionItems.length > 0 && !nextActions.length) {
       const actionList = actionItems.map((action, index) => {
         if (typeof action === 'string') {
           return `${index + 1}. ${action}`;
@@ -780,7 +835,7 @@ ${analysisResult.transcription}
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*⚡ Next Action / Due Date*\n${actionList}`
+          text: `*⚡ Next Action (従来形式)*\n${actionList}`
         }
       });
     }

@@ -143,6 +143,30 @@
             <div class="error-description">Slackファイルアップロードに失敗</div>
             <div class="error-solution">対処: ファイルサイズ確認、形式確認</div>
         </div>
+
+        <div class="error-item severity-high">
+            <div class="error-code">SL003 - SLACK_CONTENT_MAPPING_FAILED</div>
+            <div class="error-description">構造化要約のSlack投稿時にデータ構造マッピングが失敗</div>
+            <div class="error-solution">対処: 7項目構造対応確認、データ構造の一貫性チェック</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">SL004 - SLACK_SUMMARY_EMPTY</div>
+            <div class="error-description">Slack投稿時に要約内容が空またはnull</div>
+            <div class="error-solution">対処: 音声処理完了確認、要約生成プロセス検証</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">SL005 - SLACK_BLOCK_VALIDATION_FAILED</div>
+            <div class="error-description">Slackブロック形式のバリデーションに失敗</div>
+            <div class="error-solution">対処: ブロック構造確認、文字数制限チェック</div>
+        </div>
+
+        <div class="error-item severity-low">
+            <div class="error-code">SL006 - SLACK_RETRY_EXCEEDED</div>
+            <div class="error-description">Slack投稿のリトライ回数上限に達した</div>
+            <div class="error-solution">対処: ネットワーク状態確認、手動再送信</div>
+        </div>
     </div>
 
     <div style="margin-top: 40px; padding: 20px; background: #e9ecef; border-radius: 8px;">
