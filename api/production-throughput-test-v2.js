@@ -346,7 +346,7 @@ async function runSequentialProcessingTest(res) {
       // Slackエラー通知を送信（別チャンネルまたは管理者向け）
       try {
         await slackService.sendErrorNotification({
-          type: 'SLACK_SEND_FAILED',
+          type: 'SLACK_NOTIFICATION_FAILED',
           error: slackError.message,
           meetingInfo: recordingResult.meetingInfo,
           executionId: executionId,
@@ -468,13 +468,25 @@ async function runSequentialProcessingTest(res) {
     timeTracker.log('PT001v2エラー発生', 'error');
     console.error('❌ PT001v2 逐次処理フローテストエラー:', error);
     
+    // Vercelタイムアウトエラーの検出
+    const executionTime = Date.now() - startTime;
+    let errorCode = 'E_PT001v2_FAILED';
+    let errorType = 'SYSTEM_ERROR';
+    
+    if (executionTime >= 295000 || error.message.includes('timeout') || error.message.includes('Timeout')) {
+      errorCode = 'E_SYSTEM_VERCEL_LIMIT';
+      errorType = 'VERCEL_TIMEOUT';
+      console.error('🚨 Vercel実行時間制限に抵触:', Math.floor(executionTime / 1000) + '秒');
+    }
+    
     // エラー時にも実行ログを保存
     let errorLogSaveResult = null;
     if (executionLogger) {
-      executionLogger.logError('PT001v2_TEST_ERROR', 'E_PT001v2_FAILED', error.message, {
+      executionLogger.logError('PT001v2_TEST_ERROR', errorCode, error.message, {
         errorStack: error.stack,
-        errorAt: Date.now() - startTime,
-        completedSteps: timeTracker.steps.length
+        errorAt: executionTime,
+        completedSteps: timeTracker.steps.length,
+        isVercelTimeout: errorCode === 'E_SYSTEM_VERCEL_LIMIT'
       });
       
       try {
@@ -494,6 +506,8 @@ async function runSequentialProcessingTest(res) {
       test: 'sequential-processing-flow',
       message: '逐次処理フローテスト失敗',
       error: error.message,
+      errorCode: errorCode,
+      errorType: errorType,
       stack: error.stack,
       executionTiming: {
         errorOccurredAt: `${errorTime}ms`,

@@ -942,7 +942,7 @@ ${analysisResult.transcription}
             },
             {
               type: 'mrkdwn',
-              text: `*発生時刻:*\n${new Date().toLocaleString('ja-JP')}`
+              text: `*発生時刻:*\n${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} (JST)`
             },
             {
               type: 'mrkdwn',

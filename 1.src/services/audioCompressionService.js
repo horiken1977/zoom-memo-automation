@@ -46,11 +46,30 @@ class AudioCompressionService {
         compressionMethod = 'no_compression_needed';
         logger.info(`🎯 圧縮不要: ${Math.round(originalSize / 1024 / 1024 * 100) / 100}MB ≤ 20MB制限`);
       } else {
-        // 20MB超過：全体を使用（Gemini APIで自動処理される）
-        // 注意: Gemini APIは内部で適切に処理するため、事前圧縮は不要
-        processedBuffer = audioBuffer;
-        compressionMethod = 'gemini_api_internal_processing';
-        logger.info(`⚠️ 大容量ファイル: ${Math.round(originalSize / 1024 / 1024 * 100) / 100}MB > 20MB - Gemini API内部処理に委託`);
+        // 20MB超過：実際の圧縮処理を実行
+        logger.info(`🗜️ 20MB超過のため実際の圧縮処理を実行: ${Math.round(originalSize / 1024 / 1024 * 100) / 100}MB`);
+        
+        try {
+          // 部分音声抽出で20MB以下に圧縮
+          const targetRatio = Math.min(0.4, maxGeminiSize / originalSize); // 最大40%、または20MB制限以下
+          processedBuffer = this.extractPartialAudio(audioBuffer, targetRatio);
+          compressionMethod = `partial_extraction_${Math.round(targetRatio * 100)}%`;
+          
+          logger.info(`🎯 部分音声抽出完了: ${Math.round(targetRatio * 100)}% (${Math.round(processedBuffer.length / 1024 / 1024 * 100) / 100}MB)`);
+          
+          // さらに20MB超過の場合はより強い圧縮
+          if (processedBuffer.length > maxGeminiSize) {
+            const secondRatio = maxGeminiSize / processedBuffer.length;
+            processedBuffer = this.extractPartialAudio(processedBuffer, secondRatio);
+            compressionMethod += `_second_compression_${Math.round(secondRatio * 100)}%`;
+            logger.info(`🔧 二次圧縮実行: ${Math.round(secondRatio * 100)}% (${Math.round(processedBuffer.length / 1024 / 1024 * 100) / 100}MB)`);
+          }
+          
+        } catch (compressionError) {
+          logger.warn(`⚠️ 圧縮処理失敗、元ファイルを使用: ${compressionError.message}`);
+          processedBuffer = audioBuffer;
+          compressionMethod = 'compression_failed_fallback';
+        }
       }
       
       const compressedSize = processedBuffer.length;
