@@ -732,133 +732,129 @@ ${transcription}`;
 - 主催者: ${meetingInfo.hostName}
 
 ## 出力JSON構造
-以下の構造で正確にJSONを生成してください：
+以下の7項目構造で正確にJSONを生成してください：
 
 {
   "transcription": "音声の完全な文字起こし（全ての発言を含む）",
   "summary": {
-    "overview": "会議の目的と結論の要約（3-5文で簡潔に）",
-    "client": "相手企業名（「○○株式会社」「○○様」「○○社」など、実際の会話から抽出）",
-    "attendees": [
+    "meetingPurpose": "この会議の目的（概要や結論ではなく、なぜこの会議を開催したのかの目的のみ）",
+    "clientName": "相手企業名（「○○株式会社」「○○様」「○○社」など、実際の会話から抽出）",
+    "attendeesAndCompanies": [
       {
         "name": "参加者の氏名",
-        "role": "役職名",
-        "organization": "所属会社名"
+        "company": "所属会社名",
+        "role": "役職名"
       }
     ],
-    "agenda": ["議題項目1", "議題項目2"],
-    "discussions": [
+    "materials": [
       {
-        "topic": "議論のテーマ・論点（具体的で詳細な論点名）",
-        "category": "議論のカテゴリ（戦略・運用・技術・課題解決など）",
-        "startTime": "MM:SS",
-        "endTime": "MM:SS",
-        "duration": "MM:SS",
-        "summary": "議論の詳細な概要（背景・争点・検討事項を含む）",
-        "context": "議論の背景・きっかけとなった状況",
-        "keyIssues": ["具体的な課題1", "具体的な課題2"],
-        "conflictingViews": [
-          {
-            "viewpoint": "対立する意見A",
-            "supporters": ["支持者名"],
-            "reasoning": "その意見の根拠・理由"
-          }
-        ],
-        "participants": [
-          {
-            "speaker": "発言者名（実名または話者A/B）",
-            "role": "発言者の役職・立場",
-            "stance": "発言者の基本的立場（賛成・反対・中立・提案）",
-            "mainArguments": ["主要な論点1", "主要な論点2"],
-            "supportingData": ["根拠となるデータ・事実"],
-            "concerns": ["懸念事項・リスク"],
-            "proposals": ["具体的な提案・解決策"],
-            "timestamp": "MM:SS",
-            "influence": "議論への影響度（high/medium/low）"
-          }
-        ],
-        "logicalFlow": "議論の詳細な論理展開（発言の連鎖・反応・発展の流れ）",
-        "decisionPoints": ["意思決定のポイント"],
-        "outcome": "議論の結果・結論（合意・未解決・継続検討など）",
-        "actionRequired": ["必要なアクション・フォローアップ"],
-        "businessImpact": "ビジネス・プロジェクトへの影響",
-        "priority": "優先度（high/medium/low）"
+        "materialName": "資料名",
+        "description": "資料の内容・説明",
+        "mentionedBy": "言及した発言者",
+        "timestamp": "MM:SS"
+      }
+    ],
+    "discussionsByTopic": [
+      {
+        "topicTitle": "論点・議論テーマ（具体的で詳細な論点名）",
+        "timeRange": {
+          "startTime": "MM:SS",
+          "endTime": "MM:SS"
+        },
+        "discussionFlow": {
+          "backgroundContext": "この論点が出た背景・きっかけ",
+          "keyArguments": [
+            {
+              "speaker": "発言者名",
+              "company": "所属会社",
+              "timestamp": "MM:SS",
+              "argument": "発言内容・主張",
+              "reasoning": "その主張の根拠・理由",
+              "reactionFromOthers": "他の参加者からの反応・反論"
+            }
+          ],
+          "logicalProgression": "議論がどのような論理展開で進行したか（発言→反応→反論→合意/対立の流れ）",
+          "decisionProcess": "どのような過程で決定に至ったか、または未解決で終わったか"
+        },
+        "outcome": "この論点の結論・合意事項・未解決事項"
       }
     ],
     "decisions": [
       {
         "decision": "決定された事項",
+        "decidedBy": "決定者・決定過程",
         "reason": "決定に至った理由",
-        "implementationDate": "実施時期"
+        "implementationDate": "実施時期（YYYY/MM/DD）",
+        "relatedTopic": "関連する論点"
       }
     ],
-    "actionItems": [
+    "nextActionsWithDueDate": [
       {
-        "task": "具体的なタスク内容",
+        "action": "具体的なNext Action",
         "assignee": "担当者名",
         "dueDate": "YYYY/MM/DD",
-        "priority": "high"
-      }
-    ],
-    "nextSteps": [
-      {
-        "action": "次に実行すべきアクション",
-        "timeline": "実施時期"
+        "priority": "high/medium/low",
+        "relatedDecision": "関連する決定事項"
       }
     ],
     "audioQuality": {
-      "clarity": "excellent",
-      "issues": [],
-      "transcriptionConfidence": "high"
+      "clarity": "excellent/good/fair/poor",
+      "issues": ["音声品質の問題があれば記載"],
+      "transcriptionConfidence": "high/medium/low"
     }
   }
 }
 
-## クライアント名抽出の重要指示
-- 会話内で言及される相手企業名を**必ず**抽出してください
-- 「○○様」「○○社」「○○株式会社」「○○グループ」など、実際の表現をそのまま使用
-- 会議名からも企業名を推測してください（例：「毎日放送様_第5回共通言語MTG」→「毎日放送様」）
-- 不明な場合のみ"不明"とする
+## 7項目分析の重要指示
+
+### 1. 会議目的の抽出方法
+- 会議冒頭での「今日は〜のために」「〜を目的として」等の発言を特定
+- 会議名からの推測ではなく、実際の発言から目的を抽出
+- 概要や結論ではなく、純粋な「目的」のみを記録
+
+### 2. クライアント名の抽出方法  
+- 会話内で言及される相手企業名を**必ず**抽出
+- 「○○様」「○○社」「○○株式会社」「○○グループ」など実際の表現をそのまま使用
+- 会議名からも企業名を推測（例：「毎日放送様_第5回共通言語MTG」→「毎日放送様」）
+
+### 3. 出席者・会社名の記録方法
+- 自己紹介や発言時に言及された所属会社を正確に記録
+- 「話者A」ではなく可能な限り実名を特定
+- 会社名は略称ではなく正式名称で記録
+
+### 4. 資料の特定方法
+- 「資料を見てください」「スライドの〜」「配布した〜」等の言及を特定
+- 画面共有や提示された資料名を正確に記録
+- 資料について議論された内容も併記
+
+### 5. 論点・議論内容の分析方法
+- **時間軸での論点分離**: 各論点の開始・終了時間（MM:SS）を記録
+- **発言者別の主張**: 誰が何をどのタイミングで発言したか
+- **論理展開の追跡**: 発言→反応→反論→合意/対立の具体的な流れ
+- **決定プロセス**: どのような議論を経て何が決まったか
+
+### 6. 決定事項の記録方法
+- 「決まりました」「〜にしましょう」「承認します」等の決定発言を特定
+- 決定に至った議論の流れを関連論点として記録
+- 実施時期が言及された場合は正確な日付で記録
+
+### 7. Next Action・Due Dateの特定方法
+- 「〜してください」「〜までに」「次回までに」等のアクション指示を特定
+- 担当者の明確な指名があった場合は正確に記録
+- 期限が曖昧な場合も「次回会議まで」等の表現をそのまま記録
 
 ## データ品質基準
-- 全ての配列は、該当項目がない場合は空配列 [] にする
-- 不明な文字列項目は "不明" にする
-- 日付形式は厳密に YYYY/MM/DD または YYYY-MM-DD にする
-- priorityは high/medium/low のいずれかにする
+- 時間形式: MM:SS（例：05:30 = 5分30秒）
+- 日付形式: YYYY/MM/DD
+- 該当項目がない場合は空配列 [] 
+- 不明な項目は "不明" ではなく実際の会話から推測
+- **表面的な要約ではなく、具体的な発言内容と論理展開を詳細に記録**
 
-## 重要: 論点・議論分析の詳細要件
-**discussionsセクションでは以下を必ず実行してください：**
-
-1. **論点の時間軸把握**: 各議論の開始・終了時間を正確に記録
-2. **発言者の特定**: 誰がどの意見を述べたかを明確に識別
-3. **論理展開の追跡**: 
-   - どの発言がきっかけで議論が始まったか
-   - 反対意見や賛成意見がどのように展開されたか
-   - 議論がどのような論理的流れで進行したか
-4. **立場の明確化**: 各発言者の立場・視点・意見を具体的に記録
-5. **結論への道筋**: 議論がどのような結論に達したか、または未解決で終わったか
-
-**⚠️ 議論内容の深掘り必須事項:**
-- 表面的な「○○について話した」ではなく、**具体的な論点と意見対立**を記録
-- **なぜその意見になったのか**の背景・理由を含める
-- **数値・データ・具体例**が出た場合は正確に記録
-- **課題・問題点**とそれに対する**解決策の提案**を区別
-- **ステークホルダーへの影響**や**リスク**についての言及を記録
-- **優先順位**や**重要度**に関する議論を詳細に分析
-
-**文字起こしの完全性**: 
-- 音声の全体を漏れなく文字起こしする
-- 発言者の区別を可能な限り行う（「話者A」「話者B」など）
-- 時間の経過に沿って順序正しく記録する
-- **重要な数値・固有名詞・専門用語は正確に**
-
-**質の高い議論分析のために:**
-- 単なる「話題」ではなく「議論の核心」を把握する
-- 意見の対立点や合意点を明確に区別する
-- 未解決の課題や今後の検討事項を特定する
-- ビジネス上の意思決定に関わる重要な発言を優先的に記録
-
-**時間形式**: MM:SS（例：05:30 = 5分30秒）で会議開始からの経過時間を記録
+## 議論分析の品質要件
+- **発言の因果関係**: AがこのことばをきっかけにBがこの発言をしたという連鎖を記録
+- **対立構造**: 誰と誰がどの点で意見が分かれたかを明確に区別  
+- **合意形成**: どのような過程で合意に至ったか、誰の提案が採用されたか
+- **未解決事項**: 結論に至らなかった論点と継続検討事項を明記
 
 **再度強調: 返答は純粋なJSONデータのみです。説明は一切不要です。**`;
 
@@ -991,14 +987,34 @@ ${transcription}`;
         lastError = error;
         logger.error(`Unified audio processing attempt ${attempt}/${maxRetries} failed: ${error.message}`);
         
-        // 特定のエラーハンドリング
+        // 音声処理エラーコード体系に基づく詳細分析
+        let errorCode = 'AU008'; // RETRY_LIMIT_EXCEEDED (デフォルト)
+        
         if (error.message.includes('500 Internal Server Error')) {
-          logger.warn('Gemini API server error detected (500) - AI009');
+          errorCode = 'AU003'; // GEMINI_TRANSCRIPTION_FAILED
+          logger.warn(`Audio processing error: ${errorCode} - Gemini API server error (500)`);
         } else if (error.message.includes('429')) {
-          logger.warn('Rate limit exceeded - AI001');
+          errorCode = 'AU008'; // RETRY_LIMIT_EXCEEDED
+          logger.warn(`Audio processing error: ${errorCode} - Rate limit exceeded`);
         } else if (error.message.includes('401')) {
-          logger.warn('Authentication failed - AI002');
+          errorCode = 'AU001'; // AUDIO_DOWNLOAD_FAILED (認証関連)
+          logger.warn(`Audio processing error: ${errorCode} - Authentication failed`);
+        } else if (error.message.includes('Transcription too short')) {
+          errorCode = 'AU004'; // TRANSCRIPTION_TOO_SHORT
+          logger.warn(`Audio processing error: ${errorCode} - Transcription result insufficient`);
+        } else if (error.message.includes('JSON') || error.message.includes('parse')) {
+          errorCode = 'AU005'; // JSON_PARSING_FAILED
+          logger.warn(`Audio processing error: ${errorCode} - JSON parsing failure in structured summary`);
+        } else if (error.message.includes('audio') || error.message.includes('buffer')) {
+          errorCode = 'AU002'; // AUDIO_COMPRESSION_FAILED
+          logger.warn(`Audio processing error: ${errorCode} - Audio buffer processing failed`);
+        } else {
+          errorCode = 'AU007'; // STRUCTURED_SUMMARY_FAILED
+          logger.warn(`Audio processing error: ${errorCode} - Structured summary generation failed`);
         }
+        
+        // エラーコードをログに記録
+        logger.error(`Audio Error Code: ${errorCode} - ${error.message}`);
         
         // リトライ前の待機
         if (attempt < maxRetries) {

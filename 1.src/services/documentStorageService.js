@@ -383,63 +383,58 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
 - 主催者: ${meetingInfo.hostName || 'N/A'}
 - 参加者数: ${summaryData.participants?.length || 'N/A'}名
 
-## 概要
-${summaryData.overview || summaryData.summary || summaryData.structuredSummary?.overview || 'N/A'}
+## 会議目的
+${summaryData.meetingPurpose || 'N/A'}
 
-## 参加者
-${summaryData.attendees?.map(p => `- ${p.name || p}${p.role ? ` (${p.role})` : ''}`).join('\n') || summaryData.participants?.map(p => `- ${p.name || p}${p.role ? ` (${p.role})` : ''}`).join('\n') || '情報なし'}
+## クライアント名
+${summaryData.clientName || 'N/A'}
 
-## 議題・論点
-${summaryData.agenda?.map(item => `- ${item.topic || item}${item.description ? `: ${item.description}` : ''}`).join('\n') || '情報なし'}
+## 出席者・会社名
+${summaryData.attendeesAndCompanies?.map(p => `- ${p.name || p} (${p.company || '不明'}) ${p.role ? ` - ${p.role}` : ''}`).join('\n') || '情報なし'}
 
-## 議論内容
-${summaryData.discussions?.map(d => `### ${d.topic || d.subject || '論点'} ${d.category ? `[${d.category}]` : ''}
-**時間**: ${d.startTime || '不明'} ～ ${d.endTime || '不明'} ${d.duration ? `(${d.duration})` : ''}
+## 資料
+${summaryData.materials?.map(m => `- ${m.materialName || m} ${m.timestamp ? `[${m.timestamp}]` : ''}${m.description ? `\n  説明: ${m.description}` : ''}${m.mentionedBy ? `\n  言及者: ${m.mentionedBy}` : ''}`).join('\n') || '資料の言及なし'}
 
-**背景・経緯**:
-${d.context || d.summary || d.content || d}
+## 論点および議論内容
+${summaryData.discussionsByTopic?.map(d => `### ${d.topicTitle || '論点'}
+**時間**: ${d.timeRange?.startTime || '不明'} ～ ${d.timeRange?.endTime || '不明'}
 
-**主要な課題・論点**:
-${d.keyIssues?.map(issue => `- ${issue}`).join('\n') || '特になし'}
+**背景・きっかけ**:
+${d.discussionFlow?.backgroundContext || '記録なし'}
 
-**参加者と発言内容**:
-${d.participants?.map(p => `
-**${p.speaker || p}** ${p.role ? `(${p.role})` : ''} ${p.stance ? `[${p.stance}]` : ''}
-- 主張: ${p.mainArguments?.join('、') || p.keyPoints?.join('、') || '記録なし'}
-${p.supportingData?.length ? `- 根拠: ${p.supportingData.join('、')}` : ''}
-${p.concerns?.length ? `- 懸念: ${p.concerns.join('、')}` : ''}
-${p.proposals?.length ? `- 提案: ${p.proposals.join('、')}` : ''}
-${p.timestamp ? `- 発言時刻: ${p.timestamp}` : ''}
-`).join('\n') || '参加者情報なし'}
+**発言者別の主張・論理展開**:
+${d.discussionFlow?.keyArguments?.map(arg => `
+- **${arg.speaker || '不明'}** (${arg.company || '不明'}) [${arg.timestamp || '時間不明'}]
+  主張: ${arg.argument || '記録なし'}
+  根拠: ${arg.reasoning || '記録なし'}  
+  他者の反応: ${arg.reactionFromOthers || '記録なし'}
+`).join('\n') || '発言記録なし'}
 
-**議論の流れ**:
-${d.logicalFlow || '記録なし'}
+**議論の論理展開**:
+${d.discussionFlow?.logicalProgression || '記録なし'}
 
-**対立する意見**:
-${d.conflictingViews?.map(view => `- ${view.viewpoint} (支持者: ${view.supporters?.join('、') || '不明'}, 根拠: ${view.reasoning || '不明'})`).join('\n') || '対立なし'}
-
-**決定ポイント**:
-${d.decisionPoints?.map(point => `- ${point}`).join('\n') || '特になし'}
+**決定プロセス**:
+${d.discussionFlow?.decisionProcess || '記録なし'}
 
 **結論・合意事項**:
 ${d.outcome || '未解決'}
 
-**必要なアクション**:
-${d.actionRequired?.map(action => `- ${action}`).join('\n') || '特になし'}
-
-**ビジネス影響度**: ${d.businessImpact || '不明'} **優先度**: ${d.priority || '中'}
-
 ---
-`).join('\n') || '特になし'}
+`).join('\n') || '論点なし'}
 
 ## 決定事項
-${summaryData.decisions?.map(d => `- ${d.decision || d}${d.reason ? ` (理由: ${d.reason})` : ''}${d.impact ? ` (影響: ${d.impact})` : ''}`).join('\n') || '特になし'}
+${summaryData.decisions?.map(d => `- ${d.decision || d}
+  決定者: ${d.decidedBy || '不明'}
+  理由: ${d.reason || '記録なし'}
+  実施時期: ${d.implementationDate || '未定'}
+  関連論点: ${d.relatedTopic || '不明'}`).join('\n') || '決定事項なし'}
 
-## アクションアイテム
-${summaryData.actionItems?.map(a => `- ${a.task || a}${a.assignee ? ` (担当: ${a.assignee})` : ''}${a.dueDate ? ` (期限: ${a.dueDate})` : ''}${a.priority ? ` [${a.priority}]` : ''}`).join('\n') || '特になし'}
-
-## 次のステップ
-${summaryData.nextSteps?.map(step => `- ${step.action || step}${step.timeline ? ` (時期: ${step.timeline})` : ''}${step.responsible ? ` (責任者: ${step.responsible})` : ''}`).join('\n') || '特になし'}
+## Next Action および Due Date
+${summaryData.nextActionsWithDueDate?.map(a => `- ${a.action || a}
+  担当者: ${a.assignee || '未定'}
+  期限: ${a.dueDate || '未定'}
+  優先度: ${a.priority || '中'}
+  関連決定: ${a.relatedDecision || '不明'}`).join('\n') || 'Next Actionなし'}
 
 ## 生成情報
 - AIモデル: ${summaryData.model || 'N/A'}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Memo Automation - エラーコード一覧</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: #f8f9fa; }
+        .header { background: #007acc; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .category { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .category h2 { color: #007acc; border-bottom: 2px solid #007acc; padding-bottom: 10px; }
+        .error-item { background: #f8f9fa; margin: 10px 0; padding: 15px; border-left: 4px solid #dc3545; border-radius: 4px; }
+        .error-code { font-weight: bold; color: #dc3545; font-size: 1.1em; }
+        .error-description { margin: 5px 0; color: #333; }
+        .error-solution { margin: 5px 0; color: #28a745; font-style: italic; }
+        .severity-high { border-left-color: #dc3545; }
+        .severity-medium { border-left-color: #ffc107; }
+        .severity-low { border-left-color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚨 Zoom Memo Automation エラーコード一覧</h1>
+        <p>システムで発生する全エラーコードと対処法</p>
+    </div>
+
+    <!-- 音声処理関連エラー -->
+    <div class="category">
+        <h2>🎵 音声処理関連エラー (AU001-AU099)</h2>
+        
+        <div class="error-item severity-high">
+            <div class="error-code">AU001 - AUDIO_DOWNLOAD_FAILED</div>
+            <div class="error-description">Zoom音声ファイルのダウンロードに失敗</div>
+            <div class="error-solution">対処: Zoom認証状態確認、ネットワーク接続確認</div>
+        </div>
+
+        <div class="error-item severity-high">
+            <div class="error-code">AU002 - AUDIO_COMPRESSION_FAILED</div>
+            <div class="error-description">音声圧縮処理の失敗</div>
+            <div class="error-solution">対処: ファイル形式確認、メモリ不足チェック</div>
+        </div>
+
+        <div class="error-item severity-high">
+            <div class="error-code">AU003 - GEMINI_TRANSCRIPTION_FAILED</div>
+            <div class="error-description">Gemini AI文字起こし処理の失敗</div>
+            <div class="error-solution">対処: APIキー確認、音声ファイルサイズ・形式チェック</div>
+        </div>
+
+        <div class="error-item severity-high">
+            <div class="error-code">AU004 - TRANSCRIPTION_TOO_SHORT</div>
+            <div class="error-description">文字起こし結果が短すぎる（50文字未満）</div>
+            <div class="error-solution">対処: 音声品質確認、無音部分の確認、マイク設定確認</div>
+        </div>
+
+        <div class="error-item severity-high">
+            <div class="error-code">AU005 - JSON_PARSING_FAILED</div>
+            <div class="error-description">Gemini AIからのJSON解析に全手法で失敗</div>
+            <div class="error-solution">対処: プロンプト簡略化、モデル変更、リトライ間隔調整</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">AU006 - AUDIO_QUALITY_WARNING</div>
+            <div class="error-description">音声品質が低く、精度に影響の可能性</div>
+            <div class="error-solution">対処: 録画環境改善の提案、品質レポート生成</div>
+        </div>
+
+        <div class="error-item severity-high">
+            <div class="error-code">AU007 - STRUCTURED_SUMMARY_FAILED</div>
+            <div class="error-description">構造化要約の生成に失敗</div>
+            <div class="error-solution">対処: フォールバック要約実行、プロンプト調整</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">AU008 - RETRY_LIMIT_EXCEEDED</div>
+            <div class="error-description">音声処理のリトライ回数上限に達した</div>
+            <div class="error-solution">対処: 手動再実行、音声ファイル個別確認</div>
+        </div>
+    </div>
+
+    <!-- システム関連エラー -->
+    <div class="category">
+        <h2>⚙️ システム関連エラー (SY001-SY099)</h2>
+        
+        <div class="error-item severity-high">
+            <div class="error-code">SY001 - VERCEL_TIMEOUT</div>
+            <div class="error-description">Vercel実行時間制限（300秒）に抵触</div>
+            <div class="error-solution">対処: 処理分割、非同期化、Pro プラン検討</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">SY002 - MEMORY_LIMIT_WARNING</div>
+            <div class="error-description">メモリ使用量が上限に近づいている</div>
+            <div class="error-solution">対処: バッファ最適化、ガベージコレクション強制実行</div>
+        </div>
+    </div>
+
+    <!-- Zoom連携関連エラー -->
+    <div class="category">
+        <h2>🎥 Zoom連携関連エラー (ZM001-ZM099)</h2>
+        
+        <div class="error-item severity-high">
+            <div class="error-code">ZM001 - OAUTH_AUTHENTICATION_FAILED</div>
+            <div class="error-description">Zoom OAuth認証に失敗</div>
+            <div class="error-solution">対処: 認証情報確認、トークン再取得</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">ZM002 - RECORDING_NOT_FOUND</div>
+            <div class="error-description">指定した録画が見つからない</div>
+            <div class="error-solution">対処: 録画ID確認、権限確認</div>
+        </div>
+    </div>
+
+    <!-- Google Drive関連エラー -->
+    <div class="category">
+        <h2>☁️ Google Drive関連エラー (GD001-GD099)</h2>
+        
+        <div class="error-item severity-high">
+            <div class="error-code">GD001 - DRIVE_UPLOAD_FAILED</div>
+            <div class="error-description">Google Driveアップロードに失敗</div>
+            <div class="error-solution">対処: 認証確認、容量確認、権限確認</div>
+        </div>
+
+        <div class="error-item severity-medium">
+            <div class="error-code">GD002 - FOLDER_CREATION_FAILED</div>
+            <div class="error-description">フォルダ作成に失敗</div>
+            <div class="error-solution">対処: 権限確認、親フォルダ存在確認</div>
+        </div>
+    </div>
+
+    <!-- Slack通知関連エラー -->
+    <div class="category">
+        <h2>💬 Slack通知関連エラー (SL001-SL099)</h2>
+        
+        <div class="error-item severity-medium">
+            <div class="error-code">SL001 - SLACK_POST_FAILED</div>
+            <div class="error-description">Slack投稿に失敗</div>
+            <div class="error-solution">対処: トークン確認、チャンネル権限確認</div>
+        </div>
+
+        <div class="error-item severity-low">
+            <div class="error-code">SL002 - SLACK_FILE_UPLOAD_FAILED</div>
+            <div class="error-description">Slackファイルアップロードに失敗</div>
+            <div class="error-solution">対処: ファイルサイズ確認、形式確認</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; padding: 20px; background: #e9ecef; border-radius: 8px;">
+        <h3>📝 エラー対応の基本方針</h3>
+        <ol>
+            <li><strong>High（赤）</strong>: 即座の対応が必要、処理継続不可</li>
+            <li><strong>Medium（黄）</strong>: 警告レベル、処理は継続可能</li>
+            <li><strong>Low（緑）</strong>: 情報レベル、軽微な問題</li>
+        </ol>
+        <p><strong>最終更新:</strong> 2025-08-15 | <strong>バージョン:</strong> 1.0</p>
+    </div>
+</body>
+</html>
