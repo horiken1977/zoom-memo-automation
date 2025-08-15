@@ -6,7 +6,26 @@
 
 **Claude Codeは以下を作業開始時に必ず実行すること（例外なし）**
 
-### ステップ1: 現状確認（必須）
+### ステップ0: セッション自動保存（VSCodeクラッシュ対策）
+```bash
+# VSCodeクラッシュ対策として、必ず最初にセッション保存を実行
+./3.operations/src/save_claude_session.sh
+
+# セッション保存が失敗した場合のみスクリプト作成
+if [ ! -f "./3.operations/src/save_claude_session.sh" ]; then
+    echo "セッション保存スクリプトが存在しないため作成が必要"
+fi
+```
+
+### ステップ1: Cipher復元確認（クラッシュ復旧時）
+```
+VSCodeクラッシュ後の場合：
+1. MCPのCipherを用いて前回の対話記録を復元
+2. 3.operations/claude_sessions/latest_session.md を確認
+3. 必要に応じて 0.docs/crash_recovery_guide.md 参照
+```
+
+### ステップ2: 現状確認（必須）
 ```bash
 # 1. 現在のgitステータス確認
 git status
@@ -16,18 +35,19 @@ git log --oneline -5
 git diff HEAD~1 --name-only
 ```
 
-### ステップ2: TodoWrite強制リマインダー（必須）
+### ステップ3: TodoWrite強制リマインダー（必須）
 ```
 毎回最初に以下タスクを作成：
-1. "【必須】現状確認プロトコル実行" (in_progress)
-2. "git status/log確認完了" (pending) 
-3. "前回変更差分確認完了" (pending)
-4. "動作確認テスト実行完了" (pending)
+1. "【必須】セッション自動保存実行" (in_progress)
+2. "【必須】現状確認プロトコル実行" (pending)
+3. "git status/log確認完了" (pending) 
+4. "前回変更差分確認完了" (pending)
+5. "動作確認テスト実行完了" (pending)
 
-この4つを全て completed にしてから他の作業開始
+この5つを全て completed にしてから他の作業開始
 ```
 
-### ステップ3: エラー発生時の強制プロトコル
+### ステップ4: エラー発生時の強制プロトコル
 ```
 エラー発生 → 必ず以下を確認：
 1. 最近の変更と関係があるか？ (git diff確認)
@@ -36,10 +56,16 @@ git diff HEAD~1 --name-only
 4. 環境要因の可能性は？
 ```
 
-### ステップ4: 変更前の動作確認
+### ステップ5: 変更前の動作確認
 - 修正対象の現在の動作状況を必ず確認
 - テスト実行で正常性を検証
 - 問題がある場合は修正前に報告
+
+### ステップ6: 作業完了時のセッション保存
+```bash
+# 重要な作業完了時は必ずセッション保存
+./3.operations/src/save_claude_session.sh
+```
 
 **このプロトコルを飛ばして作業を開始してはいけない！**
 

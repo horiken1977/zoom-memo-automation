@@ -236,22 +236,30 @@ async function runSequentialProcessingTest(res) {
     const slackService = new SlackService();
     
     // Slack投稿用データを準備（保存されたデータと統一）
-    // 重要: DocumentStorageServiceで保存されたデータと同じ構造化データを使用
+    // 重要: zoomRecordingServiceからのデータ構造に合わせて修正
     const audioData = recordingResult.audio;
-    const structuredSummary = audioData?.structuredSummary || {};
+    // 注意: zoomRecordingServiceは summary として返す（structuredSummaryではない）
+    const structuredSummary = audioData?.summary || {};
     
     console.log('🔍 Debug: 統一データ構造確認', {
       hasStructuredSummary: !!structuredSummary,
       structuredSummaryKeys: Object.keys(structuredSummary),
       transcriptionLength: audioData?.transcription?.transcription?.length || 0,
-      documentsSaved: documentSaveResult?.totalSaved || 0
+      documentsSaved: documentSaveResult?.totalSaved || 0,
+      hasAudioSummary: !!audioData?.summary,
+      audioDataKeys: audioData ? Object.keys(audioData) : [],
+      // 詳細デバッグ
+      summaryType: typeof audioData?.summary,
+      summaryContent: audioData?.summary ? JSON.stringify(audioData.summary).substring(0, 200) : 'null',
+      structuredSummaryType: typeof structuredSummary,
+      structuredSummaryContent: Object.keys(structuredSummary).length > 0 ? JSON.stringify(structuredSummary).substring(0, 200) : 'empty object'
     });
     
     const slackAnalysisResult = {
       meetingInfo: recordingResult.meetingInfo,
       // 統一: 構造化要約データを直接使用
       structuredSummary: structuredSummary,
-      summary: structuredSummary?.overview || structuredSummary?.summary || '',
+      summary: structuredSummary?.overview || structuredSummary?.summary || structuredSummary,
       transcription: audioData?.transcription?.transcription || audioData?.transcription || '',
       participants: structuredSummary?.attendees || [],
       actionItems: structuredSummary?.actionItems || [],

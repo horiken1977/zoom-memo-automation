@@ -1,0 +1,1 @@
+/Users/aa479881/Library/CloudStorage/GoogleDrive-horie.kenichi@grtx.jp/共有ドライブ/103_全社共有用/社内DX/zoom-memo-automation/zoom-memo-automation/3.operations/claude_sessions/session_20250815_141144.md
