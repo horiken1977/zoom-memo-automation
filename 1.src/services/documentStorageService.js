@@ -368,16 +368,30 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
 - 参加者数: ${summaryData.participants?.length || 'N/A'}名
 
 ## 概要
-${summaryData.summary || summaryData.structuredSummary?.overview || 'N/A'}
+${summaryData.overview || summaryData.summary || summaryData.structuredSummary?.overview || 'N/A'}
 
 ## 参加者
-${summaryData.participants?.map(p => `- ${p.name || p}${p.role ? ` (${p.role})` : ''}`).join('\n') || '情報なし'}
+${summaryData.attendees?.map(p => `- ${p.name || p}${p.role ? ` (${p.role})` : ''}`).join('\n') || summaryData.participants?.map(p => `- ${p.name || p}${p.role ? ` (${p.role})` : ''}`).join('\n') || '情報なし'}
+
+## 議題・論点
+${summaryData.agenda?.map(item => `- ${item.topic || item}${item.description ? `: ${item.description}` : ''}`).join('\n') || '情報なし'}
+
+## 議論内容
+${summaryData.discussions?.map(d => `### ${d.topic || d.subject || '論点'}
+${d.summary || d.content || d}
+${d.participants ? `**参加者**: ${d.participants.join(', ')}` : ''}
+${d.timestamp ? `**時刻**: ${d.timestamp}` : ''}
+${d.keyPoints ? `**要点**: ${d.keyPoints.join(', ')}` : ''}
+`).join('\n') || '特になし'}
 
 ## 決定事項
-${summaryData.decisions?.map(d => `- ${d.decision || d}${d.reason ? ` (理由: ${d.reason})` : ''}`).join('\n') || '特になし'}
+${summaryData.decisions?.map(d => `- ${d.decision || d}${d.reason ? ` (理由: ${d.reason})` : ''}${d.impact ? ` (影響: ${d.impact})` : ''}`).join('\n') || '特になし'}
 
 ## アクションアイテム
-${summaryData.actionItems?.map(a => `- ${a.task || a}${a.assignee ? ` (担当: ${a.assignee})` : ''}${a.dueDate ? ` (期限: ${a.dueDate})` : ''}`).join('\n') || '特になし'}
+${summaryData.actionItems?.map(a => `- ${a.task || a}${a.assignee ? ` (担当: ${a.assignee})` : ''}${a.dueDate ? ` (期限: ${a.dueDate})` : ''}${a.priority ? ` [${a.priority}]` : ''}`).join('\n') || '特になし'}
+
+## 次のステップ
+${summaryData.nextSteps?.map(step => `- ${step.action || step}${step.timeline ? ` (時期: ${step.timeline})` : ''}${step.responsible ? ` (責任者: ${step.responsible})` : ''}`).join('\n') || '特になし'}
 
 ## 生成情報
 - AIモデル: ${summaryData.model || 'N/A'}
