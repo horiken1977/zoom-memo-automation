@@ -8,7 +8,7 @@
  * - 将来拡張用コード範囲確保済み
  * 
  * コード体系:
- * ZM: Zoom API, GD: Google Drive, AI: Gemini AI, SL: Slack API, SY: System
+ * ZM: Zoom API, GD: Google Drive, AU: Audio Processing, SL: Slack API, SY: System
  * MS: Microsoft系(確保), NT: Notification系(確保)
  */
 
@@ -200,28 +200,28 @@ const ERROR_CODES = {
   },
 
   // ========================================
-  // Gemini AI API Errors (AI001-AI010)
+  // Audio Processing Errors (AU001-AU010)
   // ========================================
-  AI001: {
-    code: 'AI001',
-    message: 'Gemini APIレート制限超過',
-    messageEn: 'Gemini API rate limit exceeded',
+  AU001: {
+    code: 'AU001',
+    message: '音声ファイルダウンロード失敗',
+    messageEn: 'Audio file download failed',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'APIクォータを確認し、しばらく待ってからリトライしてください'
+    troubleshooting: 'ネットワーク状況と音声ファイルの可用性を確認してください'
   },
   
-  AI002: {
-    code: 'AI002',
-    message: 'Gemini API認証失敗',
-    messageEn: 'Gemini API authentication failed',
-    retryable: false,
+  AU002: {
+    code: 'AU002',
+    message: '音声圧縮処理失敗',
+    messageEn: 'Audio compression failed',
+    retryable: true,
     notifySlack: true,
-    troubleshooting: 'GOOGLE_AI_API_KEYを確認してください'
+    troubleshooting: 'ファイル形式確認、メモリ不足チェック'
   },
   
-  AI003: {
-    code: 'AI003',
+  AU003: {
+    code: 'AU003',
     message: 'Gemini文字起こし失敗',
     messageEn: 'Gemini transcription failed',
     retryable: true,
@@ -229,53 +229,53 @@ const ERROR_CODES = {
     troubleshooting: '音声ファイルの形式・品質を確認してください'
   },
   
-  AI004: {
-    code: 'AI004',
-    message: 'Gemini要約生成失敗',
-    messageEn: 'Gemini summary generation failed',
+  AU004: {
+    code: 'AU004',
+    message: '文字起こし結果が短すぎる',
+    messageEn: 'Transcription result too short',
     retryable: true,
     notifySlack: true,
-    troubleshooting: '文字起こし結果の内容を確認してください'
+    troubleshooting: '音声品質確認、無音部分の確認、マイク設定確認'
   },
   
-  AI005: {
-    code: 'AI005',
-    message: 'Gemini処理ファイルサイズ制限超過',
-    messageEn: 'File size exceeds Gemini processing limit',
+  AU005: {
+    code: 'AU005',
+    message: 'JSON解析失敗',
+    messageEn: 'JSON parsing failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'プロンプト簡略化、モデル変更、リトライ間隔調整'
+  },
+  
+  AU006: {
+    code: 'AU006',
+    message: '音声品質警告',
+    messageEn: 'Audio quality warning',
     retryable: false,
-    notifySlack: true,
-    troubleshooting: '音声ファイルを分割するか、圧縮を検討してください'
-  },
-  
-  AI006: {
-    code: 'AI006',
-    message: 'Gemini音声形式未対応',
-    messageEn: 'Unsupported audio format for Gemini',
-    retryable: false,
-    notifySlack: true,
-    troubleshooting: 'サポート形式に変換してください: M4A, MP3, WAV'
-  },
-  
-  AI007: {
-    code: 'AI007',
-    message: 'Gemini処理タイムアウト',
-    messageEn: 'Gemini processing timeout',
-    retryable: true,
-    notifySlack: true,
-    troubleshooting: '音声ファイルサイズを小さくするか、分割処理を検討してください'
-  },
-  
-  AI008: {
-    code: 'AI008',
-    message: 'GeminiAI応答品質不良',
-    messageEn: 'Poor quality Gemini AI response',
-    retryable: true,
     notifySlack: false,
-    troubleshooting: '音声品質を確認し、必要に応じて手動確認してください'
+    troubleshooting: '録画環境改善の提案、品質レポート生成'
   },
   
-  AI009: {
-    code: 'AI009',
+  AU007: {
+    code: 'AU007',
+    message: '構造化要約生成失敗',
+    messageEn: 'Structured summary generation failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'フォールバック要約実行、プロンプト調整'
+  },
+  
+  AU008: {
+    code: 'AU008',
+    message: 'リトライ回数上限到達',
+    messageEn: 'Retry limit exceeded',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '手動再実行、音声ファイル個別確認'
+  },
+  
+  AU009: {
+    code: 'AU009',
     message: 'Gemini API接続エラー',
     messageEn: 'Gemini API connection error',
     retryable: true,
@@ -283,8 +283,8 @@ const ERROR_CODES = {
     troubleshooting: 'ネットワーク状況を確認してください。自動でリトライします'
   },
   
-  AI010: {
-    code: 'AI010',
+  AU010: {
+    code: 'AU010',
     message: 'Geminiモデル変更必要',
     messageEn: 'Gemini model change required',
     retryable: true,

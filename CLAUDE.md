@@ -6,23 +6,24 @@
 
 **Claude Codeは以下を作業開始時に必ず実行すること（例外なし）**
 
-### ステップ0: セッション自動保存（VSCodeクラッシュ対策）
-```bash
-# VSCodeクラッシュ対策として、必ず最初にセッション保存を実行
-./3.operations/src/save_claude_session.sh
-
-# セッション保存が失敗した場合のみスクリプト作成
-if [ ! -f "./3.operations/src/save_claude_session.sh" ]; then
-    echo "セッション保存スクリプトが存在しないため作成が必要"
-fi
-```
-
 ### ステップ1: Cipher復元確認（クラッシュ復旧時）
-```
-VSCodeクラッシュ後の場合：
-1. MCPのCipherを用いて前回の対話記録を復元
-2. 3.operations/claude_sessions/latest_session.md を確認
-3. 必要に応じて 0.docs/crash_recovery_guide.md 参照
+```bash
+# VSCodeクラッシュ後の復旧手順：
+
+# 1. Cipherプロセス確認
+ps aux | grep cipher
+
+# 2. Cipher再起動（プロセスが停止している場合）
+/opt/homebrew/bin/cipher --mode mcp
+
+# 3. 前回セッション記録確認
+cat 3.operations/claude_sessions/latest_session.md
+
+# 4. 対話記録の再保存（必要に応じて）
+node 3.operations/src/save-conversation.js
+
+# 5. npm scriptでの実行も可能
+npm run save-conversation  # package.json設定が必要
 ```
 
 ### ステップ2: 現状確認（必須）
@@ -38,16 +39,15 @@ git diff HEAD~1 --name-only
 ### ステップ3: TodoWrite強制リマインダー（必須）
 ```
 毎回最初に以下タスクを作成：
-1. "【必須】セッション自動保存実行" (in_progress)
-2. "【必須】現状確認プロトコル実行" (pending)
-3. "git status/log確認完了" (pending) 
-4. "前回変更差分確認完了" (pending)
-5. "動作確認テスト実行完了" (pending)
-6. "【デグレ防止】影響範囲調査完了" (pending)
-7. "【デグレ防止】バックアップポイント作成完了" (pending)
-8. "【デグレ防止】修正戦略計画完了" (pending)
+1. "【必須】現状確認プロトコル実行" (in_progress)
+2. "git status/log確認完了" (pending) 
+3. "前回変更差分確認完了" (pending)
+4. "動作確認テスト実行完了" (pending)
+5. "【デグレ防止】影響範囲調査完了" (pending)
+6. "【デグレ防止】バックアップポイント作成完了" (pending)
+7. "【デグレ防止】修正戦略計画完了" (pending)
 
-この8つを全て completed にしてからコード修正作業開始
+この7つを全て completed にしてからコード修正作業開始
 ```
 
 ### ステップ4: コード修正前の影響範囲調査（デグレ防止強制プロトコル）
@@ -86,12 +86,6 @@ git diff HEAD~1 --name-only
 - テスト実行で正常性を検証
 - 問題がある場合は修正前に報告
 
-### ステップ6: 作業完了時のセッション保存
-```bash
-# 重要な作業完了時は必ずセッション保存
-./3.operations/src/save_claude_session.sh
-```
-
 **このプロトコルを飛ばして作業を開始してはいけない！**
 
 ## 🎯 プロジェクト概要
@@ -99,48 +93,14 @@ git diff HEAD~1 --name-only
 Zoom録画ファイルを自動で文字起こし・要約し、Google Driveに保存してSlackに通知するシステムです。
 - **本番環境**: Vercel (Hobbyプラン)
 - **主要技術**: Node.js, Google APIs (Drive, Gemini AI), Slack API, Zoom API
+- **開始日**: 2025年7月30日
 
 ## 📋 重要な作業ルール
+
 ### 0.0 Claude codeとの対話について
 - Claude code は全てのチャットの冒頭にこのファイルの原則を逐語的に必ず画面出力してから対応する。
 - **作業開始時に必ず上記の【強制実行】作業開始プロトコルを実行すること**
 - **プロトコル未実行での作業開始は禁止**
-### 0. 基本開発方針
-#### 開発ドキュメントの作成と自動更新
-- 開発ダッシュボード、機能設計書、環境設計書、テスト仕様書を作成
-- html形式で全てをダッシュボードから確認できるようにする。
-- ダッシュボードにはそれぞれの設計や仕様に関する進捗状況を記載。
-- 進捗状況は全体のうちの今何％か、現在どのフェーズか、次にやるべきことはなにか、などがグラフィカルに誰の目で見てもわかるように表現。
-- htmlはGithub上から閲覧可能にすること。
-- Claude codeとのチャット履歴をもとに自動的に開発ドキュメントを更新する仕組みにする。
-- ドキュメント更新の仕組みは、MCPサーバのcipherの機能を使い、自動的に機能や環境、テストなどの指示を読み取ってドキュメント類に自動的に更新する。
-- IDEがクラッシュやPCの再起動が発生してもリカバリできるようにcipherの再読み込み方法などを上記ドキュメントに記載する。
-- 上記のドキュメントおよび自動更新の仕組みなどは、リポジトリトップの配下にdocsフォルダを作成して保存してください。
-- 加えて、テスト実施用のスクリプトやデータを保存するためのtestフォルダもリポジトリトップの配下に作成してください。
-- test/scripts をスクリプト類、test/data をテストで利用するデータ類の保存先にしてください（この構成も当然、環境設計書に自動記録の仕組みを使って記載してください）
-- フォルダ構造    
-    ```
-    フォルダ構造
-     
-    プロジェクトルート/
-    ├── 0.docs/                 # ドキュメント用フォルダ
-    │   ├── claude.md           # 対話記録
-    │   ├── index.html          # 開発ダッシュボード（主に全ドキュメントのまとめと進捗状況表示）
-    │   ・・・                   # 開発ダッシュボード以外のドキュメント（機能・非機能設計書、環境設計書、テスト仕様書）
-    └── 1.src/                   # プログラムソース用フォルダ
-    │   ├─・・・
-    │
-    ├── 2.tests/
-    │   ├── data/                # テストデータ
-    │   └── tools/               # テストツール類
-    │   
-    └── 3.operations/            # 運用関連の仕組み
-        ├── src/                 # Claude codeとの対話記録自動保存スクリプト
-     
-    ```
-### プログラムソースの扱い
-- プログラムはGitHub上にプッシュしてください。
-- また、本番環境はVercelに実装するようにしてください。
 
 ### 禁止事項
 - AI側で独自のルール作成
@@ -196,72 +156,6 @@ Zoom録画ファイルを自動で文字起こし・要約し、Google Driveに�
 - モデル: `gemini-2.5-pro`（自動選択）
 - 大容量音声ファイル処理時のタイムアウトに注意
 
-## 🔧 技術仕様
-
-### ディレクトリ構造
-```
-/api/                     # Vercel APIエンドポイント
-  monitor-recordings-gdrive-test.js  # TC203/204/205テスト
-/1.src/services/         # サービスレイヤー
-  audioSummaryService.js # 音声処理・要約
-  videoStorageService.js # 動画保存
-  googleDriveService.js  # Google Drive操作
-  slackService.js        # Slack通知
-  aiService.js          # Gemini AI処理
-/0.docs/                # ドキュメント
-  test-specification.html # テスト仕様書
-```
-
-### テストケース
-- **TC203**: 8項目構造化要約テスト（メモリバッファ処理）
-- **TC204**: VideoStorageService動画処理テスト
-- **TC205**: End-to-End統合テスト
-
-## 🚀 デプロイとテスト手順
-
-### 1. コード変更後のデプロイ
-```bash
-git add .
-git commit -m "feat/fix: 変更内容の説明"
-git push origin main
-```
-
-### 2. Vercel環境でのテスト実行
-```bash
-# デプロイ完了待機（約15-30秒）
-sleep 15
-
-# テスト実行
-curl "https://zoom-memo-automation.vercel.app/api/monitor-recordings-gdrive-test?test=TC203"
-```
-
-### 3. ログ確認
-```bash
-# Vercelログ確認
-vercel logs https://zoom-memo-automation.vercel.app
-```
-
-## 💡 トラブルシューティング
-
-### よくある問題と対処法
-
-#### 1. タイムアウトエラー
-- **原因**: Vercel Hobbyプランの制限
-- **対処**: 
-  - 処理を分割して実行
-  - より小さなテストデータを使用
-  - 非同期処理の最適化
-
-#### 2. Google Drive API エラー
-- **原因**: 共有ドライブへのアクセス権限
-- **対処**: `supportsAllDrives: true`フラグの確認
-
-#### 3. Gemini API レスポンス遅延
-- **原因**: 大容量ファイルの処理
-- **対処**: 
-  - ファイルサイズを制限
-  - バッファサイズの最適化
-
 ## 📝 コミットメッセージ規約
 
 ```
@@ -298,46 +192,32 @@ debug: デバッグコード追加
 - 新しいアプローチを試す前に、ユーザーに確認を取る
 - エラーや制限事項は明確に説明する
 
+---
+
+**最終更新:** 2025-08-15
+**バージョン:** 3.0 - プロジェクト起動用に簡素化
+**自動保存:** Claude Code対話記録（Cipher対応）
+
 ## 📝 最新の対話記録と問題解決状況
 
-### 2025-08-08 対話記録
+### 2025-08-15 対話記録
 
 #### 実施内容
 - TC205テスト成功確認（228.8秒）
 - PT001本番スルーテスト実装
 - Zoom OAuth/JWT認証問題の診断
 - JWT認証フォールバックテスト実装
-- **Zoom認証問題の完全解決** ✅
 
 #### Zoom認証問題の解決状況
-- **OAuth認証: 成功** ✅
-  - 環境変数マッピング修正（ZOOM_API_KEY/SECRET）
-  - APIエンドポイント修正（/users/me/recordings）
-  - Server-to-Server OAuth正常動作確認
-- **録画リスト取得: 成功** ✅
-  - 7件の録画データ取得確認
-  - API接続完全正常化
-
-#### PT001本番スルーテスト結果
-- Zoom API接続: ✅ 成功（202ms）
-- 録画データ取得: ✅ 成功（101ms）
-- 音声要約処理: ❌ タイムアウト（97秒）
-- **Zoom録画削除: 実行せず**（安全設計）
-
-#### 成果
-- **Zoom連携の本番運用準備完了**
-- OAuth認証の完全動作確認
-- 録画自動処理システムの基盤確立
+- OAuth: 400 Bad Request → App設定問題
+- JWT: 401 Invalid access token → Credentials無効
+- 次のアクション: Zoom Marketplace設定確認
 
 #### Cipher自動保存
-- 保存時刻: 2025-08-08T07:43:00.000Z
-- セッションID: 1754638980000
+- 保存時刻: 2025-08-15T15:06:47.579Z
+- セッションID: 1755270407579
 
 ---
 
-最終更新: 2025-08-08T07:43:00.000Z
-自動保存: Claude Code対話記録
-
-- 要約部分、以前と変わっていません。
-  要約ファイル　→　空
-  Slackへの要約　→　ファイル内容と違う。前回と同様、内容がうすすぎる。
+最終更新: 2025-08-15T15:06:47.579Z
+自動保存: Cipher連携スクリプト
