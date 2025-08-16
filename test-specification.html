@@ -933,6 +933,290 @@
                     </ul>
                 </div>
             </div>
+
+            <h3>異常系テストケース実装</h3>
+            <div class="test-data-section">
+                <h4>🧪 カテゴリ別異常系テスト - 全80エラーコード対応</h4>
+                <p><strong>テスト方針:</strong> 各エラーコードカテゴリに対して意図的に異常状況を作り出し、適切なエラーハンドリングが動作することを確認</p>
+                <p><strong>実行環境:</strong> Vercel本番環境 + 模擬異常データ・API障害シミュレーション</p>
+            </div>
+
+            <div class="test-case" id="tc301">
+                <h3><span class="status-indicator status-not-started"></span>TC301: 音声処理異常系テスト (AU001-AU008)</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="25%">テストシナリオ</th>
+                            <th width="25%">発生させるエラー</th>
+                            <th width="25%">期待するエラーコード</th>
+                            <th width="25%">確認項目</th>
+                        </tr>
+                        <tr>
+                            <td><strong>破損音声ファイルテスト</strong></td>
+                            <td>0バイトファイル、非音声ファイル、巨大ファイル投入</td>
+                            <td>AU001, AU002</td>
+                            <td>適切なエラー検知・Slackエラー通知・リトライ動作</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gemini AI障害テスト</strong></td>
+                            <td>無効APIキー、レート制限、短すぎる音声、JSON解析失敗</td>
+                            <td>AU003, AU004, AU005</td>
+                            <td>5回リトライ実行・フォールバック動作・API一時的エラー通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>品質警告テスト</strong></td>
+                            <td>低品質音声（雑音・無音・極端に小さい音声）</td>
+                            <td>AU006</td>
+                            <td>品質警告ログ・処理継続可能性確認</td>
+                        </tr>
+                        <tr>
+                            <td><strong>要約生成障害テスト</strong></td>
+                            <td>構造化要約失敗・リトライ上限到達・接続タイムアウト</td>
+                            <td>AU007, AU008</td>
+                            <td>フォールバック要約・手動再実行推奨・エラー通知</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="automation-info">
+                    <h4>🔧 実装予定のテスト手法</h4>
+                    <ul>
+                        <li><strong>模擬データ投入:</strong> test/data/audio/配下に異常音声ファイル準備</li>
+                        <li><strong>APIキー無効化:</strong> 環境変数を一時的に変更してGemini接続失敗を再現</li>
+                        <li><strong>タイムアウト設定:</strong> 短時間タイムアウトでリトライ動作確認</li>
+                        <li><strong>実行エンドポイント:</strong> <code>/api/error-test?category=AU&test=all</code></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="test-case" id="tc302">
+                <h3><span class="status-indicator status-not-started"></span>TC302: システム制限異常系テスト (SY001-SY002)</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="25%">テストシナリオ</th>
+                            <th width="25%">発生させるエラー</th>
+                            <th width="25%">期待するエラーコード</th>
+                            <th width="25%">確認項目</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Vercelタイムアウトテスト</strong></td>
+                            <td>295秒以上の処理時間をシミュレーション</td>
+                            <td>SY002</td>
+                            <td>タイムアウト検知・処理分割提案・Slack通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>メモリ不足テスト</strong></td>
+                            <td>巨大ファイル（500MB+）処理でメモリ制限到達</td>
+                            <td>SY001</td>
+                            <td>メモリ不足検知・処理中断・適切なエラー通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>環境変数不整合テスト</strong></td>
+                            <td>必須環境変数の欠落・不正値設定</td>
+                            <td>SY003</td>
+                            <td>起動時検証・設定不備通知・処理停止</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="test-case" id="tc303">
+                <h3><span class="status-indicator status-not-started"></span>TC303: Zoom連携異常系テスト (ZM001-ZM004)</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="25%">テストシナリオ</th>
+                            <th width="25%">発生させるエラー</th>
+                            <th width="25%">期待するエラーコード</th>
+                            <th width="25%">確認項目</th>
+                        </tr>
+                        <tr>
+                            <td><strong>OAuth認証失敗テスト</strong></td>
+                            <td>無効な認証情報・期限切れトークン・権限不足</td>
+                            <td>ZM001</td>
+                            <td>認証エラー検知・フォールバック認証・API一時的エラー通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>録画不存在テスト</strong></td>
+                            <td>削除済み録画ID・アクセス権限なし録画指定</td>
+                            <td>ZM002</td>
+                            <td>404エラー検知・録画スキップ・継続処理</td>
+                        </tr>
+                        <tr>
+                            <td><strong>レート制限テスト</strong></td>
+                            <td>短時間での大量API呼び出し・429エラー発生</td>
+                            <td>ZM003</td>
+                            <td>レート制限検知・待機処理・API一時的エラー通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>APIタイムアウトテスト</strong></td>
+                            <td>ネットワーク遅延・API応答遅延シミュレーション</td>
+                            <td>ZM004</td>
+                            <td>タイムアウト検知・リトライ実行・API一時的エラー通知</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="test-case" id="tc304">
+                <h3><span class="status-indicator status-not-started"></span>TC304: Google Drive連携異常系テスト (GD001-GD004)</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="25%">テストシナリオ</th>
+                            <th width="25%">発生させるエラー</th>
+                            <th width="25%">期待するエラーコード</th>
+                            <th width="25%">確認項目</th>
+                        </tr>
+                        <tr>
+                            <td><strong>アップロード失敗テスト</strong></td>
+                            <td>容量不足・権限不足・ネットワーク障害</td>
+                            <td>GD001</td>
+                            <td>アップロード失敗検知・リトライ実行・API一時的エラー通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>フォルダ作成失敗テスト</strong></td>
+                            <td>親フォルダ不存在・権限不足・同名フォルダ存在</td>
+                            <td>GD002</td>
+                            <td>フォルダ作成失敗検知・代替処理・継続可能性確認</td>
+                        </tr>
+                        <tr>
+                            <td><strong>レート制限テスト</strong></td>
+                            <td>Google Drive APIの短時間大量呼び出し</td>
+                            <td>GD003</td>
+                            <td>レート制限検知・待機処理・API一時的エラー通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>APIタイムアウトテスト</strong></td>
+                            <td>大容量ファイルアップロード時のタイムアウト</td>
+                            <td>GD004</td>
+                            <td>タイムアウト検知・分割アップロード・API一時的エラー通知</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="test-case" id="tc305">
+                <h3><span class="status-indicator status-not-started"></span>TC305: Slack通知異常系テスト (SL001-SL007)</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="25%">テストシナリオ</th>
+                            <th width="25%">発生させるエラー</th>
+                            <th width="25%">期待するエラーコード</th>
+                            <th width="25%">確認項目</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Bot認証失敗テスト</strong></td>
+                            <td>無効なBot Token・権限不足・チャンネル不存在</td>
+                            <td>SL001</td>
+                            <td>認証失敗検知・エラーログ記録・処理継続（通知なし）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>メッセージ投稿失敗テスト</strong></td>
+                            <td>メッセージ長すぎ・不正フォーマット・権限不足</td>
+                            <td>SL003, SL004, SL005</td>
+                            <td>投稿失敗検知・フォーマット修正・権限エラー対応</td>
+                        </tr>
+                        <tr>
+                            <td><strong>レート制限テスト</strong></td>
+                            <td>Slack API短時間大量呼び出し</td>
+                            <td>SL007</td>
+                            <td>レート制限検知・待機処理・API一時的エラー処理</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ファイルアップロード失敗</strong></td>
+                            <td>巨大ファイル・不正形式・容量制限超過</td>
+                            <td>SL002</td>
+                            <td>アップロード失敗検知・代替手段提示・処理継続</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="test-case" id="tc306">
+                <h3><span class="status-indicator status-not-started"></span>TC306: テスト固有エラーテスト (E_系)</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="25%">テストシナリオ</th>
+                            <th width="25%">発生させるエラー</th>
+                            <th width="25%">期待するエラーコード</th>
+                            <th width="25%">確認項目</th>
+                        </tr>
+                        <tr>
+                            <td><strong>PT001本番テスト失敗</strong></td>
+                            <td>本番環境でのEnd-to-End処理中断</td>
+                            <td>E_PT001_FAILED, E_PT001v2_FAILED</td>
+                            <td>テスト失敗詳細ログ・原因特定・復旧手順提示</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Vercel制限到達テスト</strong></td>
+                            <td>295秒タイムアウト・メモリ制限到達</td>
+                            <td>E_SYSTEM_VERCEL_LIMIT</td>
+                            <td>Vercel制限検知・処理分割提案・Proプラン推奨</td>
+                        </tr>
+                        <tr>
+                            <td><strong>文書保存重大エラー</strong></td>
+                            <td>Google Drive保存完全失敗・権限完全剥奪</td>
+                            <td>E_DOC_CRITICAL</td>
+                            <td>重大エラー検知・管理者通知・手動対応要請</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Slack通知機能テスト失敗</strong></td>
+                            <td>Slack API完全停止・チャンネル削除</td>
+                            <td>E_SLACK_001</td>
+                            <td>通知機能停止検知・代替通知手段・運用継続</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="test-data-section">
+                <h4>🎯 異常系テスト統合実行計画</h4>
+                <table>
+                    <tr>
+                        <th width="20%">実行順序</th>
+                        <th width="30%">テストカテゴリ</th>
+                        <th width="25%">実行方法</th>
+                        <th width="25%">成功判定基準</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Phase 1</strong></td>
+                        <td>単体エラーテスト（AU, SY, ZM, GD, SL単独）</td>
+                        <td><code>/api/error-test?category={AU|SY|ZM|GD|SL}</code></td>
+                        <td>各エラーコード正常検知・適切なエラーハンドリング・Slack通知</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Phase 2</strong></td>
+                        <td>複合エラーテスト（複数API同時障害）</td>
+                        <td><code>/api/error-test?scenario=multi-failure</code></td>
+                        <td>最重要機能維持・段階的復旧・詳細エラーログ</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Phase 3</strong></td>
+                        <td>テスト固有エラー（E_系）</td>
+                        <td><code>/api/error-test?category=TEST</code></td>
+                        <td>テスト失敗原因特定・復旧手順提示・継続可能性判定</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Phase 4</strong></td>
+                        <td>プラットフォーム制限テスト（Vercel限界）</td>
+                        <td><code>/api/error-test?scenario=platform-limits</code></td>
+                        <td>制限検知・処理分割・運用改善提案</td>
+                    </tr>
+                </table>
+                
+                <h4>🔧 異常系テスト実装仕様</h4>
+                <ul>
+                    <li><strong>テストデータ:</strong> test/data/error/配下に異常データセット準備</li>
+                    <li><strong>モックAPI:</strong> 各外部API障害を模擬する機能実装</li>
+                    <li><strong>エラー注入:</strong> 環境変数FORCE_ERROR_CODEで特定エラー強制発生</li>
+                    <li><strong>ログ収集:</strong> 全異常系テスト結果をGoogle Drive ERROR_TEST_LOGS/に保存</li>
+                    <li><strong>レポート生成:</strong> 異常系テスト結果サマリーの自動生成</li>
+                </ul>
+            </div>
         </div>
 
         <div class="section">
