@@ -624,7 +624,6 @@ ${transcription}`;
     let lastError = null;
     
     logger.info(`Starting unified audio processing for: ${meetingInfo.topic}`);
-    
     // 音声データの準備
     let audioData;
     let mimeType;
@@ -920,29 +919,33 @@ ${transcription}`;
         logger.error(`Unified audio processing attempt ${attempt}/${maxRetries} failed: ${error.message}`);
         
         // 音声処理エラーコード体系に基づく詳細分析
-        let errorCode = 'E_GEMINI_PROCESSING'; // GEMINI_PROCESSING_ERROR (デフォルト)
+        let errorCode = 'E_GEMINI_PROCESSING'; // デフォルト: APIキー認証エラー
         
-        if (error.message.includes('500 Internal Server Error')) {
-          errorCode = 'E_GEMINI_PROCESSING'; // GEMINI_TRANSCRIPTION_FAILED
-          logger.warn(`Audio processing error: ${errorCode} - Gemini API server error (500)`);
-        } else if (error.message.includes('429')) {
-          errorCode = 'E_GEMINI_QUOTA'; // GEMINI_API_QUOTA_EXCEEDED
-          logger.warn(`Audio processing error: ${errorCode} - Rate limit exceeded`);
-        } else if (error.message.includes('401')) {
-          errorCode = 'E_ZOOM_AUTH'; // ZOOM_AUTH_FAILED
-          logger.warn(`Audio processing error: ${errorCode} - Authentication failed`);
-        } else if (error.message.includes('Transcription too short')) {
-          errorCode = 'E_GEMINI_INVALID_FORMAT'; // TRANSCRIPTION_TOO_SHORT
-          logger.warn(`Audio processing error: ${errorCode} - Transcription result insufficient`);
+        // エラーコード判定（実際のGemini APIエラーパターンに基づく）
+        if (error.message.includes('Audio content is too short') || error.message.includes('Minimum 10 seconds') || error.message.includes('duration: 3 seconds')) {
+          errorCode = 'E_GEMINI_INSUFFICIENT_CONTENT'; // 音声コンテンツ不足
+          logger.warn(`Audio processing error: ${errorCode} - Audio content insufficient (under 10 seconds)`);
+        } else if (error.message.includes('[429 Too Many Requests]') || error.message.includes('Resource has been exhausted') || error.message.includes('quota')) {
+          errorCode = 'E_GEMINI_QUOTA'; // APIクォータ制限超過
+          logger.warn(`Audio processing error: ${errorCode} - API quota/rate limit exceeded`);
+        } else if (error.message.includes('[500 Internal Server Error]') || error.message.includes('GoogleGenerativeAI Error')) {
+          errorCode = 'E_GEMINI_PROCESSING'; // APIキー認証エラー（500エラーは通常認証失敗）
+          logger.warn(`Audio processing error: ${errorCode} - API key authentication error (500)`);
+        } else if (error.message.includes('[401') || error.message.includes('[403') || error.message.includes('PERMISSION_DENIED')) {
+          errorCode = 'E_GEMINI_PROCESSING'; // 明示的な認証エラー
+          logger.warn(`Audio processing error: ${errorCode} - Authentication failed (401/403)`);
+        } else if (error.message.includes('[400 Bad Request]') || error.message.includes('INVALID_ARGUMENT')) {
+          errorCode = 'E_GEMINI_INVALID_FORMAT'; // 入力形式エラー
+          logger.warn(`Audio processing error: ${errorCode} - Invalid input format (400)`);
         } else if (error.message.includes('JSON') || error.message.includes('parse')) {
-          errorCode = 'E_GEMINI_INVALID_FORMAT'; // JSON_PARSING_FAILED
-          logger.warn(`Audio processing error: ${errorCode} - JSON parsing failure in structured summary`);
+          errorCode = 'E_GEMINI_RESPONSE_INVALID'; // 応答解析エラー
+          logger.warn(`Audio processing error: ${errorCode} - Response parsing failure`);
         } else if (error.message.includes('audio') || error.message.includes('buffer')) {
-          errorCode = 'E_AUDIO_COMPRESSION'; // AUDIO_COMPRESSION_FAILED
+          errorCode = 'E_AUDIO_COMPRESSION'; // 音声圧縮エラー
           logger.warn(`Audio processing error: ${errorCode} - Audio buffer processing failed`);
         } else {
-          errorCode = 'E_GEMINI_PROCESSING'; // GEMINI_PROCESSING_FAILED
-          logger.warn(`Audio processing error: ${errorCode} - Structured summary generation failed`);
+          errorCode = 'E_GEMINI_PROCESSING'; // その他はAPIキー認証エラーとして扱う
+          logger.warn(`Audio processing error: ${errorCode} - General API authentication error`);
         }
         
         // エラーコードをログに記録

@@ -363,11 +363,11 @@ const ERROR_CODES = {
   // ========================================
   E_GEMINI_PROCESSING: {
     code: 'E_GEMINI_PROCESSING',
-    message: 'Gemini API認証エラー',
-    messageEn: 'Gemini API authentication error',
+    message: 'Gemini APIキー認証エラー',
+    messageEn: 'Gemini API key authentication error',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'GOOGLE_AI_API_KEYを確認し、Gemini APIアクセス権限を確認してください'
+    troubleshooting: 'GOOGLE_AI_API_KEYが正しく設定されているか確認してください。APIキーの有効性とプロジェクトのアクセス権限を確認してください'
   },
 
   E_GEMINI_QUOTA: {
