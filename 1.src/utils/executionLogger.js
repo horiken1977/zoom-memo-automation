@@ -416,12 +416,19 @@ class ExecutionLogger {
       const logFileName = this.generateLogFileName();
       const logJson = JSON.stringify(logData, null, 2);
 
-      // 保存先フォルダパス（クライアント名ベース構造）
-      const clientName = this.extractClientName();
+      // 保存先フォルダパス（直下にlogs）
       const date = new Date(this.meetingInfo.start_time || new Date());
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
-      const folderPath = `99.zoom_memo_recording/${clientName}/${year}-${month}/logs`;
+      
+      // エラーテストの場合は専用フォルダ、通常処理はクライアント名ベース
+      let folderPath;
+      if (this.executionId.includes('error_test') || this.executionId.includes('TC301')) {
+        folderPath = `99.zoom_memo_recording/${year}/${month}/logs/error_tests`;
+      } else {
+        const clientName = this.extractClientName();
+        folderPath = `99.zoom_memo_recording/${year}/${month}/logs`;
+      }
 
       // logsフォルダを作成（存在しない場合）
       const logsFolderId = await this.googleDriveService.createFolderStructure(folderPath);
