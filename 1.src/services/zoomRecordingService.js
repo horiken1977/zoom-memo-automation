@@ -120,14 +120,14 @@ class ZoomRecordingService {
       
     } catch (error) {
       if (executionLogger) {
-        executionLogger.errorStep('ZOOM_ALL_USERS_SEARCH', 'ZM004', error.message, {
+        executionLogger.errorStep('ZOOM_ALL_USERS_SEARCH', 'E_ZOOM_RECORDING_NOT_FOUND', error.message, {
           error: error.message,
           dateRange: `${fromDate} - ${toDate}`
         }, 'zoomRecordingService.js.getAllUsersRecordings');
       }
       
       logger.error('全ユーザー録画検索エラー:', error.response?.data || error.message);
-      throw ErrorManager.createError('ZM004', { error: error.message, dateRange: `${fromDate} - ${toDate}` });
+      throw ErrorManager.createError('E_ZOOM_RECORDING_NOT_FOUND', { error: error.message, dateRange: `${fromDate} - ${toDate}` });
     }
   }
 
@@ -169,14 +169,14 @@ class ZoomRecordingService {
       
     } catch (error) {
       if (executionLogger) {
-        executionLogger.errorStep('ZOOM_RECORDINGS_LIST', 'ZM003', error.message, {
+        executionLogger.errorStep('ZOOM_RECORDINGS_LIST', 'E_ZOOM_RECORDING_NOT_FOUND', error.message, {
           error: error.message,
           dateRange: `${fromDate} - ${toDate}`
         });
       }
       
       logger.error('Zoom録画リスト取得エラー:', error);
-      throw ErrorManager.createError('ZM003', { error: error.message, dateRange: `${fromDate} - ${toDate}` });
+      throw ErrorManager.createError('E_ZOOM_RECORDING_NOT_FOUND', { error: error.message, dateRange: `${fromDate} - ${toDate}` });
     }
   }
 
@@ -226,7 +226,7 @@ class ZoomRecordingService {
       logger.error(`録画処理エラー: ${meetingTopic}`, error);
       
       if (executionLogger) {
-        executionLogger.logError('RECORDING_PROCESSING_FAILED', 'ZM010', error.message, {
+        executionLogger.logError('RECORDING_PROCESSING_FAILED', 'E_STORAGE_UPLOAD_FAILED', error.message, {
           meetingId,
           meetingTopic,
           error: error.message
@@ -296,7 +296,7 @@ class ZoomRecordingService {
       
     } catch (error) {
       if (executionLogger) {
-        executionLogger.errorStep('VIDEO_PROCESSING', 'GD003', error.message);
+        executionLogger.errorStep('VIDEO_PROCESSING', 'E_STORAGE_UPLOAD_FAILED', error.message);
       }
       
       throw new Error(`動画処理エラー: ${error.message}`);

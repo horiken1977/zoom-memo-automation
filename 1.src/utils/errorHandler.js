@@ -116,14 +116,14 @@ class IntegratedErrorHandler {
           if (this.executionLogger) {
             this.executionLogger.logError(
               `${stepName}_retry_final_failure`,
-              error.code || 'SY009',
+              error.code || 'E_SYSTEM_UNKNOWN',
               `${maxRetries}回のリトライ後も失敗: ${error.message}`,
               { originalError: originalErrorCode, attempts: maxRetries }
             );
           }
 
           // Slack通知（最終失敗時）
-          const finalError = ErrorManager.createError(error.code || 'SY009', {
+          const finalError = ErrorManager.createError(error.code || 'E_SYSTEM_UNKNOWN', {
             ...context,
             retryAttempts: maxRetries,
             originalError: originalErrorCode

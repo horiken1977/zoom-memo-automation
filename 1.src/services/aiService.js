@@ -988,28 +988,28 @@ ${transcription}`;
         logger.error(`Unified audio processing attempt ${attempt}/${maxRetries} failed: ${error.message}`);
         
         // 音声処理エラーコード体系に基づく詳細分析
-        let errorCode = 'AU008'; // RETRY_LIMIT_EXCEEDED (デフォルト)
+        let errorCode = 'E_GEMINI_PROCESSING'; // GEMINI_PROCESSING_ERROR (デフォルト)
         
         if (error.message.includes('500 Internal Server Error')) {
-          errorCode = 'AU003'; // GEMINI_TRANSCRIPTION_FAILED
+          errorCode = 'E_GEMINI_PROCESSING'; // GEMINI_TRANSCRIPTION_FAILED
           logger.warn(`Audio processing error: ${errorCode} - Gemini API server error (500)`);
         } else if (error.message.includes('429')) {
-          errorCode = 'AU008'; // RETRY_LIMIT_EXCEEDED
+          errorCode = 'E_GEMINI_QUOTA'; // GEMINI_API_QUOTA_EXCEEDED
           logger.warn(`Audio processing error: ${errorCode} - Rate limit exceeded`);
         } else if (error.message.includes('401')) {
-          errorCode = 'AU001'; // AUDIO_DOWNLOAD_FAILED (認証関連)
+          errorCode = 'E_ZOOM_AUTH'; // ZOOM_AUTH_FAILED
           logger.warn(`Audio processing error: ${errorCode} - Authentication failed`);
         } else if (error.message.includes('Transcription too short')) {
-          errorCode = 'AU004'; // TRANSCRIPTION_TOO_SHORT
+          errorCode = 'E_GEMINI_INVALID_FORMAT'; // TRANSCRIPTION_TOO_SHORT
           logger.warn(`Audio processing error: ${errorCode} - Transcription result insufficient`);
         } else if (error.message.includes('JSON') || error.message.includes('parse')) {
-          errorCode = 'AU005'; // JSON_PARSING_FAILED
+          errorCode = 'E_GEMINI_INVALID_FORMAT'; // JSON_PARSING_FAILED
           logger.warn(`Audio processing error: ${errorCode} - JSON parsing failure in structured summary`);
         } else if (error.message.includes('audio') || error.message.includes('buffer')) {
-          errorCode = 'AU002'; // AUDIO_COMPRESSION_FAILED
+          errorCode = 'E_AUDIO_COMPRESSION'; // AUDIO_COMPRESSION_FAILED
           logger.warn(`Audio processing error: ${errorCode} - Audio buffer processing failed`);
         } else {
-          errorCode = 'AU007'; // STRUCTURED_SUMMARY_FAILED
+          errorCode = 'E_GEMINI_PROCESSING'; // GEMINI_PROCESSING_FAILED
           logger.warn(`Audio processing error: ${errorCode} - Structured summary generation failed`);
         }
         

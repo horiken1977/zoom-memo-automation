@@ -942,7 +942,7 @@
             </div>
 
             <div class="test-case" id="tc301">
-                <h3><span class="status-indicator status-not-started"></span>TC301: 音声処理異常系テスト (AU001-AU008)</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC301: 音声処理異常系テスト (E_ZOOM_FILE_*, E_GEMINI_*, E_AUDIO_*)</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -954,25 +954,25 @@
                         <tr>
                             <td><strong>破損音声ファイルテスト</strong></td>
                             <td>0バイトファイル、非音声ファイル、巨大ファイル投入</td>
-                            <td>AU001, AU002</td>
+                            <td>E_ZOOM_FILE_EMPTY, E_STORAGE_CORRUPT_FILE, E_ZOOM_FILE_TOO_LARGE</td>
                             <td>適切なエラー検知・Slackエラー通知・リトライ動作</td>
                         </tr>
                         <tr>
                             <td><strong>Gemini AI障害テスト</strong></td>
                             <td>無効APIキー、レート制限、短すぎる音声、JSON解析失敗</td>
-                            <td>AU003, AU004, AU005</td>
+                            <td>E_GEMINI_PROCESSING, E_GEMINI_INVALID_FORMAT, E_GEMINI_QUOTA</td>
                             <td>5回リトライ実行・フォールバック動作・API一時的エラー通知</td>
                         </tr>
                         <tr>
                             <td><strong>品質警告テスト</strong></td>
                             <td>低品質音声（雑音・無音・極端に小さい音声）</td>
-                            <td>AU006</td>
+                            <td>E_AUDIO_QUALITY_WARNING</td>
                             <td>品質警告ログ・処理継続可能性確認</td>
                         </tr>
                         <tr>
                             <td><strong>要約生成障害テスト</strong></td>
                             <td>構造化要約失敗・リトライ上限到達・接続タイムアウト</td>
-                            <td>AU007, AU008</td>
+                            <td>E_GEMINI_PROCESSING, E_GEMINI_QUOTA</td>
                             <td>フォールバック要約・手動再実行推奨・エラー通知</td>
                         </tr>
                     </table>
@@ -990,7 +990,7 @@
             </div>
 
             <div class="test-case" id="tc302">
-                <h3><span class="status-indicator status-not-started"></span>TC302: システム制限異常系テスト (SY001-SY002)</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC302: システム制限異常系テスト (E_SYSTEM_*)</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -1008,7 +1008,7 @@
                         <tr>
                             <td><strong>メモリ不足テスト</strong></td>
                             <td>巨大ファイル（500MB+）処理でメモリ制限到達</td>
-                            <td>SY001</td>
+                            <td>E_SYSTEM_MEMORY</td>
                             <td>メモリ不足検知・処理中断・適切なエラー通知</td>
                         </tr>
                         <tr>
@@ -1022,7 +1022,7 @@
             </div>
 
             <div class="test-case" id="tc303">
-                <h3><span class="status-indicator status-not-started"></span>TC303: Zoom連携異常系テスト (ZM001-ZM004)</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC303: Zoom連携異常系テスト (E_ZOOM_*)</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -1034,7 +1034,7 @@
                         <tr>
                             <td><strong>OAuth認証失敗テスト</strong></td>
                             <td>無効な認証情報・期限切れトークン・権限不足</td>
-                            <td>ZM001</td>
+                            <td>E_ZOOM_AUTH</td>
                             <td>認証エラー検知・フォールバック認証・API一時的エラー通知</td>
                         </tr>
                         <tr>
@@ -1060,7 +1060,7 @@
             </div>
 
             <div class="test-case" id="tc304">
-                <h3><span class="status-indicator status-not-started"></span>TC304: Google Drive連携異常系テスト (GD001-GD004)</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC304: Google Drive連携異常系テスト (E_STORAGE_*)</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -1072,7 +1072,7 @@
                         <tr>
                             <td><strong>アップロード失敗テスト</strong></td>
                             <td>容量不足・権限不足・ネットワーク障害</td>
-                            <td>GD001</td>
+                            <td>E_STORAGE_AUTH_FAILED</td>
                             <td>アップロード失敗検知・リトライ実行・API一時的エラー通知</td>
                         </tr>
                         <tr>
@@ -1098,7 +1098,7 @@
             </div>
 
             <div class="test-case" id="tc305">
-                <h3><span class="status-indicator status-not-started"></span>TC305: Slack通知異常系テスト (SL001-SL007)</h3>
+                <h3><span class="status-indicator status-not-started"></span>TC305: Slack通知異常系テスト (E_SLACK_*)</h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -1110,7 +1110,7 @@
                         <tr>
                             <td><strong>Bot認証失敗テスト</strong></td>
                             <td>無効なBot Token・権限不足・チャンネル不存在</td>
-                            <td>SL001</td>
+                            <td>E_SLACK_AUTH</td>
                             <td>認証失敗検知・エラーログ記録・処理継続（通知なし）</td>
                         </tr>
                         <tr>

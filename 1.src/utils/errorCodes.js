@@ -430,6 +430,78 @@ const ERROR_CODES = {
     troubleshooting: 'ネットワーク状況と音声ファイルの可用性を確認してください'
   },
 
+  E_AUDIO_QUALITY_WARNING: {
+    code: 'E_AUDIO_QUALITY_WARNING',
+    message: '音声品質警告',
+    messageEn: 'Audio quality warning',
+    retryable: false,
+    notifySlack: false,
+    troubleshooting: '録画環境改善の提案、品質レポート生成'
+  },
+
+  // ========================================
+  // HTML定義エラーコード - Slack関連 (E_SLACK_*)
+  // ========================================
+  E_SLACK_AUTH: {
+    code: 'E_SLACK_AUTH',
+    message: 'Slack Bot認証失敗',
+    messageEn: 'Slack Bot authentication failed',
+    retryable: false,
+    notifySlack: false,
+    troubleshooting: 'SLACK_BOT_TOKENを確認してください'
+  },
+
+  E_SLACK_POST_FAILED: {
+    code: 'E_SLACK_POST_FAILED',
+    message: 'Slackメッセージ投稿失敗',
+    messageEn: 'Failed to post Slack message',
+    retryable: true,
+    notifySlack: false,
+    troubleshooting: 'メッセージ形式とBot権限を確認してください'
+  },
+
+  // ========================================
+  // HTML定義エラーコード - 追加ストレージ関連 (E_STORAGE_*)
+  // ========================================
+  E_STORAGE_AUTH_FAILED: {
+    code: 'E_STORAGE_AUTH_FAILED',
+    message: 'ストレージ認証失敗',
+    messageEn: 'Storage authentication failed',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: 'GOOGLE_DRIVE_CREDENTIALSを確認してください'
+  },
+
+  // ========================================
+  // HTML定義エラーコード - システム関連 (E_SYSTEM_*)
+  // ========================================
+  E_SYSTEM_UNKNOWN: {
+    code: 'E_SYSTEM_UNKNOWN',
+    message: '未知のエラー',
+    messageEn: 'Unknown error',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'ログを確認し、詳細情報を調査してください'
+  },
+
+  E_SYSTEM_MEMORY: {
+    code: 'E_SYSTEM_MEMORY',
+    message: 'システムメモリ不足',
+    messageEn: 'System memory insufficient',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: 'Vercelのメモリ制限を確認し、ファイルサイズを小さくしてください'
+  },
+
+  E_SYSTEM_TIMEOUT: {
+    code: 'E_SYSTEM_TIMEOUT',
+    message: 'システム処理タイムアウト',
+    messageEn: 'System processing timeout',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'Vercel maxDuration設定を確認してください（現在300秒）'
+  },
+
   // ========================================
   // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
   // ========================================

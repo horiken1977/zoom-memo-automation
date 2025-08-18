@@ -334,7 +334,7 @@ class ZoomMemoAutomation {
     } catch (error) {
       // エラーログを記録
       if (executionLogger) {
-        executionLogger.logError('MEETING_PROCESSING_ERROR', 'SY009', error.message, { 
+        executionLogger.logError('MEETING_PROCESSING_ERROR', 'E_SYSTEM_UNKNOWN', error.message, { 
           errorStack: error.stack,
           meetingTopic: recording.topic 
         });
