@@ -14,24 +14,57 @@
 
 const ERROR_CODES = {
   // ========================================
-  // Zoom API Errors (ZM001-ZM010)
+  // HTML定義エラーコード - Zoom関連 (E_ZOOM_*)
   // ========================================
-  ZM001: {
-    code: 'ZM001',
+  E_ZOOM_AUTH: {
+    code: 'E_ZOOM_AUTH',
     message: 'Zoom API認証失敗',
     messageEn: 'Zoom API authentication failed',
     retryable: false,
     notifySlack: true,
     troubleshooting: 'ZOOM_API_KEY、ZOOM_API_SECRET、ZOOM_ACCOUNT_IDを確認してください'
   },
+
+  E_ZOOM_RATE_LIMIT: {
+    code: 'E_ZOOM_RATE_LIMIT',
+    message: 'Zoom APIレート制限超過',
+    messageEn: 'Zoom API rate limit exceeded',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'APIリクエスト頻度を下げるか、しばらく待ってからリトライしてください'
+  },
+
+  E_ZOOM_RECORDING_NOT_FOUND: {
+    code: 'E_ZOOM_RECORDING_NOT_FOUND',
+    message: 'Zoom録画データ取得失敗',
+    messageEn: 'Failed to fetch Zoom recording data',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '録画ファイルの存在とアクセス権限を確認してください'
+  },
+
+  E_ZOOM_DELETE_FAILED: {
+    code: 'E_ZOOM_DELETE_FAILED',
+    message: 'Zoom録画削除失敗',
+    messageEn: 'Failed to delete Zoom recording',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '録画ファイルの状態とZoom APIアクセス権限を確認してください'
+  },
   
+  // ========================================
+  // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
+  // ※新規実装ではHTML定義E_*コードを使用してください
+  // ========================================
   ZM002: {
     code: 'ZM002', 
     message: 'Zoom APIレート制限超過',
     messageEn: 'Zoom API rate limit exceeded',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'APIリクエスト頻度を下げるか、しばらく待ってからリトライしてください'
+    troubleshooting: 'APIリクエスト頻度を下げるか、しばらく待ってからリトライしてください',
+    deprecated: true,
+    replacedBy: 'E_ZOOM_RATE_LIMIT'
   },
   
   ZM003: {
@@ -40,7 +73,9 @@ const ERROR_CODES = {
     messageEn: 'Failed to fetch Zoom recording data',
     retryable: true,
     notifySlack: true,
-    troubleshooting: '録画ファイルの存在とアクセス権限を確認してください'
+    troubleshooting: '録画ファイルの存在とアクセス権限を確認してください',
+    deprecated: true,
+    replacedBy: 'E_ZOOM_RECORDING_NOT_FOUND'
   },
   
   ZM004: {
@@ -112,7 +147,9 @@ const ERROR_CODES = {
     messageEn: 'Failed to delete Zoom recording',
     retryable: true,
     notifySlack: true,
-    troubleshooting: '録画ファイルの状態とZoom APIアクセス権限を確認してください'
+    troubleshooting: '録画ファイルの状態とZoom APIアクセス権限を確認してください',
+    deprecated: true,
+    replacedBy: 'E_ZOOM_DELETE_FAILED'
   },
 
   // ========================================
@@ -235,7 +272,9 @@ const ERROR_CODES = {
     messageEn: 'Gemini transcription failed',
     retryable: true,
     notifySlack: true,
-    troubleshooting: '音声ファイルの形式・品質を確認してください'
+    troubleshooting: '音声ファイルの形式・品質を確認してください',
+    deprecated: true,
+    replacedBy: 'E_GEMINI_PROCESSING'
   },
   
   AU004: {
@@ -301,32 +340,99 @@ const ERROR_CODES = {
     troubleshooting: 'フォールバックモデルに自動切り替えしています'
   },
 
-  AU011: {
-    code: 'AU011',
-    message: '音声ファイルが空です（0バイト）',
-    messageEn: 'Audio file is empty (0 bytes)',
+  E_ZOOM_FILE_EMPTY: {
+    code: 'E_ZOOM_FILE_EMPTY',
+    message: '録画ファイルが空です（0バイト）',
+    messageEn: 'Recording file is empty (0 bytes)',
     retryable: false,
     notifySlack: true,
     troubleshooting: '録画設定確認、マイク設定確認、再録画推奨'
   },
 
-  AU012: {
-    code: 'AU012',
-    message: '音声ファイル形式が無効です',
-    messageEn: 'Invalid audio file format',
+  E_ZOOM_FILE_TOO_LARGE: {
+    code: 'E_ZOOM_FILE_TOO_LARGE',
+    message: '録画ファイルサイズ超過',
+    messageEn: 'Recording file size exceeded',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: 'ファイルを分割するか、圧縮してから再実行してください'
+  },
+
+  // ========================================
+  // HTML定義エラーコード - Gemini関連 (E_GEMINI_*)
+  // ========================================
+  E_GEMINI_PROCESSING: {
+    code: 'E_GEMINI_PROCESSING',
+    message: 'Gemini処理エラー',
+    messageEn: 'Gemini processing failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '音声ファイルの形式・品質を確認してください'
+  },
+
+  E_GEMINI_QUOTA: {
+    code: 'E_GEMINI_QUOTA',
+    message: 'Gemini API制限超過',
+    messageEn: 'Gemini API quota exceeded',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'APIクォータを確認し、しばらく待ってからリトライしてください'
+  },
+
+  E_GEMINI_INVALID_FORMAT: {
+    code: 'E_GEMINI_INVALID_FORMAT',
+    message: 'Gemini入力形式エラー',
+    messageEn: 'Gemini input format error',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'JSON解析失敗または文字起こし結果が短すぎます'
+  },
+
+  // ========================================
+  // HTML定義エラーコード - ストレージ関連 (E_STORAGE_*)
+  // ========================================
+  E_STORAGE_CORRUPT_FILE: {
+    code: 'E_STORAGE_CORRUPT_FILE',
+    message: 'ファイルが破損しています',
+    messageEn: 'File is corrupted',
     retryable: false,
     notifySlack: true,
     troubleshooting: '対応形式（MP4, M4A, MP3, WAV）の音声ファイルを使用してください'
   },
 
-  AU013: {
-    code: 'AU013',
-    message: '音声ファイルサイズが大きすぎます',
-    messageEn: 'Audio file size too large',
-    retryable: false,
+  E_STORAGE_UPLOAD_FAILED: {
+    code: 'E_STORAGE_UPLOAD_FAILED',
+    message: 'ファイルアップロード失敗',
+    messageEn: 'File upload failed',
+    retryable: true,
     notifySlack: true,
-    troubleshooting: 'ファイルを分割するか、圧縮してから再実行してください'
+    troubleshooting: 'ネットワーク状況とストレージ容量を確認してください'
   },
+
+  // ========================================
+  // HTML定義エラーコード - 音声処理関連 (E_AUDIO_*)
+  // ========================================
+  E_AUDIO_COMPRESSION: {
+    code: 'E_AUDIO_COMPRESSION',
+    message: '音声圧縮処理失敗',
+    messageEn: 'Audio compression failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'ファイル形式確認、メモリ不足チェック'
+  },
+
+  E_AUDIO_DOWNLOAD: {
+    code: 'E_AUDIO_DOWNLOAD',
+    message: '音声ファイルダウンロード失敗',
+    messageEn: 'Audio file download failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'ネットワーク状況と音声ファイルの可用性を確認してください'
+  },
+
+  // ========================================
+  // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
+  // ========================================
 
   // ========================================
   // Slack API Errors (SL001-SL010)
@@ -502,7 +608,9 @@ const ERROR_CODES = {
     messageEn: 'Unknown error',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'ログを確認し、詳細情報を調査してください'
+    troubleshooting: 'ログを確認し、詳細情報を調査してください',
+    deprecated: true,
+    replacedBy: 'E_SYSTEM_UNKNOWN'
   },
   
   SY010: {
@@ -525,7 +633,17 @@ class ErrorManager {
    * @returns {Object} エラー定義
    */
   static getError(code) {
-    return ERROR_CODES[code] || ERROR_CODES.SY009; // 未知のエラー
+    const error = ERROR_CODES[code];
+    if (!error) {
+      return ERROR_CODES.SY009; // 未知のエラー
+    }
+    
+    // 非推奨エラーコードの場合は警告ログを出力
+    if (error.deprecated && error.replacedBy) {
+      console.warn(`⚠️ Error code '${code}' is deprecated. Use '${error.replacedBy}' instead.`);
+    }
+    
+    return error;
   }
   
   /**

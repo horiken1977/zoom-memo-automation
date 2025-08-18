@@ -304,7 +304,7 @@ class ZoomMemoAutomation {
           if (deletionResult.success) {
             executionLogger.completeStep('ZOOM_RECORDING_DELETION', deletionResult, 'SUCCESS');
           } else {
-            executionLogger.errorStep('ZOOM_RECORDING_DELETION', 'ZM011', deletionResult.error || 'Recording deletion failed', deletionResult);
+            executionLogger.errorStep('ZOOM_RECORDING_DELETION', 'E_ZOOM_DELETE_FAILED', deletionResult.error || 'Recording deletion failed', deletionResult);
           }
         }
         
@@ -319,7 +319,7 @@ class ZoomMemoAutomation {
       } catch (deletionError) {
         logger.error(`Recording deletion error: ${recording.topic}`, deletionError);
         if (executionLogger) {
-          executionLogger.errorStep('ZOOM_RECORDING_DELETION', 'ZM011', deletionError.message, { 
+          executionLogger.errorStep('ZOOM_RECORDING_DELETION', 'E_ZOOM_DELETE_FAILED', deletionError.message, { 
             errorStack: deletionError.stack 
           });
         }

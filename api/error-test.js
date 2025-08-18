@@ -14,7 +14,7 @@ const config = require('../1.src/config');
 
 /**
  * TC301-1: 破損音声ファイルテスト
- * 0バイトファイル、非音声ファイル、巨大ファイルでAU001, AU002エラーを検証
+ * 0バイトファイル、非音声ファイル、巨大ファイルでE_ZOOM_FILE_EMPTY, E_STORAGE_CORRUPT_FILE, E_ZOOM_FILE_TOO_LARGEエラーを検証
  */
 async function testBrokenAudioFiles() {
   const testResults = [];
@@ -146,15 +146,15 @@ async function testBrokenAudioFiles() {
     }
   }
   
-  // テスト3: 巨大ファイル（25MB相当のダミーデータ）
+  // テスト3: 巨大ファイル（100MB相当のダミーデータ）
   try {
-    logger.info('Test 3: 巨大ファイル（25MB）テスト');
+    logger.info('Test 3: 巨大ファイル（100MB）テスト');
     execLogger.logInfo('TEST_3_START', { 
       testName: '巨大ファイル',
-      description: '巨大ファイル（25MB）テスト開始'
+      description: '巨大ファイル（100MB）テスト開始'
     });
     
-    const hugeBuff = Buffer.alloc(25 * 1024 * 1024); // 25MB
+    const hugeBuff = Buffer.alloc(100 * 1024 * 1024); // 100MB
     hugeBuff.fill('A'); // ダミーデータで埋める
     
     const meetingInfo = {
@@ -233,30 +233,30 @@ async function testBrokenAudioFiles() {
  * @param {string} testName - テスト名（0バイトファイル、非音声ファイル、巨大ファイル）
  */
 function determineAudioErrorCode(errorMessage, testName = '') {
-  // テストタイプ別の専用エラーコード
+  // テストタイプ別の専用エラーコード（HTML定義エラーコードと統一）
   if (testName.includes('0バイト')) {
-    return 'AU011'; // 音声ファイルが空です（0バイト）
+    return 'E_ZOOM_FILE_EMPTY'; // 録画ファイルが空です（0バイト）
   } else if (testName.includes('非音声') || testName.includes('テキスト')) {
-    return 'AU012'; // 音声ファイル形式が無効です
+    return 'E_STORAGE_CORRUPT_FILE'; // ファイルが破損しています
   } else if (testName.includes('巨大') || testName.includes('大容量')) {
-    return 'AU013'; // 音声ファイルサイズが大きすぎます
+    return 'E_ZOOM_FILE_TOO_LARGE'; // 録画ファイルサイズ超過
   }
 
-  // 一般的なエラーメッセージでの判定（フォールバック）
+  // 一般的なエラーメッセージでの判定（HTML定義エラーコードに統一）
   if (errorMessage.includes('500 Internal Server Error')) {
-    return 'AU003'; // GEMINI_TRANSCRIPTION_FAILED
+    return 'E_GEMINI_PROCESSING'; // Gemini処理エラー
   } else if (errorMessage.includes('429')) {
-    return 'AU008'; // RETRY_LIMIT_EXCEEDED
+    return 'E_GEMINI_QUOTA'; // Gemini API制限超過
   } else if (errorMessage.includes('401')) {
-    return 'AU001'; // AUDIO_DOWNLOAD_FAILED
+    return 'E_ZOOM_AUTH'; // Zoom認証失敗
   } else if (errorMessage.includes('Transcription too short')) {
-    return 'AU004'; // TRANSCRIPTION_TOO_SHORT
+    return 'E_GEMINI_INVALID_FORMAT'; // 文字起こし結果が短すぎる
   } else if (errorMessage.includes('JSON') || errorMessage.includes('parse')) {
-    return 'AU005'; // JSON_PARSING_FAILED
+    return 'E_GEMINI_INVALID_FORMAT'; // JSON解析失敗
   } else if (errorMessage.includes('audio') || errorMessage.includes('buffer') || errorMessage.includes('size')) {
-    return 'AU002'; // AUDIO_COMPRESSION_FAILED
+    return 'E_AUDIO_COMPRESSION'; // 音声圧縮失敗
   } else {
-    return 'AU007'; // STRUCTURED_SUMMARY_FAILED
+    return 'E_GEMINI_PROCESSING'; // 構造化要約失敗
   }
 }
 
