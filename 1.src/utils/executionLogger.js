@@ -421,17 +421,15 @@ class ExecutionLogger {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       
-      // エラーテストの場合は専用フォルダ、通常処理はクライアント名ベース
-      let folderPath;
-      if (this.executionId.includes('error_test') || this.executionId.includes('TC301')) {
-        folderPath = `99.zoom_memo_recording/${year}/${month}/logs/error_tests`;
-      } else {
-        const clientName = this.extractClientName();
-        folderPath = `99.zoom_memo_recording/${year}/${month}/logs`;
-      }
+      // テスト・本番問わず統一したフォルダ構造（logs直下）
+      const folderPath = `logs`;
 
-      // logsフォルダを作成（存在しない場合）
-      const logsFolderId = await this.googleDriveService.createFolderStructure(folderPath);
+      // 共有ドライブのベースフォルダIDを取得（GOOGLE_DRIVE_RECORDINGS_FOLDER環境変数）
+      const config = require('../config');
+      const baseFolderId = config.googleDrive.recordingsFolder || process.env.GOOGLE_DRIVE_RECORDINGS_FOLDER;
+      
+      // logsフォルダを作成（共有ドライブ内に作成）
+      const logsFolderId = await this.googleDriveService.createFolderStructure(folderPath, baseFolderId);
       
       // ログファイルをバッファからアップロード
       const logBuffer = Buffer.from(logJson, 'utf8');

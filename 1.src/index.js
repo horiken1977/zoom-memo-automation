@@ -139,11 +139,18 @@ class ZoomMemoAutomation {
 
       logger.info(`Found ${newRecordings.length} new recordings to process`);
 
-      // 本番安全モードでの処理制限
+      // 処理件数制限（テスト時のみ、本番では0=無制限）
       let recordingsToProcess = newRecordings;
-      if (config.productionTest.enableSafeMode && config.productionTest.maxProcessRecordings) {
-        recordingsToProcess = newRecordings.slice(0, config.productionTest.maxProcessRecordings);
-        logger.info(`Production safe mode: limiting to ${recordingsToProcess.length} recordings`);
+      const maxRecordings = config.productionTest.maxProcessRecordings;
+      
+      if (maxRecordings > 0 && newRecordings.length > maxRecordings) {
+        recordingsToProcess = newRecordings.slice(0, maxRecordings);
+        logger.info(`Recording processing limited to ${maxRecordings} recordings (MAX_PROCESS_RECORDINGS=${maxRecordings})`);
+        logger.info(`Processing ${recordingsToProcess.length} out of ${newRecordings.length} recordings`);
+      } else if (maxRecordings === 0) {
+        logger.info(`Processing all ${newRecordings.length} recordings (no limit set)`);
+      } else {
+        logger.info(`Processing all ${recordingsToProcess.length} recordings`);
       }
 
       // 各録画を順番に処理
@@ -281,12 +288,45 @@ class ZoomMemoAutomation {
       logger.info(`Sending summary and recording link to Slack: ${recording.topic}`);
       await this.slackService.sendMeetingSummaryWithRecording(analysisResult, driveResult, executionLogResult);
 
-      // 7. 一時ファイルのクリーンアップ（安全モードでは実行しない）
-      if (!config.productionTest.enableSafeMode) {
-        await this.cleanupTempFiles([recordingInfo.audioFilePath, recordingInfo.videoFilePath]);
-      } else {
-        logger.info('Production safe mode: skipping temp file cleanup to preserve downloaded recordings');
+      // 7. Zoom録画ファイルの削除（本番のみ、テスト時はSKIP_RECORDING_DELETION=trueでスキップ）
+      logger.info(`Deleting Zoom recordings: ${recording.topic}`);
+      if (executionLogger) {
+        executionLogger.startStep('ZOOM_RECORDING_DELETION', { 
+          meetingTopic: recording.topic,
+          meetingUuid: recording.uuid 
+        });
       }
+      
+      try {
+        const deletionResult = await this.zoomService.deleteMeetingRecordings(recording);
+        
+        if (executionLogger) {
+          if (deletionResult.success) {
+            executionLogger.completeStep('ZOOM_RECORDING_DELETION', deletionResult, 'SUCCESS');
+          } else {
+            executionLogger.errorStep('ZOOM_RECORDING_DELETION', 'ZM011', deletionResult.error || 'Recording deletion failed', deletionResult);
+          }
+        }
+        
+        if (deletionResult.skipped) {
+          logger.info(`Recording deletion skipped for safety: ${recording.topic}`);
+        } else if (deletionResult.success) {
+          logger.info(`Recording deleted successfully: ${recording.topic}`);
+        } else {
+          logger.error(`Recording deletion failed: ${recording.topic} - ${deletionResult.error}`);
+        }
+        
+      } catch (deletionError) {
+        logger.error(`Recording deletion error: ${recording.topic}`, deletionError);
+        if (executionLogger) {
+          executionLogger.errorStep('ZOOM_RECORDING_DELETION', 'ZM011', deletionError.message, { 
+            errorStack: deletionError.stack 
+          });
+        }
+      }
+
+      // 8. 一時ファイルのクリーンアップ（テスト・本番問わず実行）
+      await this.cleanupTempFiles([recordingInfo.audioFilePath, recordingInfo.videoFilePath]);
 
       const processingTime = Math.round((Date.now() - startTime) / 1000);
       logger.meetingComplete(recording, processingTime);

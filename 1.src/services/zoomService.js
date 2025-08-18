@@ -402,6 +402,96 @@ class ZoomService {
   }
 
   /**
+   * 録画ファイルを削除
+   * @param {string} meetingUuid - 会議UUID
+   * @param {string} recordingId - 録画ファイルID（省略時は会議の全録画削除）
+   * @returns {Promise<Object>} 削除結果
+   */
+  async deleteRecording(meetingUuid, recordingId = null) {
+    try {
+      const headers = await this.getAuthHeaders();
+      
+      // 特定の録画ファイルを削除 or 会議の全録画を削除
+      const deleteUrl = recordingId 
+        ? `${this.baseUrl}/meetings/${meetingUuid}/recordings/${recordingId}`
+        : `${this.baseUrl}/meetings/${meetingUuid}/recordings`;
+      
+      const response = await axios.delete(deleteUrl, { headers });
+      
+      logger.info(`Recording deleted successfully: ${meetingUuid}${recordingId ? `/${recordingId}` : ' (all files)'}`);
+      
+      return {
+        success: true,
+        meetingUuid: meetingUuid,
+        recordingId: recordingId,
+        deletedAt: new Date().toISOString(),
+        message: 'Recording deleted successfully'
+      };
+      
+    } catch (error) {
+      logger.error(`Failed to delete recording ${meetingUuid}:`, error.message);
+      
+      return {
+        success: false,
+        meetingUuid: meetingUuid,
+        recordingId: recordingId,
+        error: error.message,
+        errorCode: error.response?.status,
+        message: 'Recording deletion failed'
+      };
+    }
+  }
+
+  /**
+   * 会議の全録画ファイルを削除（安全な削除処理）
+   * @param {Object} meetingInfo - 会議情報
+   * @returns {Promise<Object>} 削除結果
+   */
+  async deleteMeetingRecordings(meetingInfo) {
+    try {
+      // テスト環境での削除スキップ確認
+      if (config.productionTest.skipRecordingDeletion) {
+        logger.info(`Recording deletion skipped (SKIP_RECORDING_DELETION=true): ${meetingInfo.topic}`);
+        return {
+          success: true,
+          skipped: true,
+          meetingUuid: meetingInfo.uuid,
+          meetingTopic: meetingInfo.topic,
+          reason: 'Deletion skipped by configuration',
+          message: 'Recording deletion skipped for safety'
+        };
+      }
+
+      logger.info(`Deleting recordings for meeting: ${meetingInfo.topic} (${meetingInfo.uuid})`);
+      
+      const deleteResult = await this.deleteRecording(meetingInfo.uuid);
+      
+      if (deleteResult.success) {
+        logger.info(`Successfully deleted all recordings for meeting: ${meetingInfo.topic}`);
+      } else {
+        logger.error(`Failed to delete recordings for meeting: ${meetingInfo.topic} - ${deleteResult.error}`);
+      }
+      
+      return {
+        ...deleteResult,
+        meetingTopic: meetingInfo.topic,
+        meetingId: meetingInfo.meetingId
+      };
+      
+    } catch (error) {
+      logger.error(`Error in deleteMeetingRecordings for ${meetingInfo.topic}:`, error.message);
+      
+      return {
+        success: false,
+        meetingUuid: meetingInfo.uuid,
+        meetingTopic: meetingInfo.topic,
+        error: error.message,
+        message: 'Recording deletion process failed'
+      };
+    }
+  }
+
+  /**
    * ヘルスチェック
    */
   async healthCheck() {

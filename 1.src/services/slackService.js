@@ -15,29 +15,7 @@ class SlackService {
    */
   async sendMeetingSummary(analysisResult) {
     try {
-      // Slack通知が無効化されている場合、または本番安全モードの場合はログ出力のみ
-      if (config.development.disableSlackNotifications || config.productionTest.logSlackInsteadOfSend) {
-        const logData = {
-          type: 'SLACK_MEETING_SUMMARY',
-          timestamp: new Date().toISOString(),
-          meetingInfo: analysisResult.meetingInfo,
-          summary: analysisResult.summary,
-          participants: analysisResult.participants,
-          actionItems: analysisResult.actionItems,
-          decisions: analysisResult.decisions,
-          blocks: this.buildSummaryBlocks(analysisResult)
-        };
-        
-        logger.info('=== SLACK MESSAGE LOG (PRODUCTION SAFE MODE) ===');
-        logger.info(JSON.stringify(logData, null, 2));
-        logger.info('=== END SLACK MESSAGE LOG ===');
-        
-        return { 
-          ts: 'logged_only',
-          message: 'Slack message logged instead of sent (production safe mode)',
-          logData: logData
-        };
-      }
+      // テスト・本番問わず常にSlack送信を実行
 
       logger.info(`Sending meeting summary to Slack: ${analysisResult.meetingInfo.topic}`);
 
@@ -307,12 +285,6 @@ class SlackService {
    */
   async sendTranscriptionFile(analysisResult) {
     try {
-      // Slack通知が無効化されている場合はログ出力のみ
-      if (config.development.disableSlackNotifications) {
-        logger.info(`Slack notifications disabled - would send transcription file for: ${analysisResult.meetingInfo.topic}`);
-        return;
-      }
-
       const filename = `${analysisResult.meetingInfo.topic}_${new Date(analysisResult.meetingInfo.startTime).toISOString().split('T')[0]}.txt`;
       
       const fileContent = `会議文字起こし
@@ -351,12 +323,6 @@ ${analysisResult.transcription}
    */
   async sendErrorNotification(error, context = '') {
     try {
-      // Slack通知が無効化されている場合はログ出力のみ
-      if (config.development.disableSlackNotifications) {
-        logger.info(`Slack notifications disabled - would send error notification: ${error.message}`);
-        return { message: 'Error notification disabled in development mode' };
-      }
-
       const blocks = [
         {
           type: "header",
@@ -410,12 +376,6 @@ ${analysisResult.transcription}
    */
   async sendProcessingNotification(meetingInfo) {
     try {
-      // Slack通知が無効化されている場合はログ出力のみ
-      if (config.development.disableSlackNotifications) {
-        logger.info(`Slack notifications disabled - would send processing notification: ${meetingInfo.topic}`);
-        return 'disabled';
-      }
-
       const blocks = [
         {
           type: "section",
@@ -454,15 +414,6 @@ ${analysisResult.transcription}
    */
   async sendTestMessage() {
     try {
-      // Slack通知が無効化されている場合はログ出力のみ
-      if (config.development.disableSlackNotifications) {
-        logger.info('Slack notifications disabled - would send test message');
-        return { 
-          ts: 'disabled',
-          message: 'Test message disabled in development mode'
-        };
-      }
-
       const result = await this.client.chat.postMessage({
         channel: this.channelId,
         text: '🤖 Zoom Memo Automation システムのテストメッセージです。',
@@ -501,16 +452,6 @@ ${analysisResult.transcription}
   async sendMeetingSummaryWithRecording(analysisResult, driveResult, executionLogResult = null) {
     const maxRetries = 3;
     let lastError = null;
-
-    // Slack通知が無効化されている場合はログ出力のみ
-    if (config.development.disableSlackNotifications) {
-      logger.info(`Slack notifications disabled - would send meeting summary with recording: ${analysisResult.meetingInfo.topic}`);
-      logger.info(`Recording would be shared at: ${driveResult.viewLink}`);
-      return { 
-        ts: 'disabled',
-        message: 'Meeting summary with recording disabled in development mode'
-      };
-    }
 
     // 3回リトライで Slack 投稿を試行
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -979,40 +920,10 @@ ${analysisResult.transcription}
   }
 
   /**
-   * 汎用的なSlack通知送信（本番安全モード対応）
+   * 汎用的なSlack通知送信
    */
   async sendNotification(message) {
     try {
-      // 本番安全モードの場合はログ出力のみ
-      if (config.productionTest.logSlackInsteadOfSend) {
-        const logData = {
-          type: 'SLACK_NOTIFICATION',
-          timestamp: new Date().toISOString(),
-          message: message
-        };
-        
-        logger.info('=== SLACK NOTIFICATION LOG (PRODUCTION SAFE MODE) ===');
-        logger.info(JSON.stringify(logData, null, 2));
-        logger.info('=== END SLACK NOTIFICATION LOG ===');
-        
-        return { 
-          success: true,
-          ts: 'logged_only',
-          message: 'Notification logged instead of sent (production safe mode)',
-          logData: logData
-        };
-      }
-
-      // 開発モードでの無効化チェック
-      if (config.development.disableSlackNotifications) {
-        logger.info('Slack notifications disabled in development mode');
-        return { 
-          success: true,
-          ts: 'disabled',
-          message: 'Slack notifications disabled in development mode'
-        };
-      }
-
       // 実際にSlackに送信
       const result = await this.client.chat.postMessage({
         channel: this.channelId,
@@ -1196,6 +1107,31 @@ ${analysisResult.transcription}
         status: 'unhealthy',
         error: error.message
       };
+    }
+  }
+
+  /**
+   * 汎用的なSlackメッセージ送信関数
+   * @param {Object} messageOptions - メッセージオプション
+   * @param {string} messageOptions.text - メッセージテキスト
+   * @param {Array} messageOptions.blocks - Slackブロック
+   * @param {string} messageOptions.channel - チャンネルID（省略時はデフォルト）
+   * @returns {Promise<Object>} 送信結果
+   */
+  async postMessage(messageOptions) {
+    try {
+      const result = await this.client.chat.postMessage({
+        channel: messageOptions.channel || this.channelId,
+        text: messageOptions.text,
+        blocks: messageOptions.blocks
+      });
+
+      logger.info(`Slack message sent successfully: ${messageOptions.text?.substring(0, 50)}...`);
+      return result;
+
+    } catch (error) {
+      logger.error('Failed to send Slack message:', error.message);
+      throw error;
     }
   }
 }

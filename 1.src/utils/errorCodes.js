@@ -106,6 +106,15 @@ const ERROR_CODES = {
     troubleshooting: 'ネットワーク状況と録画ファイルの可用性を確認してください'
   },
 
+  ZM011: {
+    code: 'ZM011',
+    message: 'Zoom録画削除失敗',
+    messageEn: 'Failed to delete Zoom recording',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '録画ファイルの状態とZoom APIアクセス権限を確認してください'
+  },
+
   // ========================================
   // Google Drive API Errors (GD001-GD010)
   // ========================================

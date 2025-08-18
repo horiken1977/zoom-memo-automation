@@ -71,7 +71,7 @@ const config = {
     enableSafeMode: process.env.PRODUCTION_SAFE_MODE === 'true',
     skipRecordingDeletion: process.env.SKIP_RECORDING_DELETION === 'true',
     logSlackInsteadOfSend: process.env.LOG_SLACK_INSTEAD_OF_SEND === 'true',
-    maxProcessRecordings: parseInt(process.env.MAX_PROCESS_RECORDINGS) || 1 // 最大処理件数制限
+    maxProcessRecordings: parseInt(process.env.MAX_PROCESS_RECORDINGS) || 5 // テスト時の最大処理件数制限（本番では0=無制限）
   },
   
   // Logging Configuration
