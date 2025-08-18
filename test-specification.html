@@ -946,34 +946,64 @@
                 <div class="test-matrix">
                     <table>
                         <tr>
-                            <th width="25%">テストシナリオ</th>
-                            <th width="25%">発生させるエラー</th>
-                            <th width="25%">期待するエラーコード</th>
-                            <th width="25%">確認項目</th>
+                            <th width="10%">テスト番号</th>
+                            <th width="20%">テストシナリオ</th>
+                            <th width="20%">発生させるエラー</th>
+                            <th width="20%">期待するエラーコード</th>
+                            <th width="15%">確認項目</th>
+                            <th width="3%">1回目</th>
+                            <th width="3%">2回目</th>
+                            <th width="3%">3回目</th>
+                            <th width="3%">4回目</th>
+                            <th width="3%">5回目</th>
                         </tr>
                         <tr>
+                            <td><strong>TC301-001</strong></td>
                             <td><strong>破損音声ファイルテスト</strong></td>
                             <td>0バイトファイル、非音声ファイル、巨大ファイル投入</td>
                             <td>E_ZOOM_FILE_EMPTY, E_STORAGE_CORRUPT_FILE, E_ZOOM_FILE_TOO_LARGE</td>
                             <td>適切なエラー検知・Slackエラー通知・リトライ動作</td>
+                            <td style="color: red; font-weight: bold;">×</td>
+                            <td style="color: red; font-weight: bold;">×</td>
+                            <td style="color: red; font-weight: bold;">×</td>
+                            <td style="color: red; font-weight: bold;">×</td>
+                            <td style="color: green; font-weight: bold;">○</td>
                         </tr>
                         <tr>
+                            <td><strong>TC301-002</strong></td>
                             <td><strong>Gemini AI障害テスト</strong></td>
                             <td>無効APIキー、レート制限、短すぎる音声、JSON解析失敗</td>
                             <td>E_GEMINI_PROCESSING, E_GEMINI_INVALID_FORMAT, E_GEMINI_QUOTA</td>
                             <td>5回リトライ実行・フォールバック動作・API一時的エラー通知</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
                         </tr>
                         <tr>
+                            <td><strong>TC301-003</strong></td>
                             <td><strong>品質警告テスト</strong></td>
                             <td>低品質音声（雑音・無音・極端に小さい音声）</td>
                             <td>E_AUDIO_QUALITY_WARNING</td>
                             <td>品質警告ログ・処理継続可能性確認</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
                         </tr>
                         <tr>
+                            <td><strong>TC301-004</strong></td>
                             <td><strong>要約生成障害テスト</strong></td>
                             <td>構造化要約失敗・リトライ上限到達・接続タイムアウト</td>
                             <td>E_GEMINI_PROCESSING, E_GEMINI_QUOTA</td>
                             <td>フォールバック要約・手動再実行推奨・エラー通知</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
+                            <td style="color: gray;">-</td>
                         </tr>
                     </table>
                 </div>
@@ -984,8 +1014,68 @@
                         <li><strong>模擬データ投入:</strong> test/data/audio/配下に異常音声ファイル準備</li>
                         <li><strong>APIキー無効化:</strong> 環境変数を一時的に変更してGemini接続失敗を再現</li>
                         <li><strong>タイムアウト設定:</strong> 短時間タイムアウトでリトライ動作確認</li>
-                        <li><strong>実行エンドポイント:</strong> <code>/api/error-test?category=AU&test=all</code></li>
+                        <li><strong>実行エンドポイント:</strong> <code>/api/error-test?test=TC301-1</code></li>
                     </ul>
+                </div>
+
+                <div class="test-history">
+                    <h4>📋 TC301-001: 破損音声ファイルテスト 実施履歴</h4>
+                    <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin: 10px 0;">
+                        <p><strong>実施日時:</strong> 2025年8月18日 12:00-15:30 (JST)</p>
+                        <p><strong>実施エンドポイント:</strong> <code>curl "https://zoom-memo-automation.vercel.app/api/error-test?test=TC301-1"</code></p>
+                        <p><strong>最終結果:</strong> <span style="color: green; font-weight: bold;">✅ 成功 (5回目)</span></p>
+                    </div>
+
+                    <h5>🔄 実施回数別修正内容</h5>
+                    <div style="margin-left: 20px;">
+                        <h6><span style="color: red;">❌ 1回目実行結果 (12:05)</span></h6>
+                        <ul>
+                            <li><strong>問題:</strong> エラーコード一覧HTML欠如、ログ出力なし、正常終了、Slack通知なし</li>
+                            <li><strong>対策:</strong> error-codes.html復旧、ExecutionLogger統合、HTTP400ステータス実装、Slack Block Kit通知追加</li>
+                            <li><strong>エラーコード:</strong> AU003 (旧JavaScript専用コード)</li>
+                        </ul>
+
+                        <h6><span style="color: red;">❌ 2回目実行結果 (13:15)</span></h6>
+                        <ul>
+                            <li><strong>問題:</strong> 本番環境とテスト環境の処理分岐、ログフォルダのみ作成でファイル未出力</li>
+                            <li><strong>対策:</strong> 処理フロー統一(削除処理のみスキップ)、Google Drive共有ドライブ対応、ログ直下保存</li>
+                            <li><strong>エラーコード:</strong> AU003 (同一エラーコード問題継続)</li>
+                        </ul>
+
+                        <h6><span style="color: red;">❌ 3回目実行結果 (13:45)</span></h6>
+                        <ul>
+                            <li><strong>問題:</strong> エラーコード区別なし（全てAU003）、25MB大容量ファイル成功（PT001で49MB処理済み）</li>
+                            <li><strong>対策:</strong> テストタイプ別エラーコード分割実装、大容量ファイル100MBに変更</li>
+                            <li><strong>エラーコード:</strong> AU011, AU012, AU013 (新規JavaScript専用コード)</li>
+                        </ul>
+
+                        <h6><span style="color: red;">❌ 4回目実行結果 (14:20)</span></h6>
+                        <ul>
+                            <li><strong>問題:</strong> エラーコードがWebサイト未掲載（AU011-013はerror-codes.htmlに存在しない）</li>
+                            <li><strong>対策:</strong> HTML定義E_*エラーコード体系への全面統一開始</li>
+                            <li><strong>成果:</strong> E_ZOOM_FILE_EMPTY, E_STORAGE_CORRUPT_FILE, E_ZOOM_FILE_TOO_LARGE 出力確認</li>
+                        </ul>
+
+                        <h6><span style="color: green;">✅ 5回目実行結果 (15:25) - 最終成功</span></h6>
+                        <ul>
+                            <li><strong>完了項目:</strong> HTML・JavaScript全エラーコード統一、Google Driveログ内部も統一コード保存</li>
+                            <li><strong>最終エラーコード:</strong> E_ZOOM_FILE_EMPTY, E_STORAGE_CORRUPT_FILE, E_ZOOM_FILE_TOO_LARGE</li>
+                            <li><strong>追加修正:</strong> aiService.js, zoomRecordingService.js, errorHandler.js内古いコード更新</li>
+                            <li><strong>結果:</strong> テスト仕様書HTMLとエラーコード体系完全統一達成</li>
+                            <li><strong>保存ログ:</strong> <a href="https://drive.google.com/file/d/1lXGLSqkeyRwULwAAPgmE1TPPJYdnpYDt/view?usp=drivesdk" target="_blank">Google Drive実行ログ</a></li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #e7f5e7; padding: 10px; border: 1px solid #28a745; margin: 15px 0;">
+                        <p><strong>📈 改善成果:</strong></p>
+                        <ul>
+                            <li>✅ HTML定義エラーコード(E_*)への完全統一達成</li>
+                            <li>✅ Google Driveログ・JavaScript・テスト仕様書の一元化</li>
+                            <li>✅ 3種類の破損音声ファイルエラー適切検知</li>
+                            <li>✅ Slack Block Kit構造化エラー通知実装</li>
+                            <li>✅ 本番環境統一処理フロー確立</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -994,27 +1084,31 @@
                 <div class="test-matrix">
                     <table>
                         <tr>
-                            <th width="25%">テストシナリオ</th>
-                            <th width="25%">発生させるエラー</th>
-                            <th width="25%">期待するエラーコード</th>
-                            <th width="25%">確認項目</th>
+                            <th width="12%">テスト番号</th>
+                            <th width="22%">テストシナリオ</th>
+                            <th width="22%">発生させるエラー</th>
+                            <th width="22%">期待するエラーコード</th>
+                            <th width="22%">確認項目</th>
                         </tr>
                         <tr>
+                            <td><strong>TC302-001</strong></td>
                             <td><strong>Vercelタイムアウトテスト</strong></td>
                             <td>295秒以上の処理時間をシミュレーション</td>
-                            <td>SY002</td>
+                            <td>E_SYSTEM_TIMEOUT</td>
                             <td>タイムアウト検知・処理分割提案・Slack通知</td>
                         </tr>
                         <tr>
+                            <td><strong>TC302-002</strong></td>
                             <td><strong>メモリ不足テスト</strong></td>
                             <td>巨大ファイル（500MB+）処理でメモリ制限到達</td>
                             <td>E_SYSTEM_MEMORY</td>
                             <td>メモリ不足検知・処理中断・適切なエラー通知</td>
                         </tr>
                         <tr>
+                            <td><strong>TC302-003</strong></td>
                             <td><strong>環境変数不整合テスト</strong></td>
                             <td>必須環境変数の欠落・不正値設定</td>
-                            <td>SY003</td>
+                            <td>E_SYSTEM_CONFIG</td>
                             <td>起動時検証・設定不備通知・処理停止</td>
                         </tr>
                     </table>

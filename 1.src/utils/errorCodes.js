@@ -502,6 +502,15 @@ const ERROR_CODES = {
     troubleshooting: 'Vercel maxDuration設定を確認してください（現在300秒）'
   },
 
+  E_SYSTEM_CONFIG: {
+    code: 'E_SYSTEM_CONFIG',
+    message: '環境変数設定エラー',
+    messageEn: 'Environment variable configuration error',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '必要な環境変数がVercelに設定されているか確認してください'
+  },
+
   // ========================================
   // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
   // ========================================
