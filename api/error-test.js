@@ -94,10 +94,9 @@ async function testBrokenAudioFiles() {
   // テスト2: 非音声ファイル（テキストファイル）
   try {
     logger.info('Test 2: 非音声ファイル（テキスト）テスト');
-    errorLogs.push({
-      timestamp: new Date().toISOString(),
-      level: 'INFO',
-      message: 'Test 2: 非音声ファイル（テキスト）テスト'
+    execLogger.logInfo('TEST_2_START', { 
+      testName: '非音声ファイル',
+      description: '非音声ファイル（テキスト）テスト開始'
     });
     
     const textBuffer = Buffer.from('This is not an audio file content', 'utf8');
@@ -115,10 +114,10 @@ async function testBrokenAudioFiles() {
       message: '非音声ファイルが処理されました（予期しない動作）'
     });
     
-    errorLogs.push({
-      timestamp: new Date().toISOString(),
-      level: 'WARNING',
-      message: 'Test 2: 予期しない成功 - 非音声ファイルが処理されました'
+    execLogger.logWarning('TEST_2_UNEXPECTED', '予期しない成功 - 非音声ファイルが処理されました', {
+      testName: '非音声ファイル',
+      expected: 'ERROR',
+      actual: 'SUCCESS'
     });
     
   } catch (error) {
@@ -135,11 +134,9 @@ async function testBrokenAudioFiles() {
     });
     
     logger.error(`Test 2 結果: ${errorCode} - ${error.message}`);
-    errorLogs.push({
-      timestamp: new Date().toISOString(),
-      level: 'ERROR',
-      message: `Test 2 結果: ${errorCode} - ${error.message}`,
-      errorCode,
+    execLogger.logError('TEST_2_ERROR', errorCode, error.message, {
+      testName: '非音声ファイル',
+      errorDefinition: errorDef,
       notifySlack: errorDef.notifySlack
     });
     
@@ -152,10 +149,9 @@ async function testBrokenAudioFiles() {
   // テスト3: 巨大ファイル（25MB相当のダミーデータ）
   try {
     logger.info('Test 3: 巨大ファイル（25MB）テスト');
-    errorLogs.push({
-      timestamp: new Date().toISOString(),
-      level: 'INFO',
-      message: 'Test 3: 巨大ファイル（25MB）テスト'
+    execLogger.logInfo('TEST_3_START', { 
+      testName: '巨大ファイル',
+      description: '巨大ファイル（25MB）テスト開始'
     });
     
     const hugeBuff = Buffer.alloc(25 * 1024 * 1024); // 25MB
@@ -175,10 +171,10 @@ async function testBrokenAudioFiles() {
       message: '巨大ファイルが処理されました（予期しない動作）'
     });
     
-    errorLogs.push({
-      timestamp: new Date().toISOString(),
-      level: 'WARNING',
-      message: 'Test 3: 予期しない成功 - 巨大ファイルが処理されました'
+    execLogger.logWarning('TEST_3_UNEXPECTED', '予期しない成功 - 巨大ファイルが処理されました', {
+      testName: '巨大ファイル',
+      expected: 'ERROR',
+      actual: 'SUCCESS'
     });
     
   } catch (error) {
@@ -195,11 +191,9 @@ async function testBrokenAudioFiles() {
     });
     
     logger.error(`Test 3 結果: ${errorCode} - ${error.message}`);
-    errorLogs.push({
-      timestamp: new Date().toISOString(),
-      level: 'ERROR',
-      message: `Test 3 結果: ${errorCode} - ${error.message}`,
-      errorCode,
+    execLogger.logError('TEST_3_ERROR', errorCode, error.message, {
+      testName: '巨大ファイル',
+      errorDefinition: errorDef,
       notifySlack: errorDef.notifySlack
     });
     
