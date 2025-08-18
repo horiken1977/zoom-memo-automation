@@ -66,7 +66,7 @@ async function testBrokenAudioFiles() {
     });
     
   } catch (error) {
-    const errorCode = determineAudioErrorCode(error.message);
+    const errorCode = determineAudioErrorCode(error.message, '0バイトファイル');
     const errorDef = ERROR_CODES[errorCode] || {};
     
     testResults.push({
@@ -121,7 +121,7 @@ async function testBrokenAudioFiles() {
     });
     
   } catch (error) {
-    const errorCode = determineAudioErrorCode(error.message);
+    const errorCode = determineAudioErrorCode(error.message, '非音声ファイル');
     const errorDef = ERROR_CODES[errorCode] || {};
     
     testResults.push({
@@ -178,7 +178,7 @@ async function testBrokenAudioFiles() {
     });
     
   } catch (error) {
-    const errorCode = determineAudioErrorCode(error.message);
+    const errorCode = determineAudioErrorCode(error.message, '巨大ファイル');
     const errorDef = ERROR_CODES[errorCode] || {};
     
     testResults.push({
@@ -228,9 +228,21 @@ async function testBrokenAudioFiles() {
 }
 
 /**
- * エラーメッセージからAU系エラーコードを判定
+ * エラーメッセージとテストタイプから適切なAU系エラーコードを判定
+ * @param {string} errorMessage - エラーメッセージ
+ * @param {string} testName - テスト名（0バイトファイル、非音声ファイル、巨大ファイル）
  */
-function determineAudioErrorCode(errorMessage) {
+function determineAudioErrorCode(errorMessage, testName = '') {
+  // テストタイプ別の専用エラーコード
+  if (testName.includes('0バイト')) {
+    return 'AU011'; // 音声ファイルが空です（0バイト）
+  } else if (testName.includes('非音声') || testName.includes('テキスト')) {
+    return 'AU012'; // 音声ファイル形式が無効です
+  } else if (testName.includes('巨大') || testName.includes('大容量')) {
+    return 'AU013'; // 音声ファイルサイズが大きすぎます
+  }
+
+  // 一般的なエラーメッセージでの判定（フォールバック）
   if (errorMessage.includes('500 Internal Server Error')) {
     return 'AU003'; // GEMINI_TRANSCRIPTION_FAILED
   } else if (errorMessage.includes('429')) {

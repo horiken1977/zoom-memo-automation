@@ -301,6 +301,33 @@ const ERROR_CODES = {
     troubleshooting: 'フォールバックモデルに自動切り替えしています'
   },
 
+  AU011: {
+    code: 'AU011',
+    message: '音声ファイルが空です（0バイト）',
+    messageEn: 'Audio file is empty (0 bytes)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '録画設定確認、マイク設定確認、再録画推奨'
+  },
+
+  AU012: {
+    code: 'AU012',
+    message: '音声ファイル形式が無効です',
+    messageEn: 'Invalid audio file format',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '対応形式（MP4, M4A, MP3, WAV）の音声ファイルを使用してください'
+  },
+
+  AU013: {
+    code: 'AU013',
+    message: '音声ファイルサイズが大きすぎます',
+    messageEn: 'Audio file size too large',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: 'ファイルを分割するか、圧縮してから再実行してください'
+  },
+
   // ========================================
   // Slack API Errors (SL001-SL010)
   // ========================================

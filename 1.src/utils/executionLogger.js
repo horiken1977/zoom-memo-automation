@@ -425,10 +425,9 @@ class ExecutionLogger {
       const folderPath = `logs`;
 
       // 共有ドライブのベースフォルダIDを取得（GOOGLE_DRIVE_RECORDINGS_FOLDER環境変数）
-      const config = require('../config');
-      const baseFolderId = config.googleDrive.recordingsFolder || process.env.GOOGLE_DRIVE_RECORDINGS_FOLDER;
+      const baseFolderId = process.env.GOOGLE_DRIVE_RECORDINGS_FOLDER;
       
-      // logsフォルダを作成（共有ドライブ内に作成）
+      // logsフォルダを作成（共有ドライブベースフォルダ内に作成）
       const logsFolderId = await this.googleDriveService.createFolderStructure(folderPath, baseFolderId);
       
       // ログファイルをバッファからアップロード
