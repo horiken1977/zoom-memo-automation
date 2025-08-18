@@ -363,11 +363,11 @@ const ERROR_CODES = {
   // ========================================
   E_GEMINI_PROCESSING: {
     code: 'E_GEMINI_PROCESSING',
-    message: 'Gemini処理エラー',
-    messageEn: 'Gemini processing failed',
+    message: 'Gemini API認証エラー',
+    messageEn: 'Gemini API authentication error',
     retryable: true,
     notifySlack: true,
-    troubleshooting: '音声ファイルの形式・品質を確認してください'
+    troubleshooting: 'GOOGLE_AI_API_KEYを確認し、Gemini APIアクセス権限を確認してください'
   },
 
   E_GEMINI_QUOTA: {
@@ -385,7 +385,25 @@ const ERROR_CODES = {
     messageEn: 'Gemini input format error',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'JSON解析失敗または文字起こし結果が短すぎます'
+    troubleshooting: '対応形式（MP4, M4A, MP3, WAV）の音声ファイルを使用してください'
+  },
+
+  E_GEMINI_INSUFFICIENT_CONTENT: {
+    code: 'E_GEMINI_INSUFFICIENT_CONTENT',
+    message: 'Gemini音声コンテンツ不足',
+    messageEn: 'Gemini insufficient audio content',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '音声ファイルが短すぎます。最低10秒以上の音声が必要です'
+  },
+
+  E_GEMINI_RESPONSE_INVALID: {
+    code: 'E_GEMINI_RESPONSE_INVALID',
+    message: 'Gemini応答解析エラー',
+    messageEn: 'Gemini response parsing error',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'Gemini APIから不正な応答を受信しました。しばらく待ってからリトライしてください'
   },
 
   // ========================================
