@@ -13,8 +13,9 @@ const { ExecutionLogger } = require('../1.src/utils/executionLogger');
 const config = require('../1.src/config');
 
 /**
- * TC301-1: 破損音声ファイルテスト
+ * TC301-1: 破損音声ファイルテスト（統合処理・5回リトライ付き）
  * 0バイトファイル、非音声ファイル、巨大ファイルでE_ZOOM_FILE_EMPTY, E_STORAGE_CORRUPT_FILE, E_ZOOM_FILE_TOO_LARGEエラーを検証
+ * processAudioWithStructuredOutput使用でリトライ処理が正常動作
  */
 async function testBrokenAudioFiles() {
   const testResults = [];
@@ -50,7 +51,7 @@ async function testBrokenAudioFiles() {
       timestamp: new Date().toISOString()
     };
     
-    await aiService.transcribeAudioFromBuffer(emptyBuffer, 'empty_test.m4a', testMeetingInfo);
+    await aiService.processAudioWithStructuredOutput(emptyBuffer, testMeetingInfo, { mimeType: 'audio/aac' });
     testResults.push({
       test: '0バイトファイル',
       status: 'UNEXPECTED_SUCCESS',
@@ -105,7 +106,7 @@ async function testBrokenAudioFiles() {
       timestamp: new Date().toISOString()
     };
     
-    await aiService.transcribeAudioFromBuffer(textBuffer, 'fake_audio.m4a', meetingInfo);
+    await aiService.processAudioWithStructuredOutput(textBuffer, meetingInfo, { mimeType: 'audio/aac' });
     testResults.push({
       test: '非音声ファイル',
       status: 'UNEXPECTED_SUCCESS',
@@ -162,7 +163,7 @@ async function testBrokenAudioFiles() {
       timestamp: new Date().toISOString()
     };
     
-    await aiService.transcribeAudioFromBuffer(hugeBuff, 'huge_test.m4a', meetingInfo);
+    await aiService.processAudioWithStructuredOutput(hugeBuff, meetingInfo, { mimeType: 'audio/aac' });
     testResults.push({
       test: '巨大ファイル',
       status: 'UNEXPECTED_SUCCESS',
@@ -278,9 +279,10 @@ function generateTestSummary(results) {
 }
 
 /**
- * TC301-2: Gemini AI障害テスト
+ * TC301-2: Gemini AI障害テスト（統合処理・5回リトライ付き）
  * 無効APIキー（E_GEMINI_PROCESSING）、短すぎる音声（E_GEMINI_INSUFFICIENT_CONTENT）、
  * APIクォータ制限（E_GEMINI_QUOTA）でE_GEMINI_*エラーを検証
+ * processAudioWithStructuredOutput使用でリトライ処理が正常動作
  */
 async function testGeminiAIFailures() {
   const testResults = [];
@@ -318,7 +320,7 @@ async function testGeminiAIFailures() {
       timestamp: new Date().toISOString()
     };
     
-    await aiService.transcribeAudioFromBuffer(validBuffer, 'invalid_api_test.m4a', testMeetingInfo);
+    await aiService.processAudioWithStructuredOutput(validBuffer, testMeetingInfo, { mimeType: 'audio/aac' });
     testResults.push({
       test: '無効APIキー',
       status: 'UNEXPECTED_SUCCESS',
@@ -374,7 +376,7 @@ async function testGeminiAIFailures() {
       timestamp: new Date().toISOString()
     };
     
-    await aiService.transcribeAudioFromBuffer(shortBuffer, 'short_audio.m4a', meetingInfo);
+    await aiService.processAudioWithStructuredOutput(shortBuffer, meetingInfo, { mimeType: 'audio/aac' });
     testResults.push({
       test: '短すぎる音声',
       status: 'UNEXPECTED_SUCCESS',
@@ -431,7 +433,7 @@ async function testGeminiAIFailures() {
       timestamp: new Date().toISOString()
     };
     
-    await aiService.transcribeAudioFromBuffer(quotaBuffer, 'quota_test.m4a', meetingInfo);
+    await aiService.processAudioWithStructuredOutput(quotaBuffer, meetingInfo, { mimeType: 'audio/aac' });
     testResults.push({
       test: 'APIクォータ制限',
       status: 'UNEXPECTED_SUCCESS',
