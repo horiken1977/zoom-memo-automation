@@ -908,6 +908,75 @@
                     <p><strong>アクセス:</strong> レスポンスの `executionLog.viewLink` から直接アクセス可能</p>
                 </div>
             </div>
+
+            <div class="test-case" id="tc206">
+                <h3><span class="status-indicator status-not-started"></span>TC206: 部分データ存在業務テスト</h3>
+                <div class="test-matrix">
+                    <table>
+                        <tr>
+                            <th width="20%">項目</th>
+                            <th width="50%">内容</th>
+                            <th width="15%">実施状況</th>
+                            <th width="15%">結果/備考</th>
+                        </tr>
+                        <tr>
+                            <td>テストケース1</td>
+                            <td><strong>音声データのみ存在（動画データなし）</strong></td>
+                            <td><span class="status-indicator status-not-started"></span>未着手</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>期待動作</td>
+                            <td>音声処理（文字起こし・要約・Slack投稿）正常実行 + 動画不存在の警告通知</td>
+                            <td>-</td>
+                            <td>エラーコード: E_ZOOM_VIDEO_MISSING</td>
+                        </tr>
+                        <tr>
+                            <td>テストケース2</td>
+                            <td><strong>動画データのみ存在（音声データなし）</strong></td>
+                            <td><span class="status-indicator status-not-started"></span>未着手</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>期待動作</td>
+                            <td>動画から音声抽出→文字起こし・要約・Slack投稿正常実行 + 音声データなしの警告通知</td>
+                            <td>-</td>
+                            <td>エラーコード: E_ZOOM_AUDIO_MISSING</td>
+                        </tr>
+                        <tr>
+                            <td>確認項目</td>
+                            <td>• 正常処理継続<br>• Slack警告メッセージ投稿<br>• Google Driveログ保存<br>• 適切なエラーコード出力</td>
+                            <td>-</td>
+                            <td>業務継続性重視</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="test-data-section">
+                    <h4>🎯 業務要件</h4>
+                    <ul>
+                        <li><strong>音声のみケース:</strong> 会議で画面共有なし、音声録画のみ有効な場合</li>
+                        <li><strong>動画のみケース:</strong> マイク設定問題、音声録画失敗、動画録画のみ有効な場合</li>
+                        <li><strong>エラーレベル:</strong> Warning（警告）- 処理停止ではなく通知のみ</li>
+                        <li><strong>業務影響:</strong> 文字起こし・要約機能は正常提供、データ不足は明確通知</li>
+                    </ul>
+                </div>
+
+                <div class="automation-info">
+                    <h4>🔧 実装仕様</h4>
+                    <ul>
+                        <li><strong>実行エンドポイント:</strong> <code>/api/monitor-recordings?test=TC206-1</code> （音声のみ）</li>
+                        <li><strong>実行エンドポイント:</strong> <code>/api/monitor-recordings?test=TC206-2</code> （動画のみ）</li>
+                        <li><strong>検証方法:</strong> Zoom録画データを意図的に部分欠損させてテスト実行</li>
+                        <li><strong>出力確認:</strong> Slackメッセージ + Google Driveログ + エラーコード</li>
+                    </ul>
+                </div>
+
+                <div style="background: #e1f5fe; padding: 15px; border-left: 4px solid #0277bd; margin: 10px 0;">
+                    <h4>💼 業務重要度: High</h4>
+                    <p><strong>理由:</strong> 実際のZoom録画では音声のみ・動画のみのケースが頻繁に発生する可能性があります。システムが停止するのではなく、利用可能なデータで最大限の価値提供を行い、不足分を明確に通知することが業務継続性の観点で重要です。</p>
+                </div>
+            </div>
         </div>
 
         <div class="section">

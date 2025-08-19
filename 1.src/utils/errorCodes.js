@@ -51,6 +51,24 @@ const ERROR_CODES = {
     notifySlack: true,
     troubleshooting: '録画ファイルの状態とZoom APIアクセス権限を確認してください'
   },
+
+  E_ZOOM_VIDEO_MISSING: {
+    code: 'E_ZOOM_VIDEO_MISSING',
+    message: 'Zoom動画データ不存在（警告）',
+    messageEn: 'Zoom video data not found (warning)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '音声録画のみが有効です。動画データは保存されませんが、文字起こし・要約処理は正常に実行されます'
+  },
+
+  E_ZOOM_AUDIO_MISSING: {
+    code: 'E_ZOOM_AUDIO_MISSING',
+    message: 'Zoom音声データ不存在（警告）',
+    messageEn: 'Zoom audio data not found (warning)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '動画録画のみが有効です。動画から音声を抽出して文字起こし・要約処理を実行します'
+  },
   
   // ========================================
   // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
