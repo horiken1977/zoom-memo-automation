@@ -975,9 +975,9 @@
                             <td>無効APIキー、レート制限、短すぎる音声、JSON解析失敗</td>
                             <td>E_GEMINI_PROCESSING, E_GEMINI_INVALID_FORMAT, E_GEMINI_INSUFFICIENT_CONTENT, E_GEMINI_RESPONSE_INVALID, E_GEMINI_QUOTA</td>
                             <td>5回リトライ実行・フォールバック動作・API一時的エラー通知</td>
-                            <td style="color: gray;">-</td>
-                            <td style="color: gray;">-</td>
-                            <td style="color: gray;">-</td>
+                            <td style="color: red; font-weight: bold;">×</td>
+                            <td style="color: red; font-weight: bold;">×</td>
+                            <td style="color: green; font-weight: bold;">○</td>
                             <td style="color: gray;">-</td>
                             <td style="color: gray;">-</td>
                         </tr>
@@ -1074,6 +1074,58 @@
                             <li>✅ 3種類の破損音声ファイルエラー適切検知</li>
                             <li>✅ Slack Block Kit構造化エラー通知実装</li>
                             <li>✅ 本番環境統一処理フロー確立</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="test-data-section">
+                    <h5>📊 TC301-002 実行履歴 (2025-08-19)</h5>
+                    <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #6c757d; margin: 10px 0;">
+                        <h6><span style="color: red;">❌ 1回目実行結果 (初回実行)</span></h6>
+                        <ul>
+                            <li><strong>問題:</strong> エラーメッセージとエラーコードの不一致</li>
+                            <li><strong>詳細:</strong> E_GEMINI_PROCESSINGが「無効APIキー」なのに対処法が「音声品質確認」</li>
+                            <li><strong>対策:</strong> エラーコード定義とメッセージの統一</li>
+                        </ul>
+
+                        <h6><span style="color: red;">❌ 2回目実行結果 (API構造修正後)</span></h6>
+                        <ul>
+                            <li><strong>問題:</strong> transcribeAudioFromBufferとprocessAudioWithStructuredOutputの重複</li>
+                            <li><strong>対策:</strong> 案2単純化実装 - transcribeAudioFromBuffer完全削除</li>
+                            <li><strong>成果:</strong> API構造の単純化・統一化達成</li>
+                        </ul>
+
+                        <h6><span style="color: green;">✅ 3回目実行結果 (最終成功)</span></h6>
+                        <ul>
+                            <li><strong>完了項目:</strong> 実際のGemini APIエラーパターン調査完了</li>
+                            <li><strong>エラーパターン:</strong> 
+                                <ul>
+                                    <li>500エラー → E_GEMINI_PROCESSING (APIキー認証)</li>
+                                    <li>429エラー → E_GEMINI_QUOTA (レート制限)</li>
+                                    <li>400エラー → E_GEMINI_INVALID_FORMAT (形式エラー)</li>
+                                    <li>短音声エラー → E_GEMINI_INSUFFICIENT_CONTENT</li>
+                                </ul>
+                            </li>
+                            <li><strong>修正内容:</strong>
+                                <ul>
+                                    <li>aiService.js: エラー判定ロジックを実際のAPIパターンに修正</li>
+                                    <li>error-test.js: MockAIServiceにsetTestScenario()追加</li>
+                                    <li>errorCodes.js: troubleshootingメッセージ改善</li>
+                                    <li>error-codes.html: E_GEMINI_PROCESSING定義を「Gemini APIキー認証エラー」に具体化</li>
+                                </ul>
+                            </li>
+                            <li><strong>結果:</strong> 全3テストケース正常動作確認</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #e7f5e7; padding: 10px; border: 1px solid #28a745; margin: 15px 0;">
+                        <p><strong>📈 改善成果:</strong></p>
+                        <ul>
+                            <li>✅ 実際のGemini APIエラーレスポンス形式に完全準拠</li>
+                            <li>✅ [GoogleGenerativeAI Error]プレフィックス付きエラー正確判定</li>
+                            <li>✅ MockAIServiceによる独立したテスト環境構築</li>
+                            <li>✅ 本番環境コードへの影響なしでテスト実行可能</li>
+                            <li>✅ エラーコード定義の具体化・明確化達成</li>
                         </ul>
                     </div>
                 </div>
