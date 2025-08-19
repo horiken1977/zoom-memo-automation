@@ -617,6 +617,353 @@ function determineGeminiErrorCode(errorMessage, testName = '') {
 }
 
 /**
+ * TC301-3: 音声品質警告テスト
+ * 低品質音声（雑音・無音・極端に小さい音声）でE_AUDIO_QUALITY_WARNINGを検証
+ * 警告を出しつつ処理は継続することを確認
+ */
+async function testAudioQualityWarnings() {
+  const testResults = [];
+  const aiService = new AIService();
+  const slackService = new SlackService();
+  
+  // ExecutionLoggerで本番環境のログ出力
+  const executionId = `error_test_TC301-3_${Date.now()}`;
+  const meetingInfo = {
+    id: executionId,
+    topic: 'TC301-3: 音声品質警告テスト',
+    start_time: new Date().toISOString()
+  };
+  const execLogger = new ExecutionLogger(executionId, meetingInfo);
+  
+  logger.info('=== TC301-3: 音声品質警告テスト開始 ===');
+  execLogger.logInfo('TEST_START', { 
+    testCategory: 'TC301-3',
+    description: '音声品質警告テスト開始'
+  });
+  
+  // テスト1: 無音データ（極端に静かな音声）
+  try {
+    logger.info('Test 1: 無音データテスト（音量レベル極小）');
+    execLogger.logInfo('TEST_1_START', { 
+      testName: '無音データ',
+      description: '無音データテスト開始'
+    });
+    
+    // 無音データを生成（全て0の音声バッファ）
+    const silentBuffer = Buffer.alloc(1024 * 100); // 100KB の無音データ
+    silentBuffer.fill(0x00); // 完全無音
+    
+    const testMeetingInfo = {
+      topic: 'TC301-3 Silent Audio Test',
+      timestamp: new Date().toISOString(),
+      duration: 10 // 10秒の無音
+    };
+    
+    // 処理を実行（警告は出るが成功するはず）
+    const result = await aiService.processAudioWithStructuredOutput(silentBuffer, testMeetingInfo, { 
+      mimeType: 'audio/aac',
+      testType: 'silent_audio'
+    });
+    
+    // 警告フラグを確認
+    const hasQualityWarning = result.audioQuality && 
+                             (result.audioQuality.clarity === 'poor' || 
+                              result.audioQuality.issues.includes('無音検出'));
+    
+    testResults.push({
+      test: '無音データ',
+      status: 'WARNING_DETECTED',
+      error: null,
+      errorCode: hasQualityWarning ? 'E_AUDIO_QUALITY_WARNING' : null,
+      message: `処理は成功、品質警告: ${hasQualityWarning ? '検出' : '未検出'}`,
+      processingResult: result.success ? '成功' : '失敗'
+    });
+    
+    logger.warn(`Test 1 結果: 処理成功、品質警告${hasQualityWarning ? '検出' : '未検出'}`);
+    
+    if (hasQualityWarning) {
+      execLogger.logWarning('TEST_1_WARNING', '音声品質警告検出 - 無音データ', {
+        testName: '無音データ',
+        audioQuality: result.audioQuality,
+        processingContinued: true
+      });
+      
+      // Slack警告通知
+      const errorDef = ERROR_CODES['E_AUDIO_QUALITY_WARNING'];
+      await sendWarningToSlack(slackService, 'E_AUDIO_QUALITY_WARNING', errorDef, 
+                              '無音データ検出 - 音声品質が低い可能性があります', 
+                              'TC301-3 Test 1: 無音データ');
+    }
+    
+  } catch (error) {
+    // 品質警告でも処理は継続されるはず
+    const errorCode = 'E_AUDIO_QUALITY_WARNING';
+    const errorDef = ERROR_CODES[errorCode] || {};
+    
+    testResults.push({
+      test: '無音データ',
+      status: 'UNEXPECTED_ERROR',
+      error: error.message,
+      errorCode,
+      errorDefinition: errorDef,
+      message: `予期しないエラー: ${error.message}`
+    });
+    
+    logger.error(`Test 1 予期しないエラー: ${error.message}`);
+    execLogger.logError('TEST_1_ERROR', errorCode, error.message, {
+      testName: '無音データ',
+      errorDefinition: errorDef
+    });
+  }
+  
+  // テスト2: ノイズ混入音声（S/N比が悪い音声）
+  try {
+    logger.info('Test 2: ノイズ混入音声テスト（S/N比劣悪）');
+    execLogger.logInfo('TEST_2_START', { 
+      testName: 'ノイズ混入音声',
+      description: 'ノイズ混入音声テスト開始'
+    });
+    
+    // ノイズ混入音声を生成（ランダムノイズ）
+    const noisyBuffer = Buffer.alloc(1024 * 100); // 100KB
+    // ランダムノイズを生成
+    for (let i = 0; i < noisyBuffer.length; i++) {
+      noisyBuffer[i] = Math.floor(Math.random() * 256);
+    }
+    // AACヘッダーを追加
+    noisyBuffer[0] = 0xFF;
+    noisyBuffer[1] = 0xF1;
+    
+    const testMeetingInfo = {
+      topic: 'TC301-3 Noisy Audio Test',
+      timestamp: new Date().toISOString(),
+      duration: 10,
+      audioNote: 'Heavy background noise'
+    };
+    
+    const result = await aiService.processAudioWithStructuredOutput(noisyBuffer, testMeetingInfo, { 
+      mimeType: 'audio/aac',
+      testType: 'noisy_audio'
+    });
+    
+    // 品質警告フラグ確認
+    const hasQualityWarning = result.audioQuality && 
+                             (result.audioQuality.clarity === 'poor' || 
+                              result.audioQuality.clarity === 'fair');
+    
+    testResults.push({
+      test: 'ノイズ混入音声',
+      status: 'WARNING_DETECTED',
+      error: null,
+      errorCode: hasQualityWarning ? 'E_AUDIO_QUALITY_WARNING' : null,
+      message: `処理は成功、品質警告: ${hasQualityWarning ? '検出' : '未検出'}`,
+      processingResult: result.success ? '成功' : '失敗'
+    });
+    
+    logger.warn(`Test 2 結果: 処理成功、品質警告${hasQualityWarning ? '検出' : '未検出'}`);
+    
+    if (hasQualityWarning) {
+      execLogger.logWarning('TEST_2_WARNING', '音声品質警告検出 - ノイズ混入', {
+        testName: 'ノイズ混入音声',
+        audioQuality: result.audioQuality,
+        processingContinued: true
+      });
+      
+      // Slack警告通知
+      const errorDef = ERROR_CODES['E_AUDIO_QUALITY_WARNING'];
+      await sendWarningToSlack(slackService, 'E_AUDIO_QUALITY_WARNING', errorDef, 
+                              'ノイズ混入検出 - 音声品質が低下しています', 
+                              'TC301-3 Test 2: ノイズ混入音声');
+    }
+    
+  } catch (error) {
+    const errorCode = 'E_AUDIO_QUALITY_WARNING';
+    const errorDef = ERROR_CODES[errorCode] || {};
+    
+    testResults.push({
+      test: 'ノイズ混入音声',
+      status: 'UNEXPECTED_ERROR',
+      error: error.message,
+      errorCode,
+      errorDefinition: errorDef,
+      message: `予期しないエラー: ${error.message}`
+    });
+    
+    logger.error(`Test 2 予期しないエラー: ${error.message}`);
+    execLogger.logError('TEST_2_ERROR', errorCode, error.message, {
+      testName: 'ノイズ混入音声',
+      errorDefinition: errorDef
+    });
+  }
+  
+  // テスト3: 極小音量音声（ほぼ聞こえないレベル）
+  try {
+    logger.info('Test 3: 極小音量音声テスト（音量レベル1%）');
+    execLogger.logInfo('TEST_3_START', { 
+      testName: '極小音量音声',
+      description: '極小音量音声テスト開始'
+    });
+    
+    // 極小音量音声を生成（非常に小さい振幅）
+    const quietBuffer = Buffer.alloc(1024 * 100); // 100KB
+    // 非常に小さい音声信号を生成
+    for (let i = 0; i < quietBuffer.length; i++) {
+      // 0-5の範囲の非常に小さい値
+      quietBuffer[i] = Math.floor(Math.random() * 5);
+    }
+    // AACヘッダー
+    quietBuffer[0] = 0xFF;
+    quietBuffer[1] = 0xF1;
+    
+    const testMeetingInfo = {
+      topic: 'TC301-3 Very Quiet Audio Test',
+      timestamp: new Date().toISOString(),
+      duration: 10,
+      audioNote: 'Volume level extremely low'
+    };
+    
+    const result = await aiService.processAudioWithStructuredOutput(quietBuffer, testMeetingInfo, { 
+      mimeType: 'audio/aac',
+      testType: 'quiet_audio'
+    });
+    
+    // 品質警告フラグ確認
+    const hasQualityWarning = result.audioQuality && 
+                             result.audioQuality.issues && 
+                             result.audioQuality.issues.length > 0;
+    
+    testResults.push({
+      test: '極小音量音声',
+      status: 'WARNING_DETECTED',
+      error: null,
+      errorCode: hasQualityWarning ? 'E_AUDIO_QUALITY_WARNING' : null,
+      message: `処理は成功、品質警告: ${hasQualityWarning ? '検出' : '未検出'}`,
+      processingResult: result.success ? '成功' : '失敗'
+    });
+    
+    logger.warn(`Test 3 結果: 処理成功、品質警告${hasQualityWarning ? '検出' : '未検出'}`);
+    
+    if (hasQualityWarning) {
+      execLogger.logWarning('TEST_3_WARNING', '音声品質警告検出 - 極小音量', {
+        testName: '極小音量音声',
+        audioQuality: result.audioQuality,
+        processingContinued: true
+      });
+      
+      // Slack警告通知
+      const errorDef = ERROR_CODES['E_AUDIO_QUALITY_WARNING'];
+      await sendWarningToSlack(slackService, 'E_AUDIO_QUALITY_WARNING', errorDef, 
+                              '音量レベル極小 - マイク設定を確認してください', 
+                              'TC301-3 Test 3: 極小音量音声');
+    }
+    
+  } catch (error) {
+    const errorCode = 'E_AUDIO_QUALITY_WARNING';
+    const errorDef = ERROR_CODES[errorCode] || {};
+    
+    testResults.push({
+      test: '極小音量音声',
+      status: 'UNEXPECTED_ERROR',
+      error: error.message,
+      errorCode,
+      errorDefinition: errorDef,
+      message: `予期しないエラー: ${error.message}`
+    });
+    
+    logger.error(`Test 3 予期しないエラー: ${error.message}`);
+    execLogger.logError('TEST_3_ERROR', errorCode, error.message, {
+      testName: '極小音量音声',
+      errorDefinition: errorDef
+    });
+  }
+  
+  // ExecutionLoggerでGoogle Driveにログを保存
+  execLogger.logInfo('TEST_COMPLETE', {
+    testCategory: 'TC301-3',
+    totalTests: testResults.length,
+    warningsDetected: testResults.filter(r => r.status === 'WARNING_DETECTED').length,
+    summary: generateTestSummary(testResults)
+  });
+  
+  let logSaveResult = null;
+  try {
+    logSaveResult = await execLogger.saveToGoogleDrive();
+    logger.info(`Logs saved to Google Drive: ${logSaveResult.viewLink}`);
+  } catch (logError) {
+    logger.error(`Failed to save logs: ${logError.message}`);
+  }
+  
+  return {
+    testCategory: 'TC301-3: 音声品質警告テスト',
+    totalTests: testResults.length,
+    results: testResults,
+    logSaveResult,
+    summary: {
+      ...generateTestSummary(testResults),
+      warningsDetected: testResults.filter(r => r.status === 'WARNING_DETECTED').length,
+      processingContinued: testResults.filter(r => r.processingResult === '成功').length
+    }
+  };
+}
+
+/**
+ * Slackへ警告通知を送信（エラーではなく警告）
+ */
+async function sendWarningToSlack(slackService, warningCode, warningDef, warningMessage, testName) {
+  try {
+    const blocks = [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '⚠️ 音声品質警告 - 処理継続中',
+          emoji: true
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*テスト:* ${testName}\n*警告コード:* ${warningCode}\n*説明:* ${warningDef.message || '音声品質に問題があります'}`
+        }
+      },
+      {
+        type: 'section',
+        fields: [
+          {
+            type: 'mrkdwn',
+            text: `*処理状態:*\n✅ 処理継続中`
+          },
+          {
+            type: 'mrkdwn',
+            text: `*推奨対処:*\n${warningDef.troubleshooting || '録画環境を改善してください'}`
+          }
+        ]
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `⚠️ 品質警告 - 処理は正常に継続されます | ${new Date().toISOString()}`
+          }
+        ]
+      }
+    ];
+    
+    await slackService.postMessage({
+      text: `音声品質警告: ${warningCode}`,
+      blocks,
+      channel: config.slack.channelId
+    });
+    
+    logger.info(`Slack warning notification sent: ${warningCode}`);
+  } catch (slackError) {
+    logger.error(`Failed to send Slack warning: ${slackError.message}`);
+  }
+}
+
+/**
  * Slackへエラー通知を送信
  */
 async function sendErrorToSlack(slackService, errorCode, errorDef, errorMessage, testName) {
@@ -704,6 +1051,9 @@ module.exports = async (req, res) => {
     } else if (test === 'TC301-2' || (category === 'GEMINI' && test === 'ai-failures')) {
       // TC301-2: Gemini AI障害テスト
       result = await testGeminiAIFailures();
+    } else if (test === 'TC301-3' || (category === 'AU' && test === 'quality-warnings')) {
+      // TC301-3: 音声品質警告テスト
+      result = await testAudioQualityWarnings();
     } else {
       return res.status(400).json({
         success: false,
