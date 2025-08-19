@@ -367,7 +367,7 @@ const ERROR_CODES = {
     messageEn: 'Gemini API key authentication error',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'GOOGLE_AI_API_KEYが正しく設定されているか確認してください。APIキーの有効性とプロジェクトのアクセス権限を確認してください'
+    troubleshooting: 'GOOGLE_AI_API_KEYが正しく設定されているか確認してください。APIキーの有効性とプロジェクトのアクセス権限を確認してリトライしてください'
   },
 
   E_GEMINI_QUOTA: {
