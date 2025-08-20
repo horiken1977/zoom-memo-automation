@@ -509,87 +509,75 @@
             <div style="background: white; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
                 <div class="mermaid">
                     graph TD
-                        %% エラー発生起点
-                        ERROR[🚨 エラー検出<br/>try-catch] --> CLASSIFY{エラー種別判定<br/>error.message分析}
+                        ERROR["🚨 エラー検出<br/>try-catch"] --> CLASSIFY{"エラー種別判定<br/>error.message分析"}
                         
-                        %% Zoom API関連エラー分岐
-                        CLASSIFY -->|ZoomService| ZOOM_TYPE{Zoom エラー分類}
-                        ZOOM_TYPE -->|認証失敗| Z1[🔑 E_ZOOM_AUTH<br/>認証情報確認]
-                        ZOOM_TYPE -->|API制限| Z2[⏱️ E_ZOOM_RATE_LIMIT<br/>待機後リトライ]
-                        ZOOM_TYPE -->|録画なし| Z3[📹 E_ZOOM_RECORDING_NOT_FOUND<br/>スキップ処理]
-                        ZOOM_TYPE -->|音声データなし| Z4[🎤 E_ZOOM_AUDIO_MISSING<br/>動画から音声抽出]
-                        ZOOM_TYPE -->|動画データなし| Z5[📼 E_ZOOM_VIDEO_MISSING<br/>音声のみ処理]
+                        CLASSIFY -->|"ZoomService"| ZOOM_TYPE{"Zoom エラー分類"}
+                        ZOOM_TYPE -->|"認証失敗"| Z1["🔑 E_ZOOM_AUTH<br/>認証情報確認"]
+                        ZOOM_TYPE -->|"API制限"| Z2["⏱️ E_ZOOM_RATE_LIMIT<br/>待機後リトライ"]
+                        ZOOM_TYPE -->|"録画なし"| Z3["📹 E_ZOOM_RECORDING_NOT_FOUND<br/>スキップ処理"]
+                        ZOOM_TYPE -->|"音声データなし"| Z4["🎤 E_ZOOM_AUDIO_MISSING<br/>動画から音声抽出"]
+                        ZOOM_TYPE -->|"動画データなし"| Z5["📼 E_ZOOM_VIDEO_MISSING<br/>音声のみ処理"]
                         
-                        %% Gemini AI関連エラー分岐
-                        CLASSIFY -->|AIService| AI_TYPE{AI処理 エラー分類}
-                        AI_TYPE -->|APIキー認証| A1[🔐 E_GEMINI_PROCESSING<br/>環境変数確認]
-                        AI_TYPE -->|クォータ制限| A2[📊 E_GEMINI_QUOTA<br/>待機後リトライ]
-                        AI_TYPE -->|入力形式| A3[📄 E_GEMINI_INVALID_FORMAT<br/>形式変換実行]
-                        AI_TYPE -->|コンテンツ不足| A4[🎵 E_GEMINI_INSUFFICIENT_CONTENT<br/>最小長制限]
-                        AI_TYPE -->|音声品質低下| A5[📈 E_AUDIO_QUALITY_WARNING<br/>動画から再抽出]
+                        CLASSIFY -->|"AIService"| AI_TYPE{"AI処理 エラー分類"}
+                        AI_TYPE -->|"APIキー認証"| A1["🔐 E_GEMINI_PROCESSING<br/>環境変数確認"]
+                        AI_TYPE -->|"クォータ制限"| A2["📊 E_GEMINI_QUOTA<br/>待機後リトライ"]
+                        AI_TYPE -->|"入力形式"| A3["📄 E_GEMINI_INVALID_FORMAT<br/>形式変換実行"]
+                        AI_TYPE -->|"コンテンツ不足"| A4["🎵 E_GEMINI_INSUFFICIENT_CONTENT<br/>最小長制限"]
+                        AI_TYPE -->|"音声品質低下"| A5["📈 E_AUDIO_QUALITY_WARNING<br/>動画から再抽出"]
                         
-                        %% Google Drive関連エラー分岐
-                        CLASSIFY -->|GoogleDriveService| GD_TYPE{Drive エラー分類}
-                        GD_TYPE -->|認証失敗| G1[🔑 GD001<br/>認証情報確認]
-                        GD_TYPE -->|容量制限| G2[💾 GD002<br/>容量確認・削除]
-                        GD_TYPE -->|アップロード失敗| G3[📤 GD003<br/>リトライ実行]
-                        GD_TYPE -->|API制限| G4[⏳ GD008<br/>制限解除待機]
+                        CLASSIFY -->|"GoogleDriveService"| GD_TYPE{"Drive エラー分類"}
+                        GD_TYPE -->|"認証失敗"| G1["🔑 GD001<br/>認証情報確認"]
+                        GD_TYPE -->|"容量制限"| G2["💾 GD002<br/>容量確認削除"]
+                        GD_TYPE -->|"アップロード失敗"| G3["📤 GD003<br/>リトライ実行"]
+                        GD_TYPE -->|"API制限"| G4["⏳ GD008<br/>制限解除待機"]
                         
-                        %% Slack関連エラー分岐
-                        CLASSIFY -->|SlackService| SL_TYPE{Slack エラー分類}
-                        SL_TYPE -->|Bot認証失敗| S1[🤖 SL001<br/>Bot Token確認]
-                        SL_TYPE -->|チャンネルアクセス| S2[#️⃣ SL002<br/>チャンネル権限確認]
-                        SL_TYPE -->|投稿失敗| S3[💬 SL003<br/>メッセージ形式確認]
-                        SL_TYPE -->|API制限| S4[⏱️ SL004<br/>制限解除待機]
+                        CLASSIFY -->|"SlackService"| SL_TYPE{"Slack エラー分類"}
+                        SL_TYPE -->|"Bot認証失敗"| S1["🤖 SL001<br/>Bot Token確認"]
+                        SL_TYPE -->|"チャンネルアクセス"| S2["🔗 SL002<br/>チャンネル権限確認"]
+                        SL_TYPE -->|"投稿失敗"| S3["💬 SL003<br/>メッセージ形式確認"]
+                        SL_TYPE -->|"API制限"| S4["⏱️ SL004<br/>制限解除待機"]
                         
-                        %% システム関連エラー分岐
-                        CLASSIFY -->|System| SY_TYPE{システム エラー分類}
-                        SY_TYPE -->|メモリ不足| SYS1[🧠 E_SYSTEM_MEMORY<br/>音声圧縮実行]
-                        SY_TYPE -->|タイムアウト| SYS2[⏰ E_SYSTEM_TIMEOUT<br/>処理分割実行]
-                        SY_TYPE -->|環境変数エラー| SYS3[⚙️ E_SYSTEM_CONFIG<br/>設定値確認]
+                        CLASSIFY -->|"System"| SY_TYPE{"システム エラー分類"}
+                        SY_TYPE -->|"メモリ不足"| SYS1["🧠 E_SYSTEM_MEMORY<br/>音声圧縮実行"]
+                        SY_TYPE -->|"タイムアウト"| SYS2["⏰ E_SYSTEM_TIMEOUT<br/>処理分割実行"]
+                        SY_TYPE -->|"環境変数エラー"| SYS3["⚙️ E_SYSTEM_CONFIG<br/>設定値確認"]
                         
-                        %% リトライ処理判定
-                        Z1 --> RETRY_CHECK{リトライ対象?<br/>isRetryable()}
+                        Z1 --> RETRY_CHECK{"リトライ対象?<br/>isRetryable"}
                         Z2 --> RETRY_CHECK
                         A1 --> RETRY_CHECK
                         A2 --> RETRY_CHECK
                         G3 --> RETRY_CHECK
                         SYS2 --> RETRY_CHECK
                         
-                        %% リトライフロー
-                        RETRY_CHECK -->|Yes リトライ可能| RETRY_COUNT{リトライ回数<br/>< MAX_RETRY?}
-                        RETRY_COUNT -->|Yes 継続可能| WAIT[⏳ 指数バックオフ待機<br/>2^attempt秒]
-                        WAIT --> RETRY_EXEC[🔄 処理再実行]
-                        RETRY_EXEC -->|成功| SUCCESS_RETRY[✅ リトライ成功]
-                        RETRY_EXEC -->|失敗| RETRY_CHECK
+                        RETRY_CHECK -->|"Yes リトライ可能"| RETRY_COUNT{"リトライ回数<br/>MAX_RETRY以下?"}
+                        RETRY_COUNT -->|"Yes 継続可能"| WAIT["⏳ 指数バックオフ待機<br/>2の累乗秒"]
+                        WAIT --> RETRY_EXEC["🔄 処理再実行"]
+                        RETRY_EXEC -->|"成功"| SUCCESS_RETRY["✅ リトライ成功"]
+                        RETRY_EXEC -->|"失敗"| RETRY_CHECK
                         
-                        RETRY_COUNT -->|No 上限到達| RETRY_FAIL[❌ リトライ上限<br/>AU008エラー]
+                        RETRY_COUNT -->|"No 上限到達"| RETRY_FAIL["❌ リトライ上限<br/>AU008エラー"]
                         
-                        %% 警告処理（処理継続）
-                        Z4 --> WARNING_FLOW[⚠️ 警告処理フロー]
+                        Z4 --> WARNING_FLOW["⚠️ 警告処理フロー"]
                         Z5 --> WARNING_FLOW
                         A5 --> WARNING_FLOW
-                        WARNING_FLOW --> FALLBACK[🔄 フォールバック実行]
-                        FALLBACK --> CONTINUE[✅ 処理継続]
+                        WARNING_FLOW --> FALLBACK["🔄 フォールバック実行"]
+                        FALLBACK --> CONTINUE["✅ 処理継続"]
                         
-                        %% 致命的エラー処理（処理停止）
-                        Z3 --> FATAL_FLOW[🛑 致命的エラー処理]
+                        Z3 --> FATAL_FLOW["🛑 致命的エラー処理"]
                         A4 --> FATAL_FLOW
                         G2 --> FATAL_FLOW
                         RETRY_FAIL --> FATAL_FLOW
-                        RETRY_CHECK -->|No リトライ不可| FATAL_FLOW
+                        RETRY_CHECK -->|"No リトライ不可"| FATAL_FLOW
                         
-                        %% 共通後処理
                         SUCCESS_RETRY --> LOG_SAVE
                         CONTINUE --> LOG_SAVE
                         FATAL_FLOW --> LOG_SAVE
                         
-                        LOG_SAVE[📊 詳細ログ保存<br/>ExecutionLogger]
-                        LOG_SAVE --> SLACK_NOTIFY[💬 Slack通知送信<br/>sendErrorNotification()]
-                        SLACK_NOTIFY --> GD_SAVE[☁️ Google Drive保存<br/>error_logs/フォルダ]
-                        GD_SAVE --> END_FLOW[🏁 エラー処理完了]
+                        LOG_SAVE["📊 詳細ログ保存<br/>ExecutionLogger"]
+                        LOG_SAVE --> SLACK_NOTIFY["💬 Slack通知送信<br/>sendErrorNotification"]
+                        SLACK_NOTIFY --> GD_SAVE["☁️ Google Drive保存<br/>error_logs フォルダ"]
+                        GD_SAVE --> END_FLOW["🏁 エラー処理完了"]
                         
-                        %% スタイリング
                         classDef errorStyle fill:#ffebee,stroke:#c62828,stroke-width:3px
                         classDef warningStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
                         classDef decisionStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
