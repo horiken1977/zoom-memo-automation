@@ -87,7 +87,34 @@ class AudioSummaryService {
       debugTimer('Step 0: 音声圧縮処理開始');
       let processedAudioBuffer = audioBuffer;
       let compressionStats = null;
+      let qualityCheckResult = null;
       
+      // 0-1. 音声品質チェック
+      debugTimer('Step 0-1: 音声品質チェック開始');
+      qualityCheckResult = await this.checkAudioQuality(audioBuffer);
+      debugTimer('Step 0-1: 音声品質チェック完了', `品質低下: ${qualityCheckResult.isLowQuality}, RMS: ${qualityCheckResult.averageRMS?.toFixed(4) || 'N/A'}`);
+      
+      // 音声品質が低い場合は警告を出力（ただし処理は継続）
+      if (qualityCheckResult.isLowQuality) {
+        const { ErrorManager } = require('../utils/errorCodes');
+        const warningInfo = ErrorManager.createError('E_AUDIO_QUALITY_WARNING', {
+          meetingTopic: meetingInfo?.topic || 'Unknown',
+          fileName: fileName,
+          qualityDetails: qualityCheckResult.details
+        });
+        
+        logger.warn('⚠️ 音声品質警告が検出されました:', warningInfo);
+        
+        // 動画から音声を再抽出する処理をここに追加可能
+        // TODO: VideoStorageServiceと連携して動画から音声を再抽出
+        // const videoService = new VideoStorageService();
+        // if (meetingInfo.videoAvailable) {
+        //   processedAudioBuffer = await videoService.extractAudioFromVideo(meetingInfo.videoPath);
+        //   logger.info('動画から音声を再抽出しました');
+        // }
+      }
+      
+      // 0-2. 音声圧縮処理
       if (this.audioCompressionService.shouldCompress(audioBuffer.length)) {
         logger.info('🗜️ 大容量音声ファイル検出 - 最高レベル圧縮を実行');
         const compressionResult = await this.audioCompressionService.compressAudioBuffer(audioBuffer, fileName);
@@ -134,6 +161,7 @@ class AudioSummaryService {
         audioBufferSize: audioBuffer.length,
         processedAudioBufferSize: processedAudioBuffer.length,
         compressionStats: compressionStats, // 圧縮統計情報
+        qualityCheckResult: qualityCheckResult, // 音声品質チェック結果
         meetingInfo: meetingInfo,
         processedAt: new Date().toISOString(),
         totalProcessingTime: totalTime,
@@ -297,6 +325,80 @@ ${transcriptionResult.transcription}
     }
     
     return true;
+  }
+
+  /**
+   * 音声品質をチェック（無音、極小音量、過剰ノイズを検出）
+   * @param {Buffer} audioBuffer - 音声バッファ
+   * @returns {Object} 品質チェック結果
+   */
+  async checkAudioQuality(audioBuffer) {
+    try {
+      const bufferSize = audioBuffer.length;
+      
+      // サンプリング：最初、中間、最後の部分をチェック
+      const sampleSize = Math.min(1024, Math.floor(bufferSize / 10));
+      const startSample = audioBuffer.slice(0, sampleSize);
+      const middleSample = audioBuffer.slice(Math.floor(bufferSize / 2) - sampleSize / 2, Math.floor(bufferSize / 2) + sampleSize / 2);
+      const endSample = audioBuffer.slice(bufferSize - sampleSize, bufferSize);
+      
+      // 音量レベル計算（RMS: Root Mean Square）
+      const calculateRMS = (buffer) => {
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i += 2) {
+          const sample = buffer.readInt16LE(i) / 32768.0; // 16-bit audio正規化
+          sum += sample * sample;
+        }
+        return Math.sqrt(sum / (buffer.length / 2));
+      };
+      
+      const startRMS = calculateRMS(startSample);
+      const middleRMS = calculateRMS(middleSample);
+      const endRMS = calculateRMS(endSample);
+      const averageRMS = (startRMS + middleRMS + endRMS) / 3;
+      
+      // 品質判定基準
+      const isSilent = averageRMS < 0.001; // ほぼ無音
+      const isVeryQuiet = averageRMS < 0.01; // 極端に小さい音
+      const hasHighNoise = averageRMS > 0.8; // ノイズ過多
+      
+      const qualityResult = {
+        averageRMS,
+        isSilent,
+        isVeryQuiet,
+        hasHighNoise,
+        isLowQuality: isSilent || isVeryQuiet || hasHighNoise,
+        details: {
+          startRMS,
+          middleRMS,
+          endRMS,
+          threshold: {
+            silent: 0.001,
+            veryQuiet: 0.01,
+            highNoise: 0.8
+          }
+        }
+      };
+      
+      if (qualityResult.isLowQuality) {
+        logger.warn('🔊 音声品質警告:', {
+          isSilent,
+          isVeryQuiet,
+          hasHighNoise,
+          averageRMS: averageRMS.toFixed(4)
+        });
+      }
+      
+      return qualityResult;
+    } catch (error) {
+      logger.error('音声品質チェックエラー:', error.message);
+      // エラーの場合は品質チェックをスキップして処理継続
+      return {
+        averageRMS: 0.5,
+        isLowQuality: false,
+        error: error.message
+      };
+    }
   }
 
   /**

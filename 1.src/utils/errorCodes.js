@@ -468,11 +468,11 @@ const ERROR_CODES = {
 
   E_AUDIO_QUALITY_WARNING: {
     code: 'E_AUDIO_QUALITY_WARNING',
-    message: '音声品質警告',
-    messageEn: 'Audio quality warning',
+    message: '音声品質警告（動画から音声再抽出推奨）',
+    messageEn: 'Audio quality warning (video extraction recommended)',
     retryable: false,
-    notifySlack: false,
-    troubleshooting: '録画環境改善の提案、品質レポート生成'
+    notifySlack: true,
+    troubleshooting: '音声品質が低いため、動画ファイルから音声を再抽出して処理を継続します'
   },
 
   // ========================================

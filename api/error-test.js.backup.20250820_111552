@@ -616,14 +616,6 @@ function determineGeminiErrorCode(errorMessage, testName = '') {
   }
 }
 
-/*
- * 【DEPRECATED - TC301-003 削除】
- * 旧 TC301-003: 音声品質警告テスト は TC206 に統合されました
- * - 音声品質低下時の動画からの音声再抽出は TC206-3 で実装
- * - 本機能は TC206 で包含されるため削除
- * バックアップ: error-test.js.backup.20250820_111552
- */
-
 /**
  * TC206: 部分データ存在業務テスト
  * 1. 音声ファイル不存在 → 動画から音声抽出
@@ -1060,17 +1052,17 @@ module.exports = async (req, res) => {
     } else if (test === 'TC301-2' || (category === 'GEMINI' && test === 'ai-failures')) {
       // TC301-2: Gemini AI障害テスト
       result = await testGeminiAIFailures();
-    } else if (test === 'TC206' || (category === 'DATA' && test === 'partial-data')) {
-      // TC206: 部分データ存在業務テスト
-      result = await testPartialDataScenarios();
+    } else if (test === 'TC301-3' || (category === 'AU' && test === 'quality-warnings')) {
+      // TC301-3: 音声品質警告テスト
+      result = await testAudioQualityWarnings();
     } else {
       return res.status(400).json({
         success: false,
         error: 'Invalid test specification',
         availableTests: [
           'TC301-1 (broken audio files)',
-          'TC301-2 (Gemini AI failures - auth/content/quota)',
-          'TC206 (partial data scenarios - audio/video missing, quality issues)',
+          'TC301-2 (Gemini AI failures - auth/content/quota)', 
+          'TC301-3 (quality warnings)',
           'TC301-4 (summary failures)'
         ],
         usage: '/api/error-test?test=TC301-1 or /api/error-test?category=AU&test=broken-audio'
