@@ -312,6 +312,10 @@
             transform: translateY(-2px);
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
 </head>
 <body>
     <div class="container">
@@ -321,9 +325,9 @@
             <p>Zoom Memo Automation - 業務フロー・アプリケーション対応・エラーハンドリング設計</p>
             <div class="nav-links">
                 <a href="index.html" class="nav-link">🏠 ダッシュボード</a>
-                <a href="functional-design.html" class="nav-link">🔧 機能設計書</a>
-                <a href="environment-design.html" class="nav-link">🏗️ 環境設計書</a>
-                <a href="test-specification.html" class="nav-link">🧪 テスト仕様書</a>
+                <a href="0.docs/functional-design.html" class="nav-link">🔧 機能設計書</a>
+                <a href="0.docs/environment-design.html" class="nav-link">🏗️ 環境設計書</a>
+                <a href="0.docs/test-specification.html" class="nav-link">🧪 テスト仕様書</a>
             </div>
         </div>
 
@@ -382,57 +386,131 @@
         <div class="section">
             <h2>2. メイン業務フロー図</h2>
             
-            <div class="flow-diagram">
-                <div style="margin: 1rem 0;">
-                    <div class="flow-step">📡 録画監視開始</div>
-                    <span class="flow-arrow">↓</span>
-                    <div class="flow-step">🔍 新録画検知</div>
+            <div style="background: white; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
+                <div class="mermaid">
+                    graph TD
+                        %% Phase 1: 監視・検知フェーズ
+                        A[📡 Zoom録画監視開始<br/>monitor-recordings API] --> B[🔍 新録画データ監視<br/>monitorNewRecordings()]
+                        B --> C{録画データ存在?}
+                        
+                        %% データなしの場合
+                        C -->|No データなし| D[📭 待機モード<br/>2時間後再監視]
+                        D --> A
+                        
+                        %% データありの場合 - Phase 2へ
+                        C -->|Yes データあり| E[📊 録画数確認<br/>${recordings.length}件検知]
+                        
+                        %% Phase 2: ダウンロード・前処理フェーズ
+                        E --> F[🎬 並列処理準備<br/>各録画をPromise.map]
+                        F --> G[📥 録画ダウンロード<br/>downloadRecording()]
+                        G --> H[💬 Slack処理開始通知<br/>sendProcessingNotification()]
+                        
+                        %% Phase 3: 並列処理フェーズ
+                        H --> I[🔄 Promise.all並列実行開始]
+                        
+                        %% Thread A: 動画保存系
+                        I --> J1[☁️ Thread A: 動画保存処理<br/>saveRecording()]
+                        J1 --> K1[📁 Google Drive保存完了<br/>driveResult取得]
+                        
+                        %% Thread B: 音声処理系
+                        I --> J2[🎤 Thread B: 音声処理開始<br/>音声ファイル一時保存]
+                        J2 --> L1[📤 一時ファイル保存<br/>saveTemporaryFile()]
+                        L1 --> L2{音声品質チェック<br/>checkAudioQuality()}
+                        
+                        %% 音声品質判定分岐
+                        L2 -->|品質OK| L3[🤖 AI文字起こし実行<br/>transcribeAudio()]
+                        L2 -->|品質低下| L4[📹 動画から音声再抽出<br/>extractAudioFromVideo()]
+                        L4 --> L3
+                        
+                        L3 --> M1[📝 構造化要約生成<br/>analyzeComprehensively()]
+                        M1 --> N1[🗑️ 一時ファイル削除<br/>deleteTemporaryFile()]
+                        N1 --> O1[✅ analysisResult取得]
+                        
+                        %% Phase 4: 統合・通知フェーズ
+                        K1 --> P[⏳ 両Thread完了待機]
+                        O1 --> P
+                        P --> Q[💬 Slack通知送信<br/>sendMeetingSummaryWithRecording()]
+                        Q --> R[🗑️ ローカル一時ファイル削除]
+                        R --> S[✅ 単一録画処理完了<br/>status: completed]
+                        
+                        %% Phase 5: 全体完了フェーズ
+                        S --> T{全録画処理完了?}
+                        T -->|未完了| F
+                        T -->|完了| U[🎉 全録画処理完了<br/>Promise.all解決]
+                        U --> V[📊 処理結果レスポンス<br/>JSON返却]
+                        
+                        %% エラーハンドリング
+                        G -.->|Error| ER1[❌ ダウンロードエラー]
+                        J1 -.->|Error| ER2[❌ 動画保存エラー] 
+                        J2 -.->|Error| ER3[❌ 音声処理エラー]
+                        Q -.->|Error| ER4[❌ Slack通知エラー]
+                        
+                        ER1 --> ERH[🚨 エラーハンドリング<br/>sendErrorNotification()]
+                        ER2 --> ERH
+                        ER3 --> ERH
+                        ER4 --> ERH
+                        ERH --> ERC[📊 エラー結果記録<br/>status: error]
+                        ERC --> T
+                        
+                        %% スタイリング
+                        classDef phaseStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+                        classDef processStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+                        classDef decisionStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+                        classDef errorStyle fill:#ffebee,stroke:#b71c1c,stroke-width:2px
+                        classDef successStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                        
+                        class A,E,I,P,U phaseStyle
+                        class B,F,G,H,J1,J2,L1,L3,M1,N1,Q,R processStyle
+                        class C,L2,T decisionStyle
+                        class ER1,ER2,ER3,ER4,ERH errorStyle
+                        class D,K1,O1,S,V successStyle
                 </div>
-                
-                <div style="margin: 1rem 0;">
-                    <span class="flow-arrow">↓</span><br>
-                    <div class="flow-condition">録画データ有無判定</div>
-                </div>
-
-                <div style="margin: 1rem 0;">
-                    <div style="display: inline-block; vertical-align: top; margin: 1rem;">
-                        <div style="color: #6c757d; margin-bottom: 0.5rem;">データなし</div>
-                        <div class="flow-step success">📭 待機モード</div>
-                    </div>
-                    
-                    <div style="display: inline-block; vertical-align: top; margin: 1rem;">
-                        <div style="color: #28a745; margin-bottom: 0.5rem;">データあり</div>
-                        <div class="flow-step">📥 録画ダウンロード</div>
-                        <span class="flow-arrow">↓</span>
-                        <div class="flow-step">🔄 並列処理開始</div>
-                    </div>
-                </div>
-
-                <div style="margin: 2rem 0; border: 2px dashed #667eea; border-radius: 15px; padding: 1.5rem;">
-                    <h4 style="color: #667eea; margin-bottom: 1rem;">並列実行フロー</h4>
-                    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-                        <div style="margin: 0.5rem;">
-                            <div style="color: #17a2b8; font-weight: bold; margin-bottom: 0.5rem;">Thread A: 動画保存</div>
-                            <div class="flow-step success">☁️ Google Drive保存</div>
-                        </div>
-                        <div style="margin: 0.5rem;">
-                            <div style="color: #28a745; font-weight: bold; margin-bottom: 0.5rem;">Thread B: 音声処理</div>
-                            <div class="flow-step">🎤 音声一時保存</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step">🤖 AI文字起こし</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step">📝 構造化要約</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step">🗑️ 一時ファイル削除</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin: 1rem 0;">
-                    <div class="flow-step">💬 Slack通知送信</div>
-                    <span class="flow-arrow">↓</span>
-                    <div class="flow-step success">✅ 処理完了</div>
-                </div>
+            </div>
+            
+            <h3>📋 フェーズ別詳細</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>フェーズ</th>
+                            <th>主要処理</th>
+                            <th>条件分岐</th>
+                            <th>実行時間目安</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Phase 1</strong></td>
+                            <td>監視・検知</td>
+                            <td>録画データ存在判定</td>
+                            <td>2-5秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phase 2</strong></td>
+                            <td>ダウンロード・前処理</td>
+                            <td>-</td>
+                            <td>10-30秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phase 3</strong></td>
+                            <td>並列処理 (Thread A/B)</td>
+                            <td>音声品質判定</td>
+                            <td>30-120秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phase 4</strong></td>
+                            <td>統合・通知</td>
+                            <td>-</td>
+                            <td>3-8秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phase 5</strong></td>
+                            <td>全体完了</td>
+                            <td>全録画処理完了判定</td>
+                            <td>1-2秒</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -440,68 +518,144 @@
         <div class="section">
             <h2>3. エラーハンドリング・例外処理フロー</h2>
             
-            <div class="flow-diagram">
-                <h4 style="color: #dc3545; margin-bottom: 1rem;">🚨 エラー発生時の処理フロー</h4>
-                
-                <div style="margin: 1rem 0;">
-                    <div class="flow-step error">❌ エラー検出</div>
-                    <span class="flow-arrow">↓</span>
-                    <div class="flow-condition">エラー種別判定</div>
-                </div>
-
-                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin: 2rem 0;">
-                    <!-- Zoom関連エラー -->
-                    <div style="margin: 0.5rem; text-align: center;">
-                        <div style="color: #dc3545; font-weight: bold; margin-bottom: 0.5rem;">Zoom関連</div>
-                        <div class="flow-condition">認証失敗?</div>
-                        <span class="flow-arrow">↓</span>
-                        <div class="flow-step error">🔑 認証エラー通知</div>
+            <div style="background: white; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
+                <div class="mermaid">
+                    graph TD
+                        %% エラー発生起点
+                        ERROR[🚨 エラー検出<br/>try-catch] --> CLASSIFY{エラー種別判定<br/>error.message分析}
                         
-                        <div style="margin: 1rem 0;">
-                            <div class="flow-condition">録画データなし?</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step warning">⚠️ データ部分欠損</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step success">🔄 フォールバック処理</div>
-                        </div>
-                    </div>
-
-                    <!-- AI処理エラー -->
-                    <div style="margin: 0.5rem; text-align: center;">
-                        <div style="color: #f39c12; font-weight: bold; margin-bottom: 0.5rem;">AI処理</div>
-                        <div class="flow-condition">Gemini APIエラー?</div>
-                        <span class="flow-arrow">↓</span>
-                        <div class="flow-step warning">🤖 リトライ実行</div>
+                        %% Zoom API関連エラー分岐
+                        CLASSIFY -->|ZoomService| ZOOM_TYPE{Zoom エラー分類}
+                        ZOOM_TYPE -->|認証失敗| Z1[🔑 E_ZOOM_AUTH<br/>認証情報確認]
+                        ZOOM_TYPE -->|API制限| Z2[⏱️ E_ZOOM_RATE_LIMIT<br/>待機後リトライ]
+                        ZOOM_TYPE -->|録画なし| Z3[📹 E_ZOOM_RECORDING_NOT_FOUND<br/>スキップ処理]
+                        ZOOM_TYPE -->|音声データなし| Z4[🎤 E_ZOOM_AUDIO_MISSING<br/>動画から音声抽出]
+                        ZOOM_TYPE -->|動画データなし| Z5[📼 E_ZOOM_VIDEO_MISSING<br/>音声のみ処理]
                         
-                        <div style="margin: 1rem 0;">
-                            <div class="flow-condition">音声品質低下?</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step warning">📹 動画から音声再抽出</div>
-                        </div>
-                    </div>
-
-                    <!-- システムエラー -->
-                    <div style="margin: 0.5rem; text-align: center;">
-                        <div style="color: #6f42c1; font-weight: bold; margin-bottom: 0.5rem;">システム</div>
-                        <div class="flow-condition">タイムアウト?</div>
-                        <span class="flow-arrow">↓</span>
-                        <div class="flow-step error">⏱️ 処理分割実行</div>
+                        %% Gemini AI関連エラー分岐
+                        CLASSIFY -->|AIService| AI_TYPE{AI処理 エラー分類}
+                        AI_TYPE -->|APIキー認証| A1[🔐 E_GEMINI_PROCESSING<br/>環境変数確認]
+                        AI_TYPE -->|クォータ制限| A2[📊 E_GEMINI_QUOTA<br/>待機後リトライ]
+                        AI_TYPE -->|入力形式| A3[📄 E_GEMINI_INVALID_FORMAT<br/>形式変換実行]
+                        AI_TYPE -->|コンテンツ不足| A4[🎵 E_GEMINI_INSUFFICIENT_CONTENT<br/>最小長制限]
+                        AI_TYPE -->|音声品質低下| A5[📈 E_AUDIO_QUALITY_WARNING<br/>動画から再抽出]
                         
-                        <div style="margin: 1rem 0;">
-                            <div class="flow-condition">メモリ不足?</div>
-                            <span class="flow-arrow">↓</span>
-                            <div class="flow-step warning">🗜️ 音声圧縮実行</div>
-                        </div>
-                    </div>
+                        %% Google Drive関連エラー分岐
+                        CLASSIFY -->|GoogleDriveService| GD_TYPE{Drive エラー分類}
+                        GD_TYPE -->|認証失敗| G1[🔑 GD001<br/>認証情報確認]
+                        GD_TYPE -->|容量制限| G2[💾 GD002<br/>容量確認・削除]
+                        GD_TYPE -->|アップロード失敗| G3[📤 GD003<br/>リトライ実行]
+                        GD_TYPE -->|API制限| G4[⏳ GD008<br/>制限解除待機]
+                        
+                        %% Slack関連エラー分岐
+                        CLASSIFY -->|SlackService| SL_TYPE{Slack エラー分類}
+                        SL_TYPE -->|Bot認証失敗| S1[🤖 SL001<br/>Bot Token確認]
+                        SL_TYPE -->|チャンネルアクセス| S2[#️⃣ SL002<br/>チャンネル権限確認]
+                        SL_TYPE -->|投稿失敗| S3[💬 SL003<br/>メッセージ形式確認]
+                        SL_TYPE -->|API制限| S4[⏱️ SL004<br/>制限解除待機]
+                        
+                        %% システム関連エラー分岐
+                        CLASSIFY -->|System| SY_TYPE{システム エラー分類}
+                        SY_TYPE -->|メモリ不足| SYS1[🧠 E_SYSTEM_MEMORY<br/>音声圧縮実行]
+                        SY_TYPE -->|タイムアウト| SYS2[⏰ E_SYSTEM_TIMEOUT<br/>処理分割実行]
+                        SY_TYPE -->|環境変数エラー| SYS3[⚙️ E_SYSTEM_CONFIG<br/>設定値確認]
+                        
+                        %% リトライ処理判定
+                        Z1 --> RETRY_CHECK{リトライ対象?<br/>isRetryable()}
+                        Z2 --> RETRY_CHECK
+                        A1 --> RETRY_CHECK
+                        A2 --> RETRY_CHECK
+                        G3 --> RETRY_CHECK
+                        SYS2 --> RETRY_CHECK
+                        
+                        %% リトライフロー
+                        RETRY_CHECK -->|Yes リトライ可能| RETRY_COUNT{リトライ回数<br/>< MAX_RETRY?}
+                        RETRY_COUNT -->|Yes 継続可能| WAIT[⏳ 指数バックオフ待機<br/>2^attempt秒]
+                        WAIT --> RETRY_EXEC[🔄 処理再実行]
+                        RETRY_EXEC -->|成功| SUCCESS_RETRY[✅ リトライ成功]
+                        RETRY_EXEC -->|失敗| RETRY_CHECK
+                        
+                        RETRY_COUNT -->|No 上限到達| RETRY_FAIL[❌ リトライ上限<br/>AU008エラー]
+                        
+                        %% 警告処理（処理継続）
+                        Z4 --> WARNING_FLOW[⚠️ 警告処理フロー]
+                        Z5 --> WARNING_FLOW
+                        A5 --> WARNING_FLOW
+                        WARNING_FLOW --> FALLBACK[🔄 フォールバック実行]
+                        FALLBACK --> CONTINUE[✅ 処理継続]
+                        
+                        %% 致命的エラー処理（処理停止）
+                        Z3 --> FATAL_FLOW[🛑 致命的エラー処理]
+                        A4 --> FATAL_FLOW
+                        G2 --> FATAL_FLOW
+                        RETRY_FAIL --> FATAL_FLOW
+                        RETRY_CHECK -->|No リトライ不可| FATAL_FLOW
+                        
+                        %% 共通後処理
+                        SUCCESS_RETRY --> LOG_SAVE
+                        CONTINUE --> LOG_SAVE
+                        FATAL_FLOW --> LOG_SAVE
+                        
+                        LOG_SAVE[📊 詳細ログ保存<br/>ExecutionLogger]
+                        LOG_SAVE --> SLACK_NOTIFY[💬 Slack通知送信<br/>sendErrorNotification()]
+                        SLACK_NOTIFY --> GD_SAVE[☁️ Google Drive保存<br/>error_logs/フォルダ]
+                        GD_SAVE --> END_FLOW[🏁 エラー処理完了]
+                        
+                        %% スタイリング
+                        classDef errorStyle fill:#ffebee,stroke:#c62828,stroke-width:3px
+                        classDef warningStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+                        classDef decisionStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+                        classDef processStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+                        classDef successStyle fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+                        classDef retryStyle fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+                        
+                        class ERROR,Z1,A1,G1,S1,SYS1,SYS2,SYS3,FATAL_FLOW,RETRY_FAIL errorStyle
+                        class Z4,Z5,A5,WARNING_FLOW,FALLBACK warningStyle
+                        class CLASSIFY,ZOOM_TYPE,AI_TYPE,GD_TYPE,SL_TYPE,SY_TYPE,RETRY_CHECK,RETRY_COUNT decisionStyle
+                        class LOG_SAVE,SLACK_NOTIFY,GD_SAVE,END_FLOW processStyle
+                        class SUCCESS_RETRY,CONTINUE successStyle
+                        class WAIT,RETRY_EXEC retryStyle
                 </div>
-
-                <div style="margin: 2rem 0;">
-                    <div class="flow-step">📊 詳細ログ記録</div>
-                    <span class="flow-arrow">↓</span>
-                    <div class="flow-step">💬 Slack通知</div>
-                    <span class="flow-arrow">↓</span>
-                    <div class="flow-step">☁️ Google Drive保存</div>
-                </div>
+            </div>
+            
+            <h3>🔄 エラー処理パターン</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>処理パターン</th>
+                            <th>対象エラー</th>
+                            <th>アクション</th>
+                            <th>処理継続</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>🔄 リトライ処理</strong></td>
+                            <td>E_ZOOM_RATE_LIMIT<br/>E_GEMINI_QUOTA<br/>GD003, SL004</td>
+                            <td>指数バックオフで最大5回リトライ</td>
+                            <td>成功時継続</td>
+                        </tr>
+                        <tr>
+                            <td><strong>⚠️ 警告処理</strong></td>
+                            <td>E_ZOOM_AUDIO_MISSING<br/>E_AUDIO_QUALITY_WARNING</td>
+                            <td>フォールバック処理実行</td>
+                            <td>継続</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🛑 致命的エラー</strong></td>
+                            <td>E_ZOOM_AUTH<br/>E_SYSTEM_CONFIG</td>
+                            <td>即座に処理停止・通知</td>
+                            <td>停止</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🔧 自動復旧</strong></td>
+                            <td>E_SYSTEM_MEMORY<br/>E_SYSTEM_TIMEOUT</td>
+                            <td>音声圧縮・処理分割</td>
+                            <td>復旧後継続</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <h3>🏷️ エラーコード体系</h3>
