@@ -5,12 +5,16 @@
 
 const path = require('path');
 const fs = require('fs').promises;
-const { ErrorManager, ERROR_CODES } = require('../1.src/utils/errorCodes');
-const AIService = require('../1.src/services/aiService');
-const logger = require('../1.src/utils/logger');
-const SlackService = require('../1.src/services/slackService');
-const { ExecutionLogger } = require('../1.src/utils/executionLogger');
-const config = require('../1.src/config');
+
+// Use absolute paths from project root
+const projectRoot = path.resolve(__dirname, '..');
+const { ErrorManager, ERROR_CODES } = require(path.join(projectRoot, '1.src/utils/errorCodes'));
+const AIService = require(path.join(projectRoot, '1.src/services/aiService'));
+const AudioSummaryService = require(path.join(projectRoot, '1.src/services/audioSummaryService'));
+const logger = require(path.join(projectRoot, '1.src/utils/logger'));
+const SlackService = require(path.join(projectRoot, '1.src/services/slackService'));
+const { ExecutionLogger } = require(path.join(projectRoot, '1.src/utils/executionLogger'));
+const config = require(path.join(projectRoot, '1.src/config'));
 
 /**
  * テスト専用のモックAIService
