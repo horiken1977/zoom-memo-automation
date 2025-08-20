@@ -910,7 +910,7 @@
             </div>
 
             <div class="test-case" id="tc206">
-                <h3><span class="status-indicator status-not-started"></span>TC206: 部分データ存在業務テスト</h3>
+                <h3><span class="status-indicator status-completed"></span>TC206: 部分データ存在業務テスト <span style="color: green; font-size: 0.8em;">（TC301-003統合済み）</span></h3>
                 <div class="test-matrix">
                     <table>
                         <tr>
@@ -965,8 +965,10 @@
                 <div class="automation-info">
                     <h4>🔧 実装仕様</h4>
                     <ul>
-                        <li><strong>実行エンドポイント:</strong> <code>/api/monitor-recordings?test=TC206-1</code> （音声のみ）</li>
-                        <li><strong>実行エンドポイント:</strong> <code>/api/monitor-recordings?test=TC206-2</code> （動画のみ）</li>
+                        <li><strong>実行エンドポイント:</strong> <code>/api/error-test?test=TC206</code> （全3テストケース）</li>
+                        <li><strong>テストケース1:</strong> 音声ファイル不存在 → 動画から音声抽出</li>
+                        <li><strong>テストケース2:</strong> 動画ファイル不存在 → 音声のみ処理継続</li>
+                        <li><strong>テストケース3:</strong> 音声品質低下 → 動画から音声再抽出</li>
                         <li><strong>検証方法:</strong> Zoom録画データを意図的に部分欠損させてテスト実行</li>
                         <li><strong>出力確認:</strong> Slackメッセージ + Google Driveログ + エラーコード</li>
                     </ul>
@@ -1050,17 +1052,14 @@
                             <td style="color: gray;">-</td>
                             <td style="color: gray;">-</td>
                         </tr>
-                        <tr>
-                            <td><strong>TC301-003</strong></td>
-                            <td><strong>品質警告テスト</strong></td>
-                            <td>低品質音声（雑音・無音・極端に小さい音声）</td>
-                            <td>E_AUDIO_QUALITY_WARNING</td>
-                            <td>品質警告ログ・処理継続可能性確認</td>
-                            <td style="color: gray;">-</td>
-                            <td style="color: gray;">-</td>
-                            <td style="color: gray;">-</td>
-                            <td style="color: gray;">-</td>
-                            <td style="color: gray;">-</td>
+                        <tr style="text-decoration: line-through; opacity: 0.6; background-color: #f5f5f5;">
+                            <td><strong><del>TC301-003</del></strong></td>
+                            <td><strong><del>品質警告テスト</del></strong></td>
+                            <td><del>低品質音声（雑音・無音・極端に小さい音声）</del></td>
+                            <td><del>E_AUDIO_QUALITY_WARNING</del></td>
+                            <td><del>品質警告ログ・処理継続可能性確認</del></td>
+                            <td><span style="color: red; font-weight: bold;">❌ 削除</span></td>
+                            <td colspan="4"><span style="color: red; font-size: 0.9em;">🔄 TC206-3に統合済み（音声品質低下時の動画からの音声再抽出）</span></td>
                         </tr>
                         <tr>
                             <td><strong>TC301-004</strong></td>
