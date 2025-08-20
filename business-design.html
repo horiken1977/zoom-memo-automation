@@ -398,7 +398,7 @@
                         D --> A
                         
                         %% データありの場合 - Phase 2へ
-                        C -->|Yes データあり| E[📊 録画数確認<br/>${recordings.length}件検知]
+                        C -->|Yes データあり| E[📊 録画数確認<br/>N件検知]
                         
                         %% Phase 2: ダウンロード・前処理フェーズ
                         E --> F[🎬 並列処理準備<br/>各録画をPromise.map]
