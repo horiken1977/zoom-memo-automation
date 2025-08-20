@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>業務設計書 - Zoom Memo Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #667eea;
+            font-size: 1.8rem;
+        }
+
+        .section h3 {
+            color: #444;
+            margin: 1.5rem 0 1rem 0;
+            font-size: 1.4rem;
+        }
+
+        .section h4 {
+            color: #555;
+            margin: 1rem 0 0.5rem 0;
+            font-size: 1.2rem;
+        }
+
+        /* 業務フロー図スタイル */
+        .flow-diagram {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .flow-step {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            margin: 0.5rem;
+            min-width: 150px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .flow-step:hover {
+            transform: translateY(-5px);
+        }
+
+        .flow-step.error {
+            background: linear-gradient(135deg, #ff416c, #ff4757);
+        }
+
+        .flow-step.warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .flow-step.success {
+            background: linear-gradient(135deg, #00d2d3, #54a0ff);
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            margin: 0 0.5rem;
+            color: #667eea;
+        }
+
+        .flow-condition {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 0.8rem;
+            margin: 0.5rem;
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        /* テーブルスタイル */
+        .table-container {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+        }
+
+        .method {
+            background: #e6fffa;
+            color: #0d9488;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+
+        .api-endpoint {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* 実行時間チャート */
+        .performance-chart {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .performance-bar {
+            display: flex;
+            align-items: center;
+            margin: 0.8rem 0;
+            background: white;
+            border-radius: 8px;
+            padding: 0.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .performance-label {
+            min-width: 180px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .performance-time {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 25px;
+            border-radius: 12px;
+            margin: 0 1rem;
+            display: flex;
+            align-items: center;
+            color: white;
+            padding: 0 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        /* エラーコードバッジ */
+        .error-code {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .warning-code {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* レスポンシブデザイン */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .flow-step {
+                display: block;
+                margin: 0.5rem 0;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+                display: block;
+                margin: 0.5rem auto;
+            }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background-color: #10b981;
+        }
+
+        .status-warning {
+            background-color: #f59e0b;
+        }
+
+        .status-error {
+            background-color: #ef4444;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .nav-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 0 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <div class="header">
+            <h1>📋 業務設計書</h1>
+            <p>Zoom Memo Automation - 業務フロー・アプリケーション対応・エラーハンドリング設計</p>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">🏠 ダッシュボード</a>
+                <a href="functional-design.html" class="nav-link">🔧 機能設計書</a>
+                <a href="environment-design.html" class="nav-link">🏗️ 環境設計書</a>
+                <a href="test-specification.html" class="nav-link">🧪 テスト仕様書</a>
+            </div>
+        </div>
+
+        <!-- 1. 業務概要 -->
+        <div class="section">
+            <h2>1. 業務概要</h2>
+            <h3>📌 システム目的</h3>
+            <p>Zoom録画ファイルを自動で文字起こし・要約し、Google Driveに保存してSlackに通知する自動化システム</p>
+            
+            <h3>🎯 主要機能</h3>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li><strong>録画監視:</strong> Zoom録画の自動検知（2時間間隔）</li>
+                <li><strong>並列処理:</strong> 動画保存と音声処理の同時実行</li>
+                <li><strong>AI要約:</strong> Gemini AIによる構造化要約生成</li>
+                <li><strong>自動通知:</strong> Slackでの完了通知</li>
+                <li><strong>エラー処理:</strong> 包括的なエラーハンドリングと復旧</li>
+            </ul>
+
+            <h3>⚙️ 技術スタック</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>領域</th>
+                            <th>技術</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>プラットフォーム</strong></td>
+                            <td>Vercel (Hobbyプラン)</td>
+                            <td>サーバーレス実行環境</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ランタイム</strong></td>
+                            <td>Node.js</td>
+                            <td>JavaScript実行環境</td>
+                        </tr>
+                        <tr>
+                            <td><strong>外部API</strong></td>
+                            <td>Zoom API, Google Drive API, Gemini AI API, Slack API</td>
+                            <td>各種サービス連携</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ストレージ</strong></td>
+                            <td>Google Drive (共有ドライブ)</td>
+                            <td>録画・ログファイル保存</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. メイン業務フロー -->
+        <div class="section">
+            <h2>2. メイン業務フロー図</h2>
+            
+            <div class="flow-diagram">
+                <div style="margin: 1rem 0;">
+                    <div class="flow-step">📡 録画監視開始</div>
+                    <span class="flow-arrow">↓</span>
+                    <div class="flow-step">🔍 新録画検知</div>
+                </div>
+                
+                <div style="margin: 1rem 0;">
+                    <span class="flow-arrow">↓</span><br>
+                    <div class="flow-condition">録画データ有無判定</div>
+                </div>
+
+                <div style="margin: 1rem 0;">
+                    <div style="display: inline-block; vertical-align: top; margin: 1rem;">
+                        <div style="color: #6c757d; margin-bottom: 0.5rem;">データなし</div>
+                        <div class="flow-step success">📭 待機モード</div>
+                    </div>
+                    
+                    <div style="display: inline-block; vertical-align: top; margin: 1rem;">
+                        <div style="color: #28a745; margin-bottom: 0.5rem;">データあり</div>
+                        <div class="flow-step">📥 録画ダウンロード</div>
+                        <span class="flow-arrow">↓</span>
+                        <div class="flow-step">🔄 並列処理開始</div>
+                    </div>
+                </div>
+
+                <div style="margin: 2rem 0; border: 2px dashed #667eea; border-radius: 15px; padding: 1.5rem;">
+                    <h4 style="color: #667eea; margin-bottom: 1rem;">並列実行フロー</h4>
+                    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+                        <div style="margin: 0.5rem;">
+                            <div style="color: #17a2b8; font-weight: bold; margin-bottom: 0.5rem;">Thread A: 動画保存</div>
+                            <div class="flow-step success">☁️ Google Drive保存</div>
+                        </div>
+                        <div style="margin: 0.5rem;">
+                            <div style="color: #28a745; font-weight: bold; margin-bottom: 0.5rem;">Thread B: 音声処理</div>
+                            <div class="flow-step">🎤 音声一時保存</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step">🤖 AI文字起こし</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step">📝 構造化要約</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step">🗑️ 一時ファイル削除</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin: 1rem 0;">
+                    <div class="flow-step">💬 Slack通知送信</div>
+                    <span class="flow-arrow">↓</span>
+                    <div class="flow-step success">✅ 処理完了</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. エラーハンドリングフロー -->
+        <div class="section">
+            <h2>3. エラーハンドリング・例外処理フロー</h2>
+            
+            <div class="flow-diagram">
+                <h4 style="color: #dc3545; margin-bottom: 1rem;">🚨 エラー発生時の処理フロー</h4>
+                
+                <div style="margin: 1rem 0;">
+                    <div class="flow-step error">❌ エラー検出</div>
+                    <span class="flow-arrow">↓</span>
+                    <div class="flow-condition">エラー種別判定</div>
+                </div>
+
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin: 2rem 0;">
+                    <!-- Zoom関連エラー -->
+                    <div style="margin: 0.5rem; text-align: center;">
+                        <div style="color: #dc3545; font-weight: bold; margin-bottom: 0.5rem;">Zoom関連</div>
+                        <div class="flow-condition">認証失敗?</div>
+                        <span class="flow-arrow">↓</span>
+                        <div class="flow-step error">🔑 認証エラー通知</div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <div class="flow-condition">録画データなし?</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step warning">⚠️ データ部分欠損</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step success">🔄 フォールバック処理</div>
+                        </div>
+                    </div>
+
+                    <!-- AI処理エラー -->
+                    <div style="margin: 0.5rem; text-align: center;">
+                        <div style="color: #f39c12; font-weight: bold; margin-bottom: 0.5rem;">AI処理</div>
+                        <div class="flow-condition">Gemini APIエラー?</div>
+                        <span class="flow-arrow">↓</span>
+                        <div class="flow-step warning">🤖 リトライ実行</div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <div class="flow-condition">音声品質低下?</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step warning">📹 動画から音声再抽出</div>
+                        </div>
+                    </div>
+
+                    <!-- システムエラー -->
+                    <div style="margin: 0.5rem; text-align: center;">
+                        <div style="color: #6f42c1; font-weight: bold; margin-bottom: 0.5rem;">システム</div>
+                        <div class="flow-condition">タイムアウト?</div>
+                        <span class="flow-arrow">↓</span>
+                        <div class="flow-step error">⏱️ 処理分割実行</div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <div class="flow-condition">メモリ不足?</div>
+                            <span class="flow-arrow">↓</span>
+                            <div class="flow-step warning">🗜️ 音声圧縮実行</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin: 2rem 0;">
+                    <div class="flow-step">📊 詳細ログ記録</div>
+                    <span class="flow-arrow">↓</span>
+                    <div class="flow-step">💬 Slack通知</div>
+                    <span class="flow-arrow">↓</span>
+                    <div class="flow-step">☁️ Google Drive保存</div>
+                </div>
+            </div>
+
+            <h3>🏷️ エラーコード体系</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>分類</th>
+                            <th>エラーコード例</th>
+                            <th>説明</th>
+                            <th>対応アクション</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Zoom</strong></td>
+                            <td><span class="error-code">E_ZOOM_AUTH</span></td>
+                            <td>API認証失敗</td>
+                            <td>環境変数確認・通知</td>
+                        </tr>
+                        <tr>
+                            <td><strong>音声処理</strong></td>
+                            <td><span class="warning-code">E_ZOOM_AUDIO_MISSING</span></td>
+                            <td>音声ファイル不存在</td>
+                            <td>動画から音声抽出</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AI処理</strong></td>
+                            <td><span class="error-code">E_GEMINI_QUOTA</span></td>
+                            <td>APIクォータ超過</td>
+                            <td>待機後リトライ</td>
+                        </tr>
+                        <tr>
+                            <td><strong>品質</strong></td>
+                            <td><span class="warning-code">E_AUDIO_QUALITY_WARNING</span></td>
+                            <td>音声品質低下</td>
+                            <td>動画から再抽出</td>
+                        </tr>
+                        <tr>
+                            <td><strong>システム</strong></td>
+                            <td><span class="error-code">E_SYSTEM_TIMEOUT</span></td>
+                            <td>処理タイムアウト</td>
+                            <td>処理分割実行</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. アプリケーション対応表 -->
+        <div class="section">
+            <h2>4. 業務とアプリケーション対応表</h2>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>業務ステップ</th>
+                            <th>APIエンドポイント</th>
+                            <th>メインメソッド</th>
+                            <th>サービスクラス</th>
+                            <th>実行時間目安</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>録画監視</strong></td>
+                            <td><span class="api-endpoint">/api/monitor-recordings</span></td>
+                            <td><span class="method">monitorNewRecordings()</span></td>
+                            <td>ZoomService</td>
+                            <td>2-5秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>録画ダウンロード</strong></td>
+                            <td>-</td>
+                            <td><span class="method">downloadRecording()</span></td>
+                            <td>ZoomService</td>
+                            <td>10-30秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>動画保存</strong></td>
+                            <td>-</td>
+                            <td><span class="method">saveRecording()</span></td>
+                            <td>GoogleDriveService</td>
+                            <td>15-45秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>音声一時保存</strong></td>
+                            <td>-</td>
+                            <td><span class="method">saveTemporaryFile()</span></td>
+                            <td>GoogleDriveService</td>
+                            <td>3-8秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>音声圧縮</strong></td>
+                            <td>-</td>
+                            <td><span class="method">compressAudioBuffer()</span></td>
+                            <td>AudioCompressionService</td>
+                            <td>5-15秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>音声品質チェック</strong></td>
+                            <td>-</td>
+                            <td><span class="method">checkAudioQuality()</span></td>
+                            <td>AudioSummaryService</td>
+                            <td>1-3秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>文字起こし</strong></td>
+                            <td>-</td>
+                            <td><span class="method">processAudioWithStructuredOutput()</span></td>
+                            <td>AIService</td>
+                            <td>30-120秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>構造化要約</strong></td>
+                            <td>-</td>
+                            <td><span class="method">generateStructuredSummary()</span></td>
+                            <td>AudioSummaryService</td>
+                            <td>統合処理内</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Slack通知</strong></td>
+                            <td>-</td>
+                            <td><span class="method">sendMeetingSummaryWithRecording()</span></td>
+                            <td>SlackService</td>
+                            <td>2-5秒</td>
+                        </tr>
+                        <tr>
+                            <td><strong>一時ファイル削除</strong></td>
+                            <td>-</td>
+                            <td><span class="method">deleteTemporaryFile()</span></td>
+                            <td>GoogleDriveService</td>
+                            <td>1-3秒</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>🧪 テスト・デバッグ用API</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>機能</th>
+                            <th>APIエンドポイント</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>エラーテスト</strong></td>
+                            <td><span class="api-endpoint">/api/error-test</span></td>
+                            <td>異常系テスト実行</td>
+                        </tr>
+                        <tr>
+                            <td><strong>音声処理テスト</strong></td>
+                            <td><span class="api-endpoint">/api/unified-audio-processing-test</span></td>
+                            <td>音声処理統合テスト</td>
+                        </tr>
+                        <tr>
+                            <td><strong>スループットテスト</strong></td>
+                            <td><span class="api-endpoint">/api/production-throughput-test</span></td>
+                            <td>本番環境性能測定</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ヘルスチェック</strong></td>
+                            <td><span class="api-endpoint">/api/health-check</span></td>
+                            <td>システム状態確認</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. 業務実行時間分析 -->
+        <div class="section">
+            <h2>5. 業務実行時間・パフォーマンス分析</h2>
+            
+            <h3>⏱️ 標準実行時間 (単一録画処理)</h3>
+            <div class="performance-chart">
+                <div class="performance-bar">
+                    <div class="performance-label">Zoom API接続</div>
+                    <div class="performance-time" style="width: 40px;">2-5秒</div>
+                    <div style="color: #28a745;">⚡ 高速</div>
+                </div>
+                
+                <div class="performance-bar">
+                    <div class="performance-label">録画ダウンロード</div>
+                    <div class="performance-time" style="width: 120px;">10-30秒</div>
+                    <div style="color: #ffc107;">📁 ファイルサイズ依存</div>
+                </div>
+                
+                <div class="performance-bar">
+                    <div class="performance-label">Google Drive保存</div>
+                    <div class="performance-time" style="width: 180px;">15-45秒</div>
+                    <div style="color: #17a2b8;">☁️ 並列実行</div>
+                </div>
+                
+                <div class="performance-bar">
+                    <div class="performance-label">AI文字起こし・要約</div>
+                    <div class="performance-time" style="width: 240px;">30-120秒</div>
+                    <div style="color: #dc3545;">🤖 最大処理時間</div>
+                </div>
+                
+                <div class="performance-bar">
+                    <div class="performance-label">Slack通知</div>
+                    <div class="performance-time" style="width: 50px;">2-5秒</div>
+                    <div style="color: #28a745;">⚡ 高速</div>
+                </div>
+            </div>
+
+            <h3>📊 パフォーマンス特性</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>指標</th>
+                            <th>標準値</th>
+                            <th>最大値</th>
+                            <th>制約事項</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>総処理時間</strong></td>
+                            <td>60-180秒</td>
+                            <td>300秒</td>
+                            <td>Vercel maxDuration制限</td>
+                        </tr>
+                        <tr>
+                            <td><strong>並列処理効果</strong></td>
+                            <td>30-50%高速化</td>
+                            <td>60%高速化</td>
+                            <td>動画保存と音声処理同時実行</td>
+                        </tr>
+                        <tr>
+                            <td><strong>メモリ使用量</strong></td>
+                            <td>100-300MB</td>
+                            <td>512MB</td>
+                            <td>Vercel Hobby制限</td>
+                        </tr>
+                        <tr>
+                            <td><strong>API呼び出し回数</strong></td>
+                            <td>15-25回</td>
+                            <td>40回</td>
+                            <td>エラー時リトライ含む</td>
+                        </tr>
+                        <tr>
+                            <td><strong>音声圧縮効果</strong></td>
+                            <td>70-85%削減</td>
+                            <td>90%削減</td>
+                            <td>10MB超過時自動実行</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>🔧 最適化ポイント</h3>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li><strong>並列処理:</strong> 動画保存と音声処理の同時実行で30-50%の高速化</li>
+                <li><strong>音声圧縮:</strong> 10MB超過時の自動圧縮でGemini API処理を高速化</li>
+                <li><strong>統合AI処理:</strong> 文字起こしと要約の一体化でAPI呼び出し50%削減</li>
+                <li><strong>メモリバッファ:</strong> 一時ファイルを避けたメモリ処理</li>
+                <li><strong>エラーリトライ:</strong> 指数バックオフによる効率的リトライ</li>
+            </ul>
+        </div>
+
+        <!-- 6. 運用・監視 -->
+        <div class="section">
+            <h2>6. 運用・監視設計</h2>
+            
+            <h3>🔍 監視項目</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>監視対象</th>
+                            <th>正常状態</th>
+                            <th>警告閾値</th>
+                            <th>対応アクション</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>処理成功率</strong></td>
+                            <td>95%以上</td>
+                            <td>90%未満</td>
+                            <td>エラー原因調査・対策実施</td>
+                        </tr>
+                        <tr>
+                            <td><strong>応答時間</strong></td>
+                            <td>120秒以内</td>
+                            <td>240秒超過</td>
+                            <td>処理分割・最適化検討</td>
+                        </tr>
+                        <tr>
+                            <td><strong>API制限</strong></td>
+                            <td>制限内</td>
+                            <td>制限の80%</td>
+                            <td>利用量調整・プラン検討</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ストレージ使用量</strong></td>
+                            <td>80%未満</td>
+                            <td>90%超過</td>
+                            <td>不要ファイル削除・拡張検討</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>📈 ログ・レポート</h3>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li><strong>実行ログ:</strong> Google Drive の logs/ フォルダに詳細実行情報を保存</li>
+                <li><strong>エラーレポート:</strong> 異常系テスト結果とエラー統計情報</li>
+                <li><strong>パフォーマンスレポート:</strong> 実行時間・メモリ使用量の推移</li>
+                <li><strong>Slack通知:</strong> 成功・警告・エラーの即座な通知</li>
+            </ul>
+
+            <h3>🚨 アラート設定</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>重要度</th>
+                            <th>条件</th>
+                            <th>通知方法</th>
+                            <th>対応レベル</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="error-code">Critical</span></td>
+                            <td>連続3回処理失敗</td>
+                            <td>Slack即座通知</td>
+                            <td>緊急対応必要</td>
+                        </tr>
+                        <tr>
+                            <td><span class="warning-code">Warning</span></td>
+                            <td>処理時間240秒超過</td>
+                            <td>Slack通知</td>
+                            <td>監視強化</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-indicator status-running"></span> Info</td>
+                            <td>音声品質低下</td>
+                            <td>ログ記録</td>
+                            <td>継続監視</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 7. 非機能要件 -->
+        <div class="section">
+            <h2>7. 非機能要件・制約事項</h2>
+            
+            <h3>⚡ パフォーマンス要件</h3>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li><strong>応答時間:</strong> 単一録画処理 300秒以内</li>
+                <li><strong>スループット:</strong> 同時10録画まで処理可能</li>
+                <li><strong>可用性:</strong> 95%以上のサービス稼働率</li>
+                <li><strong>復旧時間:</strong> エラー発生時30分以内の復旧</li>
+            </ul>
+
+            <h3>🔒 セキュリティ要件</h3>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li><strong>認証:</strong> 全API通信でOAuth/JWT認証</li>
+                <li><strong>暗号化:</strong> HTTPS通信とデータ暗号化</li>
+                <li><strong>アクセス制御:</strong> 共有ドライブ内での権限管理</li>
+                <li><strong>秘匿情報:</strong> 環境変数による機密情報管理</li>
+            </ul>
+
+            <h3>📏 プラットフォーム制約</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>項目</th>
+                            <th>制約値</th>
+                            <th>対策</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>実行時間</strong></td>
+                            <td>300秒 (5分)</td>
+                            <td>処理分割・並列化</td>
+                        </tr>
+                        <tr>
+                            <td><strong>メモリ</strong></td>
+                            <td>512MB</td>
+                            <td>音声圧縮・ストリーミング処理</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ファイルサイズ</strong></td>
+                            <td>250MB/ファイル</td>
+                            <td>分割処理・圧縮</td>
+                        </tr>
+                        <tr>
+                            <td><strong>同時実行</strong></td>
+                            <td>10リクエスト</td>
+                            <td>キューイング・優先度制御</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- フッター -->
+        <div class="section" style="text-align: center; background: rgba(102, 126, 234, 0.1);">
+            <p style="color: #667eea; font-size: 0.9rem;">
+                📋 業務設計書 | 最終更新: <script>document.write(new Date().toLocaleDateString('ja-JP'))</script>
+                <br>
+                🤖 Generated with <a href="https://claude.ai/code" style="color: #667eea; text-decoration: none;">Claude Code</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
