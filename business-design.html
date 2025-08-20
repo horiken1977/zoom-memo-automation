@@ -389,70 +389,58 @@
             <div style="background: white; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
                 <div class="mermaid">
                     graph TD
-                        %% Phase 1: 監視・検知フェーズ
-                        A[📡 Zoom録画監視開始<br/>monitor-recordings API] --> B[🔍 新録画データ監視<br/>monitorNewRecordings()]
-                        B --> C{録画データ存在?}
+                        A["📡 Zoom録画監視開始<br/>monitor-recordings API"] --> B["🔍 新録画データ監視<br/>monitorNewRecordings"]
+                        B --> C{"録画データ存在?"}
                         
-                        %% データなしの場合
-                        C -->|No データなし| D[📭 待機モード<br/>2時間後再監視]
+                        C -->|"No データなし"| D["📭 待機モード<br/>2時間後再監視"]
                         D --> A
                         
-                        %% データありの場合 - Phase 2へ
-                        C -->|Yes データあり| E[📊 録画数確認<br/>N件検知]
+                        C -->|"Yes データあり"| E["📊 録画数確認<br/>N件検知"]
                         
-                        %% Phase 2: ダウンロード・前処理フェーズ
-                        E --> F[🎬 並列処理準備<br/>各録画をPromise.map]
-                        F --> G[📥 録画ダウンロード<br/>downloadRecording()]
-                        G --> H[💬 Slack処理開始通知<br/>sendProcessingNotification()]
+                        E --> F["🎬 並列処理準備<br/>各録画をPromise.map"]
+                        F --> G["📥 録画ダウンロード<br/>downloadRecording"]
+                        G --> H["💬 Slack処理開始通知<br/>sendProcessingNotification"]
                         
-                        %% Phase 3: 並列処理フェーズ
-                        H --> I[🔄 Promise.all並列実行開始]
+                        H --> I["🔄 Promise.all並列実行開始"]
                         
-                        %% Thread A: 動画保存系
-                        I --> J1[☁️ Thread A: 動画保存処理<br/>saveRecording()]
-                        J1 --> K1[📁 Google Drive保存完了<br/>driveResult取得]
+                        I --> J1["☁️ Thread A 動画保存処理<br/>saveRecording"]
+                        J1 --> K1["📁 Google Drive保存完了<br/>driveResult取得"]
                         
-                        %% Thread B: 音声処理系
-                        I --> J2[🎤 Thread B: 音声処理開始<br/>音声ファイル一時保存]
-                        J2 --> L1[📤 一時ファイル保存<br/>saveTemporaryFile()]
-                        L1 --> L2{音声品質チェック<br/>checkAudioQuality()}
+                        I --> J2["🎤 Thread B 音声処理開始<br/>音声ファイル一時保存"]
+                        J2 --> L1["📤 一時ファイル保存<br/>saveTemporaryFile"]
+                        L1 --> L2{"音声品質チェック<br/>checkAudioQuality"}
                         
-                        %% 音声品質判定分岐
-                        L2 -->|品質OK| L3[🤖 AI文字起こし実行<br/>transcribeAudio()]
-                        L2 -->|品質低下| L4[📹 動画から音声再抽出<br/>extractAudioFromVideo()]
+                        L2 -->|"品質OK"| L3["🤖 AI文字起こし実行<br/>transcribeAudio"]
+                        L2 -->|"品質低下"| L4["📹 動画から音声再抽出<br/>extractAudioFromVideo"]
                         L4 --> L3
                         
-                        L3 --> M1[📝 構造化要約生成<br/>analyzeComprehensively()]
-                        M1 --> N1[🗑️ 一時ファイル削除<br/>deleteTemporaryFile()]
-                        N1 --> O1[✅ analysisResult取得]
+                        L3 --> M1["📝 構造化要約生成<br/>analyzeComprehensively"]
+                        M1 --> N1["🗑️ 一時ファイル削除<br/>deleteTemporaryFile"]
+                        N1 --> O1["✅ analysisResult取得"]
                         
-                        %% Phase 4: 統合・通知フェーズ
-                        K1 --> P[⏳ 両Thread完了待機]
+                        K1 --> P["⏳ 両Thread完了待機"]
                         O1 --> P
-                        P --> Q[💬 Slack通知送信<br/>sendMeetingSummaryWithRecording()]
-                        Q --> R[🗑️ ローカル一時ファイル削除]
-                        R --> S[✅ 単一録画処理完了<br/>status: completed]
+                        P --> Q["💬 Slack通知送信<br/>sendMeetingSummaryWithRecording"]
+                        Q --> R["🗑️ ローカル一時ファイル削除"]
+                        R --> S["✅ 単一録画処理完了<br/>status completed"]
                         
-                        %% Phase 5: 全体完了フェーズ
-                        S --> T{全録画処理完了?}
-                        T -->|未完了| F
-                        T -->|完了| U[🎉 全録画処理完了<br/>Promise.all解決]
-                        U --> V[📊 処理結果レスポンス<br/>JSON返却]
+                        S --> T{"全録画処理完了?"}
+                        T -->|"未完了"| F
+                        T -->|"完了"| U["🎉 全録画処理完了<br/>Promise.all解決"]
+                        U --> V["📊 処理結果レスポンス<br/>JSON返却"]
                         
-                        %% エラーハンドリング
-                        G -.->|Error| ER1[❌ ダウンロードエラー]
-                        J1 -.->|Error| ER2[❌ 動画保存エラー] 
-                        J2 -.->|Error| ER3[❌ 音声処理エラー]
-                        Q -.->|Error| ER4[❌ Slack通知エラー]
+                        G -.->|"Error"| ER1["❌ ダウンロードエラー"]
+                        J1 -.->|"Error"| ER2["❌ 動画保存エラー"] 
+                        J2 -.->|"Error"| ER3["❌ 音声処理エラー"]
+                        Q -.->|"Error"| ER4["❌ Slack通知エラー"]
                         
-                        ER1 --> ERH[🚨 エラーハンドリング<br/>sendErrorNotification()]
+                        ER1 --> ERH["🚨 エラーハンドリング<br/>sendErrorNotification"]
                         ER2 --> ERH
                         ER3 --> ERH
                         ER4 --> ERH
-                        ERH --> ERC[📊 エラー結果記録<br/>status: error]
+                        ERH --> ERC["📊 エラー結果記録<br/>status error"]
                         ERC --> T
                         
-                        %% スタイリング
                         classDef phaseStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
                         classDef processStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
                         classDef decisionStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
