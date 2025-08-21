@@ -69,6 +69,33 @@ const ERROR_CODES = {
     notifySlack: true,
     troubleshooting: '動画録画のみが有効です。動画から音声を抽出して文字起こし・要約処理を実行します'
   },
+
+  AUDIO_MISSING_DETECTED: {
+    code: 'AUDIO_MISSING_DETECTED',
+    message: '音声ファイル不存在検出（警告）',
+    messageEn: 'Audio file missing detected (warning)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '動画ファイルから音声を抽出して処理を継続します'
+  },
+
+  VIDEO_MISSING_DETECTED: {
+    code: 'VIDEO_MISSING_DETECTED',
+    message: '動画ファイル不存在検出（警告）',
+    messageEn: 'Video file missing detected (warning)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '音声ファイルのみで処理を継続します'
+  },
+
+  AUDIO_QUALITY_LOW: {
+    code: 'AUDIO_QUALITY_LOW',
+    message: '音声品質低下検出（警告）',
+    messageEn: 'Low audio quality detected (warning)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '動画ファイルから高品質音声を再抽出して処理を継続します'
+  },
   
   // ========================================
   // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
