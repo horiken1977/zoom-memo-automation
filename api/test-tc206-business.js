@@ -158,7 +158,8 @@ async function testAudioMissingScenario(execLogger) {
     });
     
     // サンプル音声データを使用（実際の動画からの抽出をシミュレート）
-    const audioBuffer = await sampleDataService.getAudioFile();
+    const audioData = await sampleDataService.getSampleDataAsBuffer();
+    const audioBuffer = audioData.audioBuffer;
     
     execLogger.logInfo('AUDIO_EXTRACTION_COMPLETE', {
       audioSize: audioBuffer.length,
@@ -168,7 +169,8 @@ async function testAudioMissingScenario(execLogger) {
   
   // Step 4: 音声処理（文字起こし・要約）
   logger.info('Step 4: 音声処理開始（文字起こし・要約）');
-  const audioBuffer = await sampleDataService.getAudioFile();
+  const audioData2 = await sampleDataService.getSampleDataAsBuffer();
+  const audioBuffer = audioData2.audioBuffer;
   
   const processingResult = await aiService.processAudioWithStructuredOutput(
     audioBuffer,
@@ -307,7 +309,8 @@ async function testVideoMissingScenario(execLogger) {
   
   // Step 3: 音声処理（音声ファイルは存在）
   logger.info('Step 3: 音声処理開始（音声ファイルのみ）');
-  const audioBuffer = await sampleDataService.getAudioFile();
+  const audioData = await sampleDataService.getSampleDataAsBuffer();
+  const audioBuffer = audioData.audioBuffer;
   
   const processingResult = await aiService.processAudioWithStructuredOutput(
     audioBuffer,
@@ -468,7 +471,8 @@ async function testAudioQualityScenario(execLogger) {
     });
     
     // 高品質音声データを取得（実際の再抽出をシミュレート）
-    const highQualityBuffer = await sampleDataService.getAudioFile();
+    const highQualityData = await sampleDataService.getSampleDataAsBuffer();
+    const highQualityBuffer = highQualityData.audioBuffer;
     
     // 再抽出後の品質確認
     const newQualityResult = await audioSummaryService.checkAudioQuality(highQualityBuffer);
@@ -482,7 +486,8 @@ async function testAudioQualityScenario(execLogger) {
   
   // Step 4: 高品質音声で処理
   logger.info('Step 4: 高品質音声で文字起こし・要約処理');
-  const highQualityBuffer = await sampleDataService.getAudioFile();
+  const highQualityData2 = await sampleDataService.getSampleDataAsBuffer();
+  const highQualityBuffer = highQualityData2.audioBuffer;
   
   const processingResult = await aiService.processAudioWithStructuredOutput(
     highQualityBuffer,
