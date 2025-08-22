@@ -374,6 +374,11 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
    * 要約テキストを読みやすい形式に整形
    */
   formatSummaryText(summaryData, meetingInfo) {
+    // データ型と構造の安全性チェック
+    if (!summaryData || typeof summaryData !== 'object') {
+      return `# ${meetingInfo.topic} - 会議要約\n\nエラー: 要約データが無効です。\n\n生成日時: ${new Date().toLocaleString('ja-JP')}`;
+    }
+    
     return `# ${meetingInfo.topic} - 会議要約
 
 ## 基本情報
@@ -384,19 +389,19 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
 - 参加者数: ${summaryData.participants?.length || 'N/A'}名
 
 ## 会議目的
-${summaryData.meetingPurpose || 'N/A'}
+${summaryData.meetingPurpose || summaryData.overview || 'N/A'}
 
 ## クライアント名
-${summaryData.clientName || 'N/A'}
+${summaryData.clientName || summaryData.client || 'N/A'}
 
 ## 出席者・会社名
-${summaryData.attendeesAndCompanies?.map(p => `- ${p.name || p} (${p.company || '不明'}) ${p.role ? ` - ${p.role}` : ''}`).join('\n') || '情報なし'}
+${summaryData.attendeesAndCompanies?.map(p => `- ${p.name || p} (${p.company || '不明'}) ${p.role ? ` - ${p.role}` : ''}`).join('\n') || summaryData.participants?.map(p => `- ${p.name || p}`).join('\n') || '情報なし'}
 
 ## 資料
 ${summaryData.materials?.map(m => `- ${m.materialName || m} ${m.timestamp ? `[${m.timestamp}]` : ''}${m.description ? `\n  説明: ${m.description}` : ''}${m.mentionedBy ? `\n  言及者: ${m.mentionedBy}` : ''}`).join('\n') || '資料の言及なし'}
 
 ## 論点および議論内容
-${summaryData.discussionsByTopic?.map(d => `### ${d.topicTitle || '論点'}
+${(summaryData.discussionsByTopic || summaryData.discussions)?.map(d => `### ${d.topicTitle || d.topic || '論点'}
 **時間**: ${d.timeRange?.startTime || '不明'} ～ ${d.timeRange?.endTime || '不明'}
 
 **背景・きっかけ**:
@@ -430,7 +435,7 @@ ${summaryData.decisions?.map(d => `- ${d.decision || d}
   関連論点: ${d.relatedTopic || '不明'}`).join('\n') || '決定事項なし'}
 
 ## Next Action および Due Date
-${summaryData.nextActionsWithDueDate?.map(a => `- ${a.action || a}
+${(summaryData.nextActionsWithDueDate || summaryData.homework || summaryData.actionItems)?.map(a => `- ${a.action || a.task || a.content || a}
   担当者: ${a.assignee || '未定'}
   期限: ${a.dueDate || '未定'}
   優先度: ${a.priority || '中'}

@@ -586,18 +586,19 @@ ${analysisResult.transcription}
                         analysisResult.summary?.meetingPurpose || 
                         analysisResult.analysis?.meetingPurpose;
     
-    // 後方互換性（従来の概要形式）
+    // 後方互換性（従来の概要形式）- データ型安全性確保
     if (!meetingPurpose && summary) {
       if (typeof summary === 'string') {
-        // 一時的にコメントアウト: 完全な要約を表示するためテスト
-        // meetingPurpose = this.extractShortSummary(summary);
-        meetingPurpose = summary; // 完全な要約を表示
+        // 文字列の場合は適切な長さで切り詰めて表示
+        meetingPurpose = this.extractShortSummary(summary);
       } else if (summary.overview) {
         meetingPurpose = summary.overview;
       } else if (summary.summary) {
-        // 一時的にコメントアウト: 完全な要約を表示するためテスト
-        // meetingPurpose = this.extractShortSummary(summary.summary);
-        meetingPurpose = summary.summary; // 完全な要約を表示
+        // オブジェクトの場合は適切な長さで切り詰めて表示
+        meetingPurpose = this.extractShortSummary(summary.summary);
+      } else if (summary.meetingPurpose) {
+        // 構造化要約の場合のフォールバック
+        meetingPurpose = summary.meetingPurpose;
       }
     }
     
