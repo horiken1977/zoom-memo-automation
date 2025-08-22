@@ -545,6 +545,18 @@ const ERROR_CODES = {
   },
 
   // ========================================
+  // HTML定義エラーコード - 録画処理関連 (E_RECORDING_*)
+  // ========================================
+  RECORDING_PROCESSING_FAILED: {
+    code: 'RECORDING_PROCESSING_FAILED',
+    message: '録画処理失敗',
+    messageEn: 'Recording processing failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '音声処理、動画保存、またはAI処理でエラーが発生しました。詳細なログを確認してください'
+  },
+
+  // ========================================
   // HTML定義エラーコード - システム関連 (E_SYSTEM_*)
   // ========================================
   E_SYSTEM_UNKNOWN: {

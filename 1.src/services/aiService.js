@@ -951,9 +951,33 @@ ${transcription}`;
         // エラーコードをログに記録
         logger.error(`Audio Error Code: ${errorCode} - ${error.message}`);
         
-        // リトライ前の待機
+        // リトライ前の待機（エラーコード別の動的待機時間）
         if (attempt < maxRetries) {
-          const waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
+          let waitTime;
+          
+          // エラーコード別の待機時間決定
+          if (errorCode === 'E_GEMINI_QUOTA') {
+            // API配当制限エラー: APIから推奨された待機時間を採用
+            const retryDelayMatch = error.message.match(/retryDelay":"(\d+)s"/);
+            if (retryDelayMatch) {
+              const recommendedDelay = parseInt(retryDelayMatch[1]) * 1000; // 秒をミリ秒に変換
+              waitTime = Math.min(recommendedDelay, 60000); // 最大60秒
+              logger.info(`Using API-recommended delay for quota limit: ${waitTime}ms (${waitTime/1000}s)`);
+            } else {
+              // APIからの推奨待機時間が不明な場合のデフォルト
+              waitTime = Math.min(30000 + (attempt * 10000), 60000); // 30秒から60秒まで段階的増加
+              logger.info(`Using default quota limit delay: ${waitTime}ms (${waitTime/1000}s)`);
+            }
+          } else if (errorCode === 'E_GEMINI_PROCESSING') {
+            // API認証・処理エラー: 通常の指数バックオフ
+            waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
+            logger.info(`Using exponential backoff for processing error: ${waitTime}ms (${waitTime/1000}s)`);
+          } else {
+            // その他のエラー: 標準の指数バックオフ
+            waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 20000);
+            logger.info(`Using standard backoff: ${waitTime}ms (${waitTime/1000}s)`);
+          }
+          
           logger.info(`Waiting ${waitTime}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }

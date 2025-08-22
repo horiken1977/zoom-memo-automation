@@ -959,6 +959,53 @@ ${analysisResult.transcription}
     try {
       logger.info(`Sending error notification to Slack: ${errorInfo.type}`);
 
+      // エラーコード分析と対処法の特定
+      const { ErrorManager } = require('../utils/errorCodes');
+      let errorCode = 'E_SYSTEM_UNKNOWN'; // デフォルト
+      let troubleshooting = 'ログを確認し、詳細情報を調査してください';
+
+      // エラーメッセージからエラーコードを推定
+      if (errorInfo.error) {
+        if (errorInfo.error.includes('Gemini') && errorInfo.error.includes('quota')) {
+          errorCode = 'E_GEMINI_QUOTA';
+        } else if (errorInfo.error.includes('Gemini') || errorInfo.error.includes('Transcription')) {
+          errorCode = 'E_GEMINI_PROCESSING';
+        } else if (errorInfo.error.includes('音声処理エラー')) {
+          errorCode = 'RECORDING_PROCESSING_FAILED';
+        }
+      }
+
+      // エラーコードから対処法を取得
+      const errorDef = ErrorManager.getError(errorCode);
+      if (errorDef && errorDef.troubleshooting) {
+        troubleshooting = errorDef.troubleshooting;
+      }
+
+      // 特定のエラーに対する追加の対処法情報
+      let actionableSteps = '';
+      if (errorCode === 'E_GEMINI_QUOTA') {
+        actionableSteps = `
+📋 *Gemini API制限エラーの対処法:*
+• 30-60秒待ってから再実行
+• 有料プランへのアップグレード検討
+• Free Tier制限: 2リクエスト/分 → 60リクエスト/分に向上
+• API利用状況: https://ai.google.dev/pricing`;
+      } else if (errorCode === 'E_GEMINI_PROCESSING') {
+        actionableSteps = `
+📋 *Gemini API認証エラーの対処法:*
+• GOOGLE_AI_API_KEYの確認
+• APIキーの有効性チェック
+• プロジェクトのアクセス権限確認
+• Google AI Studio: https://ai.google.dev/`;
+      } else if (errorCode === 'RECORDING_PROCESSING_FAILED') {
+        actionableSteps = `
+📋 *録画処理失敗の対処法:*
+• 録画ファイルの形式確認（MP4, M4A, MP3, WAV）
+• 音声ファイルの長さ確認（最低10秒以上）
+• ネットワーク状況の確認
+• 手動でのPT001テスト実行推奨`;
+      }
+
       // エラー通知専用のブロック形式メッセージを作成
       const blocks = [
         {
@@ -974,7 +1021,7 @@ ${analysisResult.transcription}
           fields: [
             {
               type: 'mrkdwn',
-              text: `*エラータイプ:*\n${errorInfo.type}`
+              text: `*エラーコード:*\n\`${errorCode}\``
             },
             {
               type: 'mrkdwn',
@@ -986,7 +1033,7 @@ ${analysisResult.transcription}
             },
             {
               type: 'mrkdwn',
-              text: `*会議名:*\n${errorInfo.meetingInfo?.topic || 'N/A'}`
+              text: `*会議名:*\n${errorInfo.topic || errorInfo.meetingInfo?.topic || 'N/A'}`
             }
           ]
         },
@@ -994,10 +1041,28 @@ ${analysisResult.transcription}
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*エラー内容:*\n\`\`\`${errorInfo.error.substring(0, 500)}${errorInfo.error.length > 500 ? '...' : ''}\`\`\``
+            text: `*エラー内容:*\n\`\`\`${errorInfo.error.substring(0, 400)}${errorInfo.error.length > 400 ? '...' : ''}\`\`\``
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*💡 対処法:*\n${troubleshooting}`
           }
         }
       ];
+
+      // 特定エラーの具体的対処法を追加
+      if (actionableSteps) {
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: actionableSteps
+          }
+        });
+      }
 
       // コンテキスト情報がある場合は追加
       if (errorInfo.context && Object.keys(errorInfo.context).length > 0) {
