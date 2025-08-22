@@ -156,9 +156,9 @@
                 <h4>🏗️ 部品化アーキテクチャ構造</h4>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; margin: 15px 0;">
                     <strong>【上位レイヤー: 業務機能部品】</strong><br/>
-                    📋 <strong>monitor-recordings-gdrive-test.js</strong> (エントリーポイント)<br/>
+                    📋 <strong>monitor-recordings-production.js</strong> (本番エントリーポイント)<br/>
                     &nbsp;&nbsp;↓<br/>
-                    📥 <strong>ZoomRecordingService</strong> - Zoom本番録画データ取得・処理（シーケンシャル）<br/>
+                    📥 <strong>ZoomRecordingService</strong> - 組織全体録画データ取得・処理（シーケンシャル）<br/>
                     &nbsp;&nbsp;↓<br/>
                     🤖 <strong>AudioSummaryService</strong> - 音声ファイル8項目要約<br/>
                     &nbsp;&nbsp;↓<br/>
@@ -180,8 +180,9 @@
             <div class="requirement-list">
                 <h4>🔄 部品化処理フロー</h4>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; margin: 15px 0;">
-                    <strong>【Step 1: Zoom録画取得】ZoomRecordingService (シーケンシャル処理)</strong><br/>
-                    &nbsp;&nbsp;• Zoom API経由で録画リスト取得<br/>
+                    <strong>【Step 1: Zoom録画取得】ZoomRecordingService (組織全体検索)</strong><br/>
+                    &nbsp;&nbsp;• 組織全体のZoom録画を取得（個人検索からアップグレード）<br/>
+                    &nbsp;&nbsp;• getAllUsersRecordings()メソッドで全ユーザー録画検索<br/>
                     &nbsp;&nbsp;• 動画ファイル取得 → Google Drive保存 → 共有リンク生成<br/>
                     &nbsp;&nbsp;• 音声ファイル取得 → メモリバッファ処理<br/>
                     &nbsp;&nbsp;• Vercel制約対応（メモリ効率・300秒制限）<br/>
@@ -219,24 +220,24 @@
             <h2>2. 部品化コア機能</h2>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-completed"></span>P001: ZoomRecordingService（本番録画処理部品）</h3>
-                <p><strong>説明:</strong> Zoom API経由で実際の録画データを取得し、シーケンシャル処理で効率的に動画・音声を処理する部品</p>
+                <h3><span class="status-indicator status-completed"></span>P001: ZoomRecordingService（組織全体録画処理部品）</h3>
+                <p><strong>説明:</strong> 組織全体のZoom録画を取得・処理する部品（ZoomServiceの個人録画検索から移行済み）</p>
                 <p><strong>実装場所:</strong> 1.src/services/zoomRecordingService.js</p>
-                <p><strong>状態:</strong> ✅ 実装完了</p>
+                <p><strong>状態:</strong> ✅ 実装完了（PT001で組織全体検索を実装・本番標準化済み）</p>
                 
-                <h4>シーケンシャル処理フロー</h4>
+                <h4>組織全体検索処理フロー</h4>
                 <table>
                     <tr>
                         <th>ステップ</th>
                         <th>処理内容</th>
-                        <th>メモリ効率</th>
+                        <th>検索範囲</th>
                         <th>備考</th>
                     </tr>
                     <tr>
                         <td>1. 録画リスト取得</td>
-                        <td>Zoom API からprocessableRecordingsを取得</td>
-                        <td>軽量</td>
-                        <td>処理可能な録画のみフィルタリング</td>
+                        <td>getAllUsersRecordings()で組織全体検索</td>
+                        <td>全ユーザー</td>
+                        <td>個人録画検索（/users/me/recordings）から脱却</td>
                     </tr>
                     <tr>
                         <td>2. 動画処理</td>
@@ -263,32 +264,32 @@
                     <tr>
                         <th>メソッド名</th>
                         <th>機能</th>
-                        <th>戻り値</th>
+                        <th>検索スコープ</th>
                     </tr>
                     <tr>
-                        <td>getRecordingsList()</td>
-                        <td>指定期間のZoom録画リスト取得</td>
-                        <td>処理可能録画配列</td>
+                        <td>getAllUsersRecordings()</td>
+                        <td>組織全体の録画リスト取得（本番標準メソッド）</td>
+                        <td>全ユーザー</td>
                     </tr>
                     <tr>
                         <td>processRecording()</td>
-                        <td>単一録画の完全処理（動画+音声）</td>
-                        <td>統合処理結果</td>
+                        <td>単一録画の完全処理（動画+音声+要約+通知）</td>
+                        <td>個別処理</td>
                     </tr>
                     <tr>
-                        <td>processVideoFile()</td>
-                        <td>動画ファイル処理（取得→保存→共有リンク）</td>
-                        <td>動画保存結果</td>
+                        <td>extractMeetingInfo()</td>
+                        <td>録画データから会議情報を抽出</td>
+                        <td>メタデータ</td>
                     </tr>
                     <tr>
-                        <td>processAudioFile()</td>
-                        <td>音声ファイル処理（取得→AI処理→破棄）</td>
-                        <td>音声解析結果</td>
+                        <td>downloadAndProcessAudio()</td>
+                        <td>音声ダウンロード→AI処理→メモリクリア</td>
+                        <td>音声処理</td>
                     </tr>
                     <tr>
-                        <td>processBatchRecordings()</td>
-                        <td>複数録画の一括処理（シーケンシャル）</td>
-                        <td>一括処理結果</td>
+                        <td>downloadAndSaveVideo()</td>
+                        <td>動画ダウンロード→Google Drive保存→共有リンク</td>
+                        <td>動画処理</td>
                     </tr>
                 </table>
             </div>
@@ -681,41 +682,40 @@
             </div>
             
             <div class="function-card">
-                <h3><span class="status-indicator status-completed"></span>B004: ZoomService（基盤）</h3>
-                <p><strong>説明:</strong> Zoom Cloud Recording APIを使用した録画取得機能を提供する共通部品</p>
+                <h3><span class="status-indicator status-completed"></span>B004: ZoomService（基盤・個人録画用）</h3>
+                <p><strong>説明:</strong> Zoom Cloud Recording APIを使用した基盤機能（個人録画検索）</p>
                 <p><strong>実装場所:</strong> 1.src/services/zoomService.js</p>
-                <p><strong>使用部品:</strong> ZoomRecordingService, 各種テストエンドポイント</p>
-                <p><strong>状態:</strong> ✅ 実装完了（Vercel対応メソッド追加）</p>
+                <p><strong>使用部品:</strong> ⚠️ 本番では非推奨（ZoomRecordingServiceを使用）</p>
+                <p><strong>状態:</strong> ✅ 実装完了（個人録画検索・レガシー用）</p>
                 
-                <h4>提供メソッド</h4>
+                <h4>提供メソッド（⚠️ 個人録画検索のみ）</h4>
                 <table>
                     <tr>
                         <th>メソッド名</th>
                         <th>機能</th>
-                        <th>備考</th>
+                        <th>制限事項</th>
+                    </tr>
+                    <tr>
+                        <td>getAllRecordings()</td>
+                        <td>個人録画検索（/users/me/recordings）</td>
+                        <td>⚠️ 個人録画のみ・組織全体は対象外</td>
                     </tr>
                     <tr>
                         <td>downloadFileAsBuffer()</td>
                         <td>録画ファイルをメモリバッファとしてダウンロード</td>
-                        <td><strong>NEW:</strong> Vercel環境対応</td>
+                        <td>Vercel環境対応</td>
+                    </tr>
+                    <tr>
+                        <td>deleteMeetingRecordings()</td>
+                        <td>録画削除機能</td>
+                        <td>ZoomRecordingServiceから使用</td>
                     </tr>
                 </table>
                 
-                <h4>従来メソッド</h4>
-                <table>
-                    <tr>
-                        <th>メソッド</th>
-                        <th>機能</th>
-                    </tr>
-                    <tr>
-                        <td>monitorNewRecordings()</td>
-                        <td>新しい録画データの監視・取得</td>
-                    </tr>
-                    <tr>
-                        <td>downloadRecording()</td>
-                        <td>録画ファイルのダウンロード</td>
-                    </tr>
-                </table>
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 10px 0;">
+                    <strong>⚠️ 本番運用注意:</strong> ZoomServiceは個人録画検索のみ対応。<br/>
+                    組織全体の録画処理には<strong>ZoomRecordingService</strong>を使用してください。
+                </div>
             </div>
         </div>
         
@@ -1089,7 +1089,7 @@ const shouldNotify = ErrorManager.shouldNotifySlack('ZM001'); // true
         </div>
         
         <div class="last-updated">
-            最終更新: 2025年8月8日 18:35 | ZoomRecordingService追加・シーケンシャル処理フロー設計反映（本番Zoom環境対応、メモリ効率最適化）
+            最終更新: 2025年8月22日 | ZoomRecordingService組織全体検索への移行完了・PT001本番標準化反映（個人録画検索から組織全体検索へアーキテクチャ変更）
         </div>
     </div>
 

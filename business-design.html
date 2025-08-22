@@ -390,16 +390,16 @@
             <div style="background: white; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
                 <div class="mermaid">
                     graph TD
-                        A["📡 Zoom録画監視開始<br/>monitor-recordings API"] --> B["🔍 新録画データ監視<br/>monitorNewRecordings"]
+                        A["📡 Zoom録画監視開始<br/>monitor-recordings-production API"] --> B["🔍 組織全体録画監視<br/>ZoomRecordingService.getAllUsersRecordings"]
                         B --> C{"録画データ存在?"}
                         
-                        C -->|"No データなし"| D["📭 待機モード<br/>2時間後再監視"]
+                        C -->|"No データなし"| D["📭 待機モード<br/>24時間後再監視"]
                         D --> A
                         
-                        C -->|"Yes データあり"| E["📊 録画数確認<br/>N件検知"]
+                        C -->|"Yes データあり"| E["📊 録画数確認<br/>N件検知（組織全体）"]
                         
-                        E --> F["🎬 並列処理準備<br/>各録画をPromise.map"]
-                        F --> G["📥 録画ダウンロード<br/>downloadRecording"]
+                        E --> F["🎬 統合処理準備<br/>ZoomRecordingService.processRecording"]
+                        F --> G["📥 録画データ処理<br/>processRecording（メモリバッファ）"]
                         G --> H["💬 Slack処理開始通知<br/>sendProcessingNotification"]
                         
                         H --> I["🔄 Promise.all並列実行開始"]
