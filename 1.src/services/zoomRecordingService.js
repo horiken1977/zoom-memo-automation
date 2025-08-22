@@ -211,11 +211,10 @@ class ZoomRecordingService {
           const documentStorageService = new DocumentStorageService();
           const meetingInfo = this.extractMeetingInfo(recording);
           
-          documentResult = await documentStorageService.saveProcessedDocuments(
+          documentResult = await documentStorageService.saveDocuments(
+            audioResult,
             meetingInfo,
-            audioResult.transcription,
-            audioResult.summary,
-            executionLogger
+            process.env.GOOGLE_DRIVE_RECORDINGS_FOLDER
           );
           
           if (executionLogger) {
