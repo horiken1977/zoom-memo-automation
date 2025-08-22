@@ -96,6 +96,15 @@ const ERROR_CODES = {
     notifySlack: true,
     troubleshooting: '動画ファイルから高品質音声を再抽出して処理を継続します'
   },
+
+  AUDIO_UNPROCESSABLE_NO_FALLBACK: {
+    code: 'AUDIO_UNPROCESSABLE_NO_FALLBACK',
+    message: '音声処理不可能（動画ファイル不存在）',
+    messageEn: 'Audio processing impossible (no video file for fallback)',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: '音声品質が低く、動画ファイルからの音声再抽出もできません。録画設定を確認してください'
+  },
   
   // ========================================
   // 旧JavaScript専用エラーコード (非推奨 - 後方互換用)
