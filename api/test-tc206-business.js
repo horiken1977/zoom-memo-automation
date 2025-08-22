@@ -8,7 +8,7 @@
  * 4. 音声品質低下 & 動画なし → エラー処理 → Slack通知（処理不可能エラー）
  */
 
-const ZoomService = require('../1.src/services/zoomService');
+const ZoomRecordingService = require('../1.src/services/zoomRecordingService');
 const AudioSummaryService = require('../1.src/services/audioSummaryService');
 const VideoStorageService = require('../1.src/services/videoStorageService');
 const GoogleDriveService = require('../1.src/services/googleDriveService');
@@ -117,24 +117,24 @@ async function testAudioMissingVideoExistsScenario(execLogger) {
     description: '音声なし & 動画あり → 動画から音声抽出'
   });
   
-  const zoomService = new ZoomService();
+  const zoomRecordingService = new ZoomRecordingService();
   const audioSummaryService = new AudioSummaryService();
   const videoStorageService = new VideoStorageService();
   const googleDriveService = new GoogleDriveService();
   const slackService = new SlackService();
   const aiService = new AIService();
   
-  // Step 1: Zoom本番環境から録画データを取得
-  logger.info('Step 1: Zoom本番環境から録画データ取得');
+  // Step 1: Zoom本番環境から組織全体の録画データを取得
+  logger.info('Step 1: Zoom組織全体の録画データ取得（PT001と同じ方法）');
   execLogger.logInfo('ZOOM_RECORDINGS_FETCH_START', {
-    description: 'Zoom本番環境から最新録画を取得'
+    description: 'Zoom組織全体から最新録画を取得（全ユーザー対象）'
   });
   
   // 本番日次バッチ想定: 過去30日間の録画を取得（十分な検索範囲を確保）
   const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const toDate = new Date().toISOString().split('T')[0];
   
-  const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
+  const zoomRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate, execLogger);
   logger.info(`✅ Zoom録画データ取得成功: ${zoomRecordings.length}件`);
   
   execLogger.logInfo('ZOOM_RECORDINGS_FETCH_COMPLETE', {
@@ -348,7 +348,7 @@ async function testAudioExistsVideoMissingScenario(execLogger) {
     description: '音声あり & 動画なし → 音声のみで処理継続'
   });
   
-  const zoomService = new ZoomService();
+  const zoomRecordingService = new ZoomRecordingService();
   const aiService = new AIService();
   const googleDriveService = new GoogleDriveService();
   const slackService = new SlackService();
@@ -363,7 +363,7 @@ async function testAudioExistsVideoMissingScenario(execLogger) {
   const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const toDate = new Date().toISOString().split('T')[0];
   
-  const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
+  const zoomRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate, execLogger);
   logger.info(`✅ Zoom録画データ取得成功: ${zoomRecordings.length}件`);
   
   // Zoomデータから音声ファイルのみを抽出（音声あり&動画なしパターンを作成）
@@ -540,7 +540,7 @@ async function testAudioLowQualityVideoExistsScenario(execLogger) {
     description: '音声品質低下 & 動画あり → 動画から音声再抽出'
   });
   
-  const zoomService = new ZoomService();
+  const zoomRecordingService = new ZoomRecordingService();
   const audioSummaryService = new AudioSummaryService();
   const aiService = new AIService();
   const slackService = new SlackService();
@@ -555,7 +555,7 @@ async function testAudioLowQualityVideoExistsScenario(execLogger) {
   const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const toDate = new Date().toISOString().split('T')[0];
   
-  const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
+  const zoomRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate, execLogger);
   logger.info(`✅ Zoom録画データ取得成功: ${zoomRecordings.length}件`);
   
   // テスト用録画データ作成（音声・動画両方ありパターン）
@@ -788,7 +788,7 @@ async function testAudioLowQualityVideoMissingScenario(execLogger) {
     description: '音声品質低下 & 動画なし → エラー処理'
   });
   
-  const zoomService = new ZoomService();
+  const zoomRecordingService = new ZoomRecordingService();
   const audioSummaryService = new AudioSummaryService();
   const slackService = new SlackService();
   
@@ -802,7 +802,7 @@ async function testAudioLowQualityVideoMissingScenario(execLogger) {
   const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const toDate = new Date().toISOString().split('T')[0];
   
-  const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
+  const zoomRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate, execLogger);
   logger.info(`✅ Zoom録画データ取得成功: ${zoomRecordings.length}件`);
   
   // Zoomデータから音声ファイルのみを抽出（動画なしパターン）
