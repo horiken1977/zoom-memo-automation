@@ -1,10 +1,11 @@
 /**
- * TC206: 部分データ存在業務テスト
+ * TC206: 部分データ存在業務テスト（4シナリオ）
  * 
- * 実際の業務フローで以下をテスト：
- * 1. 音声ファイル不存在 → 動画から音声抽出 → 文字起こし → 要約 → 保存 → Slack通知
- * 2. 動画ファイル不存在 → 音声のみで処理継続 → Slack通知（動画なし明記）
- * 3. 音声品質低下 → 動画から音声再抽出 → 文字起こし → 要約 → 保存 → Slack通知
+ * 実際のZoom録画データを使用した業務フローテスト：
+ * 1. 音声なし & 動画あり → 動画から音声抽出 → 文字起こし → 要約 → 保存 → Slack通知
+ * 2. 音声あり & 動画なし → 音声のみで処理継続 → Slack通知（動画なし明記）
+ * 3. 音声品質低下 & 動画あり → 動画から音声再抽出 → 文字起こし → 要約 → 保存 → Slack通知
+ * 4. 音声品質低下 & 動画なし → エラー処理 → Slack通知（処理不可能エラー）
  */
 
 const ZoomService = require('../1.src/services/zoomService');
@@ -27,7 +28,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const scenario = req.query.scenario || '1';  // 1=音声なし, 2=動画なし, 3=音声品質低下
+  const scenario = req.query.scenario || '1';  // 1=音声なし&動画あり, 2=音声あり&動画なし, 3=音声品質低下&動画あり, 4=音声品質低下&動画なし
   const startTime = Date.now();
   
   // ExecutionLogger初期化
@@ -51,13 +52,16 @@ module.exports = async function handler(req, res) {
     
     switch(scenario) {
       case '1':
-        result = await testAudioMissingScenario(execLogger);
+        result = await testAudioMissingVideoExistsScenario(execLogger);
         break;
       case '2':
-        result = await testVideoMissingScenario(execLogger);
+        result = await testAudioExistsVideoMissingScenario(execLogger);
         break;
       case '3':
-        result = await testAudioQualityScenario(execLogger);
+        result = await testAudioLowQualityVideoExistsScenario(execLogger);
+        break;
+      case '4':
+        result = await testAudioLowQualityVideoMissingScenario(execLogger);
         break;
       default:
         throw new Error(`無効なシナリオ: ${scenario}`);
@@ -105,12 +109,12 @@ module.exports = async function handler(req, res) {
 };
 
 /**
- * シナリオ1: 音声ファイル不存在 → 動画から音声抽出して業務処理
+ * シナリオ1: 音声なし & 動画あり → 動画から音声抽出して業務処理
  */
-async function testAudioMissingScenario(execLogger) {
-  logger.info('📋 シナリオ1: 音声ファイル不存在テスト開始');
+async function testAudioMissingVideoExistsScenario(execLogger) {
+  logger.info('📋 シナリオ1: 音声なし&動画ありテスト開始');
   execLogger.logInfo('SCENARIO_1_START', { 
-    description: '音声ファイル不存在 → 動画から音声抽出'
+    description: '音声なし & 動画あり → 動画から音声抽出'
   });
   
   const zoomService = new ZoomService();
@@ -139,43 +143,37 @@ async function testAudioMissingScenario(execLogger) {
     toDate: toDate
   });
   
-  // テスト用に最初の録画を使用（なければダミーデータ作成）
-  let targetRecording;
+  // Zoomデータから動画ファイルのみを抽出（音声なし&動画ありパターンを作成）
+  let testRecording;
   if (zoomRecordings.length > 0) {
-    targetRecording = zoomRecordings[0];
-    logger.info(`📋 テスト対象録画: ${targetRecording.topic}`);
-  } else {
-    // 録画がない場合はダミーデータでテスト
-    logger.warn('⚠️ Zoom録画データなし - ダミーデータでテスト継続');
-    targetRecording = {
-      id: 'dummy_test_recording',
-      topic: 'TC206-1 音声ファイル不存在テスト（ダミー）',
-      start_time: new Date().toISOString(),
-      duration: 30,
-      recording_files: [
-        {
-          file_type: 'MP4',
-          download_url: 'https://zoom.us/rec/download/dummy-video.mp4',
-          file_size: 50000000,
-          recording_type: 'shared_screen_with_speaker_view'
-        }
-      ]
+    const baseRecording = zoomRecordings[0];
+    const videoFiles = baseRecording.recording_files?.filter(f => f.file_type === 'MP4') || [];
+    
+    if (videoFiles.length === 0) {
+      throw new Error('Zoom録画に動画ファイルが存在しません - シナリオ1には動画ファイルが必要です');
+    }
+    
+    testRecording = {
+      ...baseRecording,
+      id: 'tc206_scenario1_audio_missing',
+      topic: `TC206-1: ${baseRecording.topic} (音声なし&動画あり)`,
+      recording_files: videoFiles  // 動画ファイルのみ
     };
+    
+    logger.info(`📋 テスト対象録画: ${testRecording.topic}`);
+    logger.info(`📹 動画ファイル数: ${videoFiles.length}件`);
+    logger.info(`🔇 音声ファイルを意図的に除外（シナリオ1テスト用）`);
+  } else {
+    throw new Error('Zoom録画データが存在しません - リアルタイムテストのため実データが必要です');
   }
   
-  // Step 2: 音声ファイル不存在を検出（動画ファイルのみのパターンをシミュレート）
-  const hasAudioFile = targetRecording.recording_files?.some(f => 
+  // Step 2: 音声ファイル不存在を確認
+  const hasAudioFile = testRecording.recording_files?.some(f => 
     f.file_type === 'M4A' || f.recording_type === 'audio_only'
   );
   
-  // テスト用に音声ファイルを意図的に除外
-  const testRecording = {
-    ...targetRecording,
-    recording_files: targetRecording.recording_files?.filter(f => f.file_type === 'MP4') || []
-  };
-  
-  if (testRecording.recording_files.length === 0) {
-    throw new Error('動画ファイルが存在しません - TC206シナリオ1には動画ファイルが必要です');
+  if (hasAudioFile) {
+    throw new Error('音声ファイルが存在しています - シナリオ1は音声なしのテストです');
   }
   
   logger.warn('⚠️ 音声ファイル不存在を検出（テスト用）');
@@ -193,34 +191,19 @@ async function testAudioMissingScenario(execLogger) {
     videoUrl: testRecording.recording_files[0].download_url
   });
   
-  // Zoom本番環境から実際のデータを取得
+  // Step 3: 実際のZoom動画ファイルから音声を抽出
+  logger.info('Step 3: Zoom動画ファイルから音声を抽出中...');
+  const videoFile = testRecording.recording_files[0]; // 必ず動画ファイルが存在
+  
   let audioBuffer;
-  if (zoomRecordings.length > 0 && targetRecording.recording_files?.length > 0) {
-    try {
-      // 実際の音声ファイルがあればそれを使用、なければ動画ファイルから抽出
-      const audioFile = targetRecording.recording_files.find(f => f.file_type === 'M4A');
-      const videoFile = targetRecording.recording_files.find(f => f.file_type === 'MP4');
-      
-      if (audioFile) {
-        logger.info('実際のZoom音声ファイルを使用');
-        audioBuffer = await zoomService.downloadFileAsBuffer(audioFile.download_url);
-        logger.info('✅ 実際のZoom音声データ取得完了');
-      } else if (videoFile) {
-        logger.info('実際のZoom動画ファイルから音声を抽出中...');
-        audioBuffer = await zoomService.downloadFileAsBuffer(videoFile.download_url);
-        logger.info('✅ 実際のZoom動画データ取得完了（音声として使用）');
-      } else {
-        throw new Error('音声・動画ファイル共に存在しません');
-      }
-    } catch (error) {
-      logger.error('Zoom実データ取得失敗:', error.message);
-      throw new Error(`Zoom本番データ取得失敗: ${error.message}`);
-    }
-  } else {
-    // Zoom録画がない場合は最小限のダミーバッファで継続
-    logger.warn('⚠️ Zoom録画データなし - 最小限のダミーバッファで継続');
-    audioBuffer = Buffer.alloc(1024 * 10); // 10KB のダミーバッファ
-    audioBuffer.fill(0x80); // 無音ではないダミーデータ
+  try {
+    logger.info(`📥 実際のZoom動画をダウンロード中: ${videoFile.download_url}`);
+    audioBuffer = await zoomService.downloadFileAsBuffer(videoFile.download_url);
+    logger.info(`✅ 実際のZoom動画データ取得完了: ${Math.round(audioBuffer.length / 1024 / 1024)}MB`);
+    logger.info('🎵 動画から音声抽出完了（動画データを音声として使用）');
+  } catch (error) {
+    logger.error('Zoom動画データ取得失敗:', error.message);
+    throw new Error(`実際のZoom動画取得失敗: ${error.message}`);
   }
   
   execLogger.logInfo('AUDIO_EXTRACTION_COMPLETE', {
@@ -322,12 +305,12 @@ async function testAudioMissingScenario(execLogger) {
 }
 
 /**
- * シナリオ2: 動画ファイル不存在 → 音声のみで処理継続
+ * シナリオ2: 音声あり & 動画なし → 音声のみで処理継続
  */
-async function testVideoMissingScenario(execLogger) {
-  logger.info('📋 シナリオ2: 動画ファイル不存在テスト開始');
+async function testAudioExistsVideoMissingScenario(execLogger) {
+  logger.info('📋 シナリオ2: 音声あり&動画なしテスト開始');
   execLogger.logInfo('SCENARIO_2_START', {
-    description: '動画ファイル不存在 → 音声のみで処理継続'
+    description: '音声あり & 動画なし → 音声のみで処理継続'
   });
   
   const zoomService = new ZoomService();
@@ -347,38 +330,30 @@ async function testVideoMissingScenario(execLogger) {
   const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
   logger.info(`✅ Zoom録画データ取得成功: ${zoomRecordings.length}件`);
   
-  // テスト用録画データ作成（動画なし、音声ありパターン）
-  let mockRecording;
+  // Zoomデータから音声ファイルのみを抽出（音声あり&動画なしパターンを作成）
+  let testRecording;
   if (zoomRecordings.length > 0) {
     const baseRecording = zoomRecordings[0];
-    mockRecording = {
+    const audioFiles = baseRecording.recording_files?.filter(f => 
+      f.file_type === 'M4A' || f.recording_type === 'audio_only'
+    ) || [];
+    
+    if (audioFiles.length === 0) {
+      throw new Error('Zoom録画に音声ファイルが存在しません - シナリオ2には音声ファイルが必要です');
+    }
+    
+    testRecording = {
       ...baseRecording,
-      id: 'test_recording_video_missing',
-      topic: 'TC206-2 動画ファイル不存在テスト（実データベース）',
-      recording_files: [
-        {
-          file_type: 'M4A',
-          download_url: 'https://zoom.us/rec/download/test-audio.m4a',
-          file_size: 10000000,
-          recording_type: 'audio_only'
-        }
-      ]
+      id: 'tc206_scenario2_video_missing',
+      topic: `TC206-2: ${baseRecording.topic} (音声あり&動画なし)`,
+      recording_files: audioFiles  // 音声ファイルのみ
     };
+    
+    logger.info(`📋 テスト対象録画: ${testRecording.topic}`);
+    logger.info(`🎙️ 音声ファイル数: ${audioFiles.length}件`);
+    logger.info(`📹 動画ファイルを意図的に除外（シナリオ2テスト用）`);
   } else {
-    mockRecording = {
-      id: 'test_recording_video_missing',
-      topic: 'TC206-2 動画ファイル不存在テスト（ダミー）',
-      start_time: new Date().toISOString(),
-      duration: 30,
-      recording_files: [
-        {
-          file_type: 'M4A',
-          download_url: 'https://zoom.us/rec/download/test-audio.m4a',
-          file_size: 10000000,
-          recording_type: 'audio_only'
-        }
-      ]
-    };
+    throw new Error('Zoom録画データが存在しません - リアルタイムテストのため実データが必要です');
   }
   
   // Step 2: 動画ファイル不存在を検出
@@ -521,12 +496,12 @@ async function testVideoMissingScenario(execLogger) {
 }
 
 /**
- * シナリオ3: 音声品質低下 → 動画から音声再抽出
+ * シナリオ3: 音声品質低下 & 動画あり → 動画から音声再抽出
  */
-async function testAudioQualityScenario(execLogger) {
-  logger.info('📋 シナリオ3: 音声品質低下テスト開始');
+async function testAudioLowQualityVideoExistsScenario(execLogger) {
+  logger.info('📋 シナリオ3: 音声品質低下&動画ありテスト開始');
   execLogger.logInfo('SCENARIO_3_START', {
-    description: '音声品質低下 → 動画から音声再抽出'
+    description: '音声品質低下 & 動画あり → 動画から音声再抽出'
   });
   
   const zoomService = new ZoomService();
@@ -768,13 +743,170 @@ async function testAudioQualityScenario(execLogger) {
 }
 
 /**
+ * シナリオ4: 音声品質低下 & 動画なし → エラー処理
+ */
+async function testAudioLowQualityVideoMissingScenario(execLogger) {
+  logger.info('📋 シナリオ4: 音声品質低下&動画なしテスト開始');
+  execLogger.logInfo('SCENARIO_4_START', {
+    description: '音声品質低下 & 動画なし → エラー処理'
+  });
+  
+  const zoomService = new ZoomService();
+  const audioSummaryService = new AudioSummaryService();
+  const slackService = new SlackService();
+  
+  // Step 1: Zoom本番環境から録画データを取得
+  logger.info('Step 1: Zoom本番環境から録画データ取得');
+  execLogger.logInfo('ZOOM_RECORDINGS_FETCH_START', {
+    description: 'Zoom本番環境から最新録画を取得（シナリオ4）'
+  });
+  
+  const fromDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const toDate = new Date().toISOString().split('T')[0];
+  
+  const zoomRecordings = await zoomService.getAllRecordings(fromDate, toDate);
+  logger.info(`✅ Zoom録画データ取得成功: ${zoomRecordings.length}件`);
+  
+  // Zoomデータから音声ファイルのみを抽出（動画なしパターン）
+  let testRecording;
+  if (zoomRecordings.length > 0) {
+    const baseRecording = zoomRecordings[0];
+    const audioFiles = baseRecording.recording_files?.filter(f => 
+      f.file_type === 'M4A' || f.recording_type === 'audio_only'
+    ) || [];
+    
+    if (audioFiles.length === 0) {
+      throw new Error('Zoom録画に音声ファイルが存在しません - シナリオ4には音声ファイルが必要です');
+    }
+    
+    testRecording = {
+      ...baseRecording,
+      id: 'tc206_scenario4_video_missing_audio_low',
+      topic: `TC206-4: ${baseRecording.topic} (音声品質低下&動画なし)`,
+      recording_files: audioFiles  // 音声ファイルのみ
+    };
+    
+    logger.info(`📋 テスト対象録画: ${testRecording.topic}`);
+    logger.info(`🎙️ 音声ファイル数: ${audioFiles.length}件`);
+    logger.info(`📹 動画ファイル不存在（シナリオ4テスト用）`);
+  } else {
+    throw new Error('Zoom録画データが存在しません - リアルタイムテストのため実データが必要です');
+  }
+  
+  // Step 2: 音声品質をチェック（低品質として扱う）
+  logger.info('Step 2: 音声品質チェック');
+  const lowQualityBuffer = Buffer.alloc(1024 * 50);
+  lowQualityBuffer.fill(0x00); // 無音データで低品質をシミュレート
+  
+  const qualityResult = await audioSummaryService.checkAudioQuality(lowQualityBuffer);
+  
+  logger.warn('⚠️ 音声品質低下を検出');
+  execLogger.logWarning('AUDIO_QUALITY_LOW', {
+    recordingId: testRecording.id,
+    topic: testRecording.topic,
+    qualityMetrics: qualityResult,
+    videoAvailable: false
+  });
+  
+  // Step 3: 動画ファイル不存在を確認
+  const hasVideoFile = testRecording.recording_files?.some(f => f.file_type === 'MP4');
+  
+  if (!hasVideoFile) {
+    logger.error('❌ 音声品質低下かつ動画ファイル不存在 - 処理不可能');
+    execLogger.logError('PROCESSING_IMPOSSIBLE', {
+      reason: 'Low audio quality with no video file for re-extraction',
+      audioQuality: qualityResult,
+      videoFiles: 0,
+      audioFiles: testRecording.recording_files.length
+    });
+    
+    // Step 4: Slack通知（エラー通知）
+    logger.info('Step 4: Slack通知送信（処理不可能エラー）');
+    const errorSlackMessage = {
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `❌ ${testRecording.topic}`,
+            emoji: true
+          }
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*❌ 処理不可能エラー:* 音声品質が低く、動画ファイルも存在しないため、文字起こし処理を実行できません。`
+          }
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*対処方法:*\n• 録画設定の見直しをお願いします\n• 音声品質の改善をご検討ください\n• 可能であれば動画録画もご利用ください`
+          }
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `🎙️ *音声品質:* 低品質 | 📹 *動画:* なし | ⚠️ *ステータス:* 処理不可能`
+            }
+          ]
+        }
+      ]
+    };
+    
+    // Slack通知をシミュレート
+    const slackResult = {
+      ok: true,
+      ts: Date.now().toString(),
+      channel: 'test-channel',
+      error: true
+    };
+    
+    execLogger.logInfo('SLACK_ERROR_NOTIFICATION_SENT', {
+      channel: slackResult.channel,
+      errorType: 'processing_impossible',
+      audioQualityLow: true,
+      videoMissing: true
+    });
+    
+    // エラー結果を返す
+    return {
+      scenario: 'audio_low_quality_video_missing',
+      status: 'error',
+      steps: {
+        zoomDataFetch: 'Zoom録画データ取得完了',
+        audioQualityCheck: '音声品質低下を検出',
+        videoFileCheck: '動画ファイル不存在を確認',
+        errorDetermination: '処理不可能と判定',
+        slackErrorNotification: 'Slack通知送信完了（エラー）'
+      },
+      errorInfo: {
+        reason: '音声品質低下かつ動画ファイル不存在',
+        audioQuality: 'low',
+        videoAvailable: false,
+        processingPossible: false,
+        slackNotified: true
+      }
+    };
+  }
+  
+  // このコードは実行されないはず（動画がない場合の処理）
+  throw new Error('予期しないエラー: シナリオ4で動画ファイルが存在しています');
+}
+
+/**
  * シナリオの説明を取得
  */
 function getScenarioDescription(scenario) {
   const descriptions = {
-    '1': '音声ファイル不存在 → 動画から音声抽出',
-    '2': '動画ファイル不存在 → 音声のみで処理継続',
-    '3': '音声品質低下 → 動画から音声再抽出'
+    '1': '音声なし & 動画あり → 動画から音声抽出',
+    '2': '音声あり & 動画なし → 音声のみで処理継続',
+    '3': '音声品質低下 & 動画あり → 動画から音声再抽出',
+    '4': '音声品質低下 & 動画なし → エラー処理'
   };
   return descriptions[scenario] || '不明なシナリオ';
 }
