@@ -17,6 +17,7 @@ const axios = require('axios');
 const ZoomService = require('./zoomService');
 const VideoStorageService = require('./videoStorageService');
 const AudioSummaryService = require('./audioSummaryService');
+const DocumentStorageService = require('./documentStorageService');
 const { ExecutionLogger } = require('../utils/executionLogger');
 const { ErrorManager } = require('../utils/errorCodes');
 const logger = require('../utils/logger');
@@ -199,7 +200,42 @@ class ZoomRecordingService {
       // Step 2: 音声ファイル処理 (取得 → AI処理 → メモリ破棄)
       const audioResult = await this.processAudioFile(recording, executionLogger);
       
-      // Step 3: 処理結果の統合
+      // Step 3: 文書保存処理 (文字起こし・要約をGoogle Driveに保存)
+      let documentResult = null;
+      if (audioResult.success && audioResult.transcription && audioResult.summary) {
+        try {
+          if (executionLogger) {
+            executionLogger.startStep('DOCUMENT_STORAGE');
+          }
+          
+          const documentStorageService = new DocumentStorageService();
+          const meetingInfo = this.extractMeetingInfo(recording);
+          
+          documentResult = await documentStorageService.saveProcessedDocuments(
+            meetingInfo,
+            audioResult.transcription,
+            audioResult.summary,
+            executionLogger
+          );
+          
+          if (executionLogger) {
+            executionLogger.logSuccess('DOCUMENT_STORAGE_COMPLETE', {
+              transcriptionSaved: !!documentResult.transcriptionLink,
+              summarySaved: !!documentResult.summaryLink
+            });
+          }
+          
+        } catch (docError) {
+          logger.error('文書保存エラー（処理は継続）:', docError);
+          if (executionLogger) {
+            executionLogger.logWarning('DOCUMENT_STORAGE_FAILED', {
+              error: docError.message
+            });
+          }
+        }
+      }
+      
+      // Step 4: 処理結果の統合
       const result = {
         success: true,
         meetingId: meetingId,
@@ -207,6 +243,10 @@ class ZoomRecordingService {
         meetingInfo: this.extractMeetingInfo(recording),
         video: videoResult,
         audio: audioResult,
+        documents: documentResult,
+        // Slack通知用フィールド
+        summary: audioResult.summary,
+        driveLink: videoResult.driveLink,
         processedAt: new Date().toISOString()
       };
       
