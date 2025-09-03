@@ -79,56 +79,44 @@ function modifyRecordingForScenario(baseRecording, scenario) {
   switch (scenario) {
     case '1':
       // 音声なし & 動画あり
-      modifiedRecording.recording_files = modifiedRecording.recording_files.filter(
+      // 動画ファイルのみを残す（実際のURLを維持）
+      const videoFiles = modifiedRecording.recording_files.filter(
         file => file.file_type === 'MP4'
       );
-      if (modifiedRecording.recording_files.length === 0) {
-        // 動画ファイルがない場合はダミーを追加
-        modifiedRecording.recording_files.push({
-          file_type: 'MP4',
-          file_size: 1000000,
-          download_url: 'dummy_video_url_for_test',
-          play_url: 'dummy_play_url'
-        });
+      if (videoFiles.length > 0) {
+        // 実際の動画ファイルがある場合はそれを使用
+        modifiedRecording.recording_files = videoFiles;
+      } else {
+        // 動画ファイルがない場合はエラー
+        logger.warn('TC206シナリオ1: 実際の動画ファイルが見つかりません');
+        modifiedRecording.recording_files = [];
       }
       break;
       
     case '2':
       // 音声あり & 動画なし
-      modifiedRecording.recording_files = modifiedRecording.recording_files.filter(
+      // 音声ファイルのみを残す（実際のURLを維持）
+      const audioFiles = modifiedRecording.recording_files.filter(
         file => ['M4A', 'MP3'].includes(file.file_type)
       );
-      if (modifiedRecording.recording_files.length === 0) {
-        // 音声ファイルがない場合はダミーを追加
-        modifiedRecording.recording_files.push({
-          file_type: 'M4A',
-          file_size: 500000,
-          download_url: 'dummy_audio_url_for_test',
-          play_url: 'dummy_play_url'
-        });
+      if (audioFiles.length > 0) {
+        modifiedRecording.recording_files = audioFiles;
+      } else {
+        logger.warn('TC206シナリオ2: 実際の音声ファイルが見つかりません');
+        modifiedRecording.recording_files = [];
       }
       break;
       
     case '3':
       // 音声品質低下 & 動画あり
-      // 両方のファイルを保持し、音声ファイルに品質低下フラグを追加
-      if (!modifiedRecording.recording_files.some(f => f.file_type === 'MP4')) {
-        modifiedRecording.recording_files.push({
-          file_type: 'MP4',
-          file_size: 1000000,
-          download_url: 'dummy_video_url_for_test',
-          play_url: 'dummy_play_url'
-        });
+      // 実際のファイルを使用し、音声ファイルに品質低下フラグを追加
+      const hasVideo = modifiedRecording.recording_files.some(f => f.file_type === 'MP4');
+      const hasAudio = modifiedRecording.recording_files.some(f => ['M4A', 'MP3'].includes(f.file_type));
+      
+      if (!hasVideo || !hasAudio) {
+        logger.warn(`TC206シナリオ3: 必要なファイルが不足 (video=${hasVideo}, audio=${hasAudio})`);
       }
-      if (!modifiedRecording.recording_files.some(f => ['M4A', 'MP3'].includes(f.file_type))) {
-        modifiedRecording.recording_files.push({
-          file_type: 'M4A',
-          file_size: 500000,
-          download_url: 'dummy_audio_url_for_test',
-          play_url: 'dummy_play_url',
-          test_low_quality: true  // テスト用フラグ
-        });
-      }
+      
       // 音声ファイルに品質低下マーカーを追加
       modifiedRecording.recording_files.forEach(file => {
         if (['M4A', 'MP3'].includes(file.file_type)) {
@@ -139,24 +127,21 @@ function modifyRecordingForScenario(baseRecording, scenario) {
       
     case '4':
       // 音声品質低下 & 動画なし
-      modifiedRecording.recording_files = modifiedRecording.recording_files.filter(
+      // 音声ファイルのみを残し、品質低下フラグを追加
+      const audioOnlyFiles = modifiedRecording.recording_files.filter(
         file => ['M4A', 'MP3'].includes(file.file_type)
       );
-      if (modifiedRecording.recording_files.length === 0) {
-        modifiedRecording.recording_files.push({
-          file_type: 'M4A',
-          file_size: 500000,
-          download_url: 'dummy_audio_url_for_test',
-          play_url: 'dummy_play_url',
-          test_low_quality: true
-        });
-      }
-      // 音声ファイルに品質低下マーカーを追加
-      modifiedRecording.recording_files.forEach(file => {
-        if (['M4A', 'MP3'].includes(file.file_type)) {
+      
+      if (audioOnlyFiles.length > 0) {
+        modifiedRecording.recording_files = audioOnlyFiles;
+        // 音声ファイルに品質低下マーカーを追加
+        modifiedRecording.recording_files.forEach(file => {
           file.test_low_quality = true;
-        }
-      });
+        });
+      } else {
+        logger.warn('TC206シナリオ4: 実際の音声ファイルが見つかりません');
+        modifiedRecording.recording_files = [];
+      }
       break;
   }
   

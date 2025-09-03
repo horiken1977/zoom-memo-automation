@@ -411,37 +411,41 @@ class ZoomRecordingService {
       const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
       
       // 音声品質チェック（実際の音声データを分析）
+      // 注：品質チェックは音声フォーマットに依存するため、エラー時はスキップ
       let shouldFallbackToVideo = false;
       try {
-        const qualityCheck = await this.audioSummaryService.checkAudioQuality(audioBuffer);
-        
-        if (qualityCheck.isLowQuality) {
-          logger.warn(`音声品質低下を検出: RMS=${qualityCheck.averageRMS?.toFixed(4) || 'N/A'}, 無音率=${qualityCheck.silenceRatio?.toFixed(2) || 'N/A'}`);
+        // MP3/M4Aファイルのみ品質チェックを実行
+        if (audioFile.file_type === 'M4A' || audioFile.file_type === 'MP3') {
+          const qualityCheck = await this.audioSummaryService.checkAudioQuality(audioBuffer);
           
-          // 動画ファイルが存在する場合はフォールバック
-          const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
-          if (videoFile) {
-            logger.info('音声品質低下のため、動画ファイルから再処理します。');
+          if (qualityCheck.isLowQuality) {
+            logger.warn(`音声品質低下を検出: RMS=${qualityCheck.averageRMS?.toFixed(4) || 'N/A'}, 無音率=${qualityCheck.silenceRatio?.toFixed(2) || 'N/A'}`);
             
-            if (executionLogger) {
-              executionLogger.logWarning('AUDIO_QUALITY_LOW_FALLBACK', {
-                audioFileName: audioFile.file_name,
-                videoFileName: videoFile.file_name,
-                qualityMetrics: qualityCheck
-              });
-            }
-            
-            // 動画から処理
-            return await this.processVideoAsAudio(videoFile, recording, executionLogger);
-          } else {
-            // 動画がない場合は警告を出して続行
-            logger.warn('音声品質が低下していますが、代替の動画ファイルがありません。音声ファイルで処理を続行します。');
-            
-            if (executionLogger) {
-              executionLogger.logWarning('AUDIO_QUALITY_LOW_NO_VIDEO', {
-                fileName: audioFile.file_name,
-                qualityMetrics: qualityCheck
-              });
+            // 動画ファイルが存在する場合はフォールバック
+            const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
+            if (videoFile) {
+              logger.info('音声品質低下のため、動画ファイルから再処理します。');
+              
+              if (executionLogger) {
+                executionLogger.logWarning('AUDIO_QUALITY_LOW_FALLBACK', {
+                  audioFileName: audioFile.file_name,
+                  videoFileName: videoFile.file_name,
+                  qualityMetrics: qualityCheck
+                });
+              }
+              
+              // 動画から処理
+              return await this.processVideoAsAudio(videoFile, recording, executionLogger);
+            } else {
+              // 動画がない場合は警告を出して続行
+              logger.warn('音声品質が低下していますが、代替の動画ファイルがありません。音声ファイルで処理を続行します。');
+              
+              if (executionLogger) {
+                executionLogger.logWarning('AUDIO_QUALITY_LOW_NO_VIDEO', {
+                  fileName: audioFile.file_name,
+                  qualityMetrics: qualityCheck
+                });
+              }
             }
           }
         }
