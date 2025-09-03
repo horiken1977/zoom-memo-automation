@@ -251,16 +251,8 @@ module.exports = async function handler(req, res) {
           recordingFiles: recording.recording_files?.length || 0
         });
         
-        // Slack処理開始通知
-        try {
-          await slackService.sendProcessingNotification({
-            topic: recording.topic,
-            startTime: recording.start_time,
-            duration: recording.duration
-          });
-        } catch (slackError) {
-          logger.error('Slack開始通知失敗（処理は継続）:', slackError);
-        }
+        // TC206テスト: Slack通知は本番処理内でのみ実行（重複防止）
+        logger.info('🔇 TC206テスト: 開始通知はskip（本番処理内で実行）');
         
         // 録画処理実行（動画保存、AI処理、文書保存を含む）
         const recordingResult = await zoomRecordingService.processRecording(
@@ -269,14 +261,8 @@ module.exports = async function handler(req, res) {
         );
         
         if (recordingResult.success) {
-          // Slack完了通知（要約付き）
-          if (recordingResult.summary) {
-            try {
-              await slackService.sendCompletionMessage(recordingResult.summary);
-            } catch (slackError) {
-              logger.error('Slack完了通知失敗:', slackError);
-            }
-          }
+          // TC206テスト: 完了通知も本番処理内で実行済み（重複防止）
+          logger.info('🔇 TC206テスト: 完了通知はskip（本番処理内で実行済み）');
           
           // TC206では録画削除をスキップ（テストのため）
           logger.info('🔒 TC206テスト: 録画削除をスキップ');
@@ -319,15 +305,8 @@ module.exports = async function handler(req, res) {
           executionLogger.logError('RECORDING_PROCESSING_FAILED', error);
         }
         
-        // エラー通知
-        try {
-          await slackService.sendErrorNotification({
-            topic: recording.topic,
-            error: error.message
-          });
-        } catch (slackError) {
-          logger.error('Slackエラー通知失敗:', slackError);
-        }
+        // TC206テスト: エラー通知も本番処理内で実行（重複防止）
+        logger.info('🔇 TC206テスト: エラー通知はskip（本番処理内で実行）');
       }
     }
     

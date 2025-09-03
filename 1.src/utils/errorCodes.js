@@ -556,6 +556,15 @@ const ERROR_CODES = {
     troubleshooting: '音声処理、動画保存、またはAI処理でエラーが発生しました。詳細なログを確認してください'
   },
 
+  VIDEO_TO_AUDIO_PROCESSING: {
+    code: 'VIDEO_TO_AUDIO_PROCESSING',
+    message: '動画から音声抽出処理',
+    messageEn: 'Video to audio processing',
+    retryable: true,
+    notifySlack: false,
+    troubleshooting: '動画ファイルから音声を抽出して文字起こしを実行しています。処理中のステータスです'
+  },
+
   // ========================================
   // HTML定義エラーコード - システム関連 (E_SYSTEM_*)
   // ========================================

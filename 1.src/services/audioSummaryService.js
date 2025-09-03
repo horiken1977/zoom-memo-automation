@@ -71,9 +71,8 @@ class AudioSummaryService {
       
       // 文字起こしから要約生成
       debugTimer('Step 3: 構造化要約生成開始');
-      const summaryResult = await this.aiService.generateStructuredSummary(
-        transcriptionResult.transcription,
-        meetingInfo
+      const summaryResult = await this.generateStructuredSummary(
+        transcriptionResult
       );
       const summaryTime = debugTimer('Step 3: 構造化要約生成完了');
       
