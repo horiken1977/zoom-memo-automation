@@ -198,7 +198,8 @@ class ZoomRecordingService {
       const videoResult = await this.processVideoFile(recording, executionLogger);
       
       // Step 2: 音声ファイル処理 (取得 → AI処理 → メモリ破棄)
-      const audioResult = await this.processAudioFile(recording, executionLogger);
+      // 音声ファイルがない場合は動画から処理を試みる
+      const audioResult = await this.processAudioFile(recording, executionLogger, videoResult);
       
       // Step 3: 文書保存処理 (文字起こし・要約をGoogle Driveに保存)
       let documentResult = null;
@@ -246,7 +247,13 @@ class ZoomRecordingService {
         // Slack通知用フィールド
         summary: audioResult.summary,
         driveLink: videoResult.driveLink,
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
+        // 処理方法の情報を追加
+        processingDetails: {
+          processedFromVideo: audioResult?.processedFromVideo || false,
+          hasVideo: !!videoResult?.success,
+          hasAudio: !audioResult?.processedFromVideo
+        }
       };
       
       if (executionLogger) {
@@ -346,9 +353,10 @@ class ZoomRecordingService {
    * 音声ファイルの処理 (取得 → AI処理 → メモリ破棄)
    * @param {Object} recording - 録画データ
    * @param {ExecutionLogger} executionLogger - 実行ログ
+   * @param {Object} videoResult - 動画処理結果（音声ファイルがない場合のフォールバック用）
    * @returns {Promise<Object>} 音声処理結果
    */
-  async processAudioFile(recording, executionLogger = null) {
+  async processAudioFile(recording, executionLogger = null, videoResult = null) {
     try {
       if (executionLogger) {
         executionLogger.startStep('AUDIO_PROCESSING');
@@ -358,8 +366,40 @@ class ZoomRecordingService {
       const audioFile = recording.recording_files.find(file => file.file_type === 'M4A') ||
                        recording.recording_files.find(file => file.file_type === 'MP3');
       
+      // 音声ファイルがない場合、動画ファイルから処理を試みる
       if (!audioFile) {
-        throw new Error('音声ファイル(M4A/MP3)が見つかりません');
+        logger.info('音声ファイルが見つかりません。動画ファイルから文字起こしを試みます。');
+        
+        // 動画ファイルが存在するか確認
+        const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
+        if (!videoFile) {
+          throw new Error('音声ファイル(M4A/MP3)も動画ファイル(MP4)も見つかりません');
+        }
+        
+        // 動画ファイルから直接文字起こし・要約を実行
+        return await this.processVideoAsAudio(videoFile, recording, executionLogger);
+      }
+      
+      // TC206シナリオ3対応：音声品質低下フラグの確認
+      if (audioFile.test_low_quality) {
+        logger.warn('音声品質低下フラグを検出。動画ファイルからの処理を試みます。');
+        
+        // 動画ファイルが存在するか確認
+        const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
+        if (!videoFile) {
+          // 動画がない場合はエラー
+          throw new Error('音声品質が低下しており、代替の動画ファイルも存在しません');
+        }
+        
+        if (executionLogger) {
+          executionLogger.logWarning('AUDIO_QUALITY_LOW', {
+            fileName: audioFile.file_name,
+            reason: '音声品質低下のため動画から再処理'
+          });
+        }
+        
+        // 動画ファイルから直接文字起こし・要約を実行
+        return await this.processVideoAsAudio(videoFile, recording, executionLogger);
       }
       
       // ファイル名のフォールバック処理
@@ -369,6 +409,45 @@ class ZoomRecordingService {
       
       // 音声ファイルをメモリバッファとして取得
       const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
+      
+      // 音声品質チェック（実際の音声データを分析）
+      let shouldFallbackToVideo = false;
+      try {
+        const qualityCheck = await this.audioSummaryService.checkAudioQuality(audioBuffer);
+        
+        if (qualityCheck.isLowQuality) {
+          logger.warn(`音声品質低下を検出: RMS=${qualityCheck.averageRMS?.toFixed(4) || 'N/A'}, 無音率=${qualityCheck.silenceRatio?.toFixed(2) || 'N/A'}`);
+          
+          // 動画ファイルが存在する場合はフォールバック
+          const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
+          if (videoFile) {
+            logger.info('音声品質低下のため、動画ファイルから再処理します。');
+            
+            if (executionLogger) {
+              executionLogger.logWarning('AUDIO_QUALITY_LOW_FALLBACK', {
+                audioFileName: audioFile.file_name,
+                videoFileName: videoFile.file_name,
+                qualityMetrics: qualityCheck
+              });
+            }
+            
+            // 動画から処理
+            return await this.processVideoAsAudio(videoFile, recording, executionLogger);
+          } else {
+            // 動画がない場合は警告を出して続行
+            logger.warn('音声品質が低下していますが、代替の動画ファイルがありません。音声ファイルで処理を続行します。');
+            
+            if (executionLogger) {
+              executionLogger.logWarning('AUDIO_QUALITY_LOW_NO_VIDEO', {
+                fileName: audioFile.file_name,
+                qualityMetrics: qualityCheck
+              });
+            }
+          }
+        }
+      } catch (qualityCheckError) {
+        logger.warn('音声品質チェックに失敗しましたが、処理を続行します:', qualityCheckError.message);
+      }
       
       // Gemini AIで文字起こし・要約処理
       const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
@@ -406,6 +485,69 @@ class ZoomRecordingService {
       }
       
       throw new Error(`音声処理エラー: ${error.message}`);
+    }
+  }
+
+  /**
+   * 動画ファイルから音声処理を実行（音声ファイルがない場合のフォールバック）
+   * @param {Object} videoFile - 動画ファイル情報
+   * @param {Object} recording - Zoom録画データ
+   * @param {ExecutionLogger} executionLogger - 実行ログ
+   * @returns {Promise<Object>} 処理結果
+   */
+  async processVideoAsAudio(videoFile, recording, executionLogger = null) {
+    try {
+      const videoFileName = videoFile.file_name || `video_${recording.id}.mp4`;
+      
+      logger.info(`動画ファイルから音声処理開始: ${videoFileName} (${Math.round(videoFile.file_size / 1024 / 1024)}MB)`);
+      
+      if (executionLogger) {
+        executionLogger.logInfo('VIDEO_TO_AUDIO_PROCESSING', {
+          fileName: videoFileName,
+          fileSize: videoFile.file_size,
+          reason: '音声ファイルが存在しないため動画から処理'
+        });
+      }
+      
+      // 動画ファイルをメモリバッファとして取得
+      const videoBuffer = await this.zoomService.downloadFileAsBuffer(videoFile.download_url);
+      
+      // Gemini AIで動画から直接文字起こし・要約処理
+      // 注：Gemini 2.0以降は動画ファイルも直接処理可能
+      const analysisResult = await this.audioSummaryService.processVideoBuffer(
+        videoBuffer,
+        videoFileName,
+        this.extractMeetingInfo(recording)
+      );
+      
+      if (executionLogger) {
+        executionLogger.completeStep('AUDIO_PROCESSING', {
+          fileName: videoFileName,
+          fileSize: videoFile.file_size,
+          processedAs: 'video',
+          transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
+          summaryGenerated: !!analysisResult.structuredSummary
+        });
+      }
+      
+      logger.info(`動画からの音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+      
+      return {
+        success: true,
+        fileName: videoFileName,
+        fileSize: videoFile.file_size,
+        processedFromVideo: true,  // 動画から処理したことを明示
+        transcription: analysisResult.transcription,
+        summary: analysisResult.structuredSummary,
+        processingTime: analysisResult.processingTime
+      };
+      
+    } catch (error) {
+      if (executionLogger) {
+        executionLogger.errorStep('VIDEO_TO_AUDIO_PROCESSING', 'AI004', error.message);
+      }
+      
+      throw new Error(`動画からの音声処理エラー: ${error.message}`);
     }
   }
 

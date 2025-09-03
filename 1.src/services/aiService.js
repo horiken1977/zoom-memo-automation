@@ -109,6 +109,69 @@ class AIService {
 
 
   /**
+   * 動画ファイルから文字起こしを生成（メモリバッファ版）
+   * Gemini 2.0以降対応
+   * @param {Buffer} videoBuffer - 動画ファイルのバッファ
+   * @param {string} fileName - ファイル名（拡張子含む）
+   * @returns {Promise<Object>} 文字起こし結果
+   */
+  async transcribeVideoBuffer(videoBuffer, fileName) {
+    try {
+      await this.initializeModel();
+      logger.info(`Transcribing video buffer: ${fileName} (${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      
+      const startTime = Date.now();
+      
+      // Base64エンコード
+      const base64Video = videoBuffer.toString('base64');
+      
+      // Gemini APIに送信（動画対応）
+      const result = await this.model.generateContent([
+        {
+          inlineData: {
+            mimeType: 'video/mp4',
+            data: base64Video
+          }
+        },
+        {
+          text: `この動画の音声を日本語で正確に文字起こししてください。
+                
+                以下の形式で出力してください：
+                
+                【会議情報】
+                - 開始時刻: （わかる場合）
+                - 参加者: （識別できる場合）
+                
+                【文字起こし】
+                （ここに完全な文字起こしを記載）
+                
+                注意事項：
+                - すべての発言を正確に文字に起こしてください
+                - 話者が識別できる場合は「話者名:」の形式で記載
+                - 相槌や間投詞も含めて記載
+                - タイムスタンプがわかる場合は [00:00] の形式で挿入`
+        }
+      ]);
+      
+      const transcription = result.response.text();
+      const processingTime = Date.now() - startTime;
+      
+      logger.info(`Video transcription completed: ${transcription.length} characters in ${processingTime}ms`);
+      
+      return {
+        transcription,
+        processingTime,
+        model: this.selectedModel,
+        processedFrom: 'video'
+      };
+      
+    } catch (error) {
+      logger.error('Video transcription error:', error);
+      throw new Error(`動画文字起こしエラー: ${error.message}`);
+    }
+  }
+
+  /**
    * 音声ファイルを文字起こし
    */
   async transcribeAudio(audioFilePath, meetingInfo) {
