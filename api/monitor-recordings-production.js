@@ -81,11 +81,15 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Step 2: 各録画を処理（本番運用: 全録画を処理）
-    logger.info(`🎬 ${availableRecordings.length}件の録画処理を開始`);
+    // Step 2: タイムアウト防止のため1件ずつ処理（処理後に再検索）
+    logger.info(`🎬 録画処理開始: ${availableRecordings.length}件検出`);
     
-    for (const recording of availableRecordings) {
+    // 1件のみ処理（タイムアウト防止）
+    if (availableRecordings.length > 0) {
+      const recording = availableRecordings[0]; // 最初の1件のみ処理
       const recordingStartTime = Date.now();
+      
+      logger.info(`📋 1件処理モード: ${recording.topic} (残り${availableRecordings.length - 1}件は次回実行で処理)`);
       
       try {
         logger.info(`\\n🎯 処理開始: ${recording.topic}`);
@@ -195,13 +199,33 @@ module.exports = async function handler(req, res) {
           logger.error('Slackエラー通知失敗:', slackError);
         }
       }
+      
+      // 実行ログ保存
+      if (executionLogger) {
+        try {
+          const logSaveResult = await executionLogger.saveToGoogleDrive();
+          logger.info('📋 実行ログ保存完了:', logSaveResult.viewLink);
+        } catch (logError) {
+          logger.error('実行ログ保存失敗:', logError);
+        }
+      }
     }
     
-    // Step 3: 処理結果サマリ
+    // Step 3: 継続検索（残り録画確認）
+    const remainingRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate);
+    const stillAvailable = remainingRecordings.filter(recording => {
+      const hasVideo = recording.recording_files?.some(file => file.file_type === 'MP4');
+      const hasAudio = recording.recording_files?.some(file => ['M4A', 'MP3'].includes(file.file_type));
+      return hasVideo || hasAudio;
+    });
+    
+    // Step 4: 処理結果サマリと継続処理案内
     const totalTime = Date.now() - startTime;
     const result = {
       status: 'success',
-      message: `📊 録画処理完了: ${processedRecordings.length}件成功, ${errors.length}件失敗`,
+      message: processedRecordings.length > 0 
+        ? `✅ 1件処理完了。残り${stillAvailable.length}件`
+        : `📭 処理対象なし`,
       summary: {
         total_recordings: availableRecordings.length,
         processed: processedRecordings.length,
@@ -212,8 +236,16 @@ module.exports = async function handler(req, res) {
       processing_time: `${totalTime}ms (${(totalTime/1000).toFixed(1)}秒)`,
       processed_recordings: processedRecordings,
       errors: errors.length > 0 ? errors : undefined,
+      remaining_recordings: {
+        count: stillAvailable.length,
+        action: stillAvailable.length > 0 ? '次回実行で継続処理します' : '全録画処理完了'
+      },
       timestamp: new Date().toISOString()
     };
+    
+    if (stillAvailable.length > 0) {
+      logger.info(`🔄 継続処理必要: 残り${stillAvailable.length}件の録画があります`);
+    }
     
     logger.info('🎉 本番環境録画監視処理完了', result.summary);
     
