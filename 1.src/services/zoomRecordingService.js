@@ -247,7 +247,13 @@ class ZoomRecordingService {
         // Slack通知用フィールド
         summary: audioResult.summary,
         driveLink: videoResult.driveLink,
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
+        // 処理方法の情報を追加
+        processingDetails: {
+          processedFromVideo: audioResult?.processedFromVideo || false,
+          hasVideo: !!videoResult?.success,
+          hasAudio: !audioResult?.processedFromVideo
+        }
       };
       
       if (executionLogger) {
@@ -392,56 +398,56 @@ class ZoomRecordingService {
         return {
           success: true,
           fileName: audioFile.file_name,
-          fileSize: audioFile.file_size,
           transcription: analysisResult.transcription,
           summary: analysisResult.structuredSummary,
-          processingTime: analysisResult.processingTime
+          processingTime: analysisResult.processingTime || 0
         };
-      } else {
-        // 音声ファイルがない場合：動画バッファから文字起こし
-        logger.info('音声ファイルが見つからないため、動画ファイルから文字起こしを実行');
-        
-        if (!videoBuffer) {
-          throw new Error('音声ファイルなし、かつ動画バッファも提供されていません');
-        }
-        
-        const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
-        if (!videoFile) {
-          throw new Error('動画ファイルも見つかりません');
-        }
-        
-        const videoFileName = videoFile.file_name || `video_${recording.id}.mp4`;
-        logger.info(`動画バッファから文字起こし開始: ${videoFileName} (${Math.round(videoBuffer.length / 1024 / 1024)}MB)`);
-        
-        // 動画バッファから文字起こし処理
-        const analysisResult = await this.audioSummaryService.processVideoAsAudio(
-          videoBuffer,
-          videoFileName,
-          this.extractMeetingInfo(recording)
-        );
-        
-        if (executionLogger) {
-          executionLogger.completeStep('AUDIO_PROCESSING', {
-            fileName: videoFileName,
-            fileSize: videoBuffer.length,
-            transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
-            summaryGenerated: !!analysisResult.structuredSummary,
-            processedFromVideo: true
-          });
-        }
-        
-        logger.info(`動画から音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
-        
-        return {
-          success: true,
+      }
+      
+      // 音声ファイルがない場合：動画バッファから文字起こし
+      logger.info('音声ファイルが見つからないため、動画バッファから文字起こしを実行');
+      
+      if (!videoBuffer) {
+        throw new Error('音声ファイルなし、かつ動画バッファも提供されていません');
+      }
+      
+      // 動画ファイルの存在確認
+      const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
+      if (!videoFile) {
+        throw new Error('音声ファイルがなく、動画ファイル(MP4)も見つかりません');
+      }
+      
+      const videoFileName = videoFile.file_name || `video_${recording.id}.mp4`;
+      logger.info(`動画バッファから文字起こし開始: ${videoFileName}`);
+      
+      // 動画バッファからAI処理（音声ファイルがない場合の代替処理）
+      const analysisResult = await this.audioSummaryService.processVideoAsAudio(
+        videoBuffer,
+        videoFileName,
+        this.extractMeetingInfo(recording)
+      );
+      
+      if (executionLogger) {
+        executionLogger.completeStep('AUDIO_PROCESSING', {
           fileName: videoFileName,
           fileSize: videoBuffer.length,
           transcription: analysisResult.transcription,
           summary: analysisResult.structuredSummary,
           processingTime: analysisResult.processingTime,
-          processedFromVideo: true
-        };
+          processedFrom: 'video'
+        });
       }
+      
+      logger.info(`動画から音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+      
+      return {
+        success: true,
+        fileName: videoFileName,
+        transcription: analysisResult.transcription,
+        summary: analysisResult.structuredSummary,
+        processingTime: analysisResult.processingTime || 0,
+        processedFrom: 'video'
+      };
       
     } catch (error) {
       if (executionLogger) {
@@ -449,6 +455,69 @@ class ZoomRecordingService {
       }
       
       throw new Error(`音声処理エラー: ${error.message}`);
+    }
+  }
+
+  /**
+   * 動画ファイルから音声処理を実行（音声ファイルがない場合のフォールバック）
+   * @param {Object} videoFile - 動画ファイル情報
+   * @param {Object} recording - Zoom録画データ
+   * @param {ExecutionLogger} executionLogger - 実行ログ
+   * @returns {Promise<Object>} 処理結果
+   */
+  async processVideoAsAudio(videoFile, recording, executionLogger = null) {
+    try {
+      const videoFileName = videoFile.file_name || `video_${recording.id}.mp4`;
+      
+      logger.info(`動画ファイルから音声処理開始: ${videoFileName} (${Math.round(videoFile.file_size / 1024 / 1024)}MB)`);
+      
+      if (executionLogger) {
+        executionLogger.logInfo('VIDEO_TO_AUDIO_PROCESSING', {
+          fileName: videoFileName,
+          fileSize: videoFile.file_size,
+          reason: '音声ファイルが存在しないため動画から処理'
+        });
+      }
+      
+      // 動画ファイルをメモリバッファとして取得
+      const videoBuffer = await this.zoomService.downloadFileAsBuffer(videoFile.download_url);
+      
+      // Gemini AIで動画から直接文字起こし・要約処理
+      // 注：Gemini 2.0以降は動画ファイルも直接処理可能
+      const analysisResult = await this.audioSummaryService.processVideoBuffer(
+        videoBuffer,
+        videoFileName,
+        this.extractMeetingInfo(recording)
+      );
+      
+      if (executionLogger) {
+        executionLogger.completeStep('AUDIO_PROCESSING', {
+          fileName: videoFileName,
+          fileSize: videoFile.file_size,
+          processedAs: 'video',
+          transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
+          summaryGenerated: !!analysisResult.structuredSummary
+        });
+      }
+      
+      logger.info(`動画からの音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+      
+      return {
+        success: true,
+        fileName: videoFileName,
+        fileSize: videoFile.file_size,
+        processedFromVideo: true,  // 動画から処理したことを明示
+        transcription: analysisResult.transcription,
+        summary: analysisResult.structuredSummary,
+        processingTime: analysisResult.processingTime
+      };
+      
+    } catch (error) {
+      if (executionLogger) {
+        executionLogger.errorStep('VIDEO_TO_AUDIO_PROCESSING', 'AI004', error.message);
+      }
+      
+      throw new Error(`動画からの音声処理エラー: ${error.message}`);
     }
   }
 

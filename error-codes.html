@@ -276,7 +276,7 @@
             <div class="summary-grid">
                 <div class="summary-card">
                     <h4>総エラーコード数</h4>
-                    <div class="count" style="color: #dc3545;">80</div>
+                    <div class="count" style="color: #dc3545;">82</div>
                 </div>
                 <div class="summary-card">
                     <h4>カテゴリ数</h4>
@@ -719,6 +719,24 @@
                         <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
 
+                    <!-- 録画処理関連エラー -->
+                    <tr data-category="system">
+                        <td><span class="error-code">VIDEO_TO_AUDIO_PROCESSING</span></td>
+                        <td><span class="category category-system">システム</span></td>
+                        <td><span class="severity severity-medium">Medium</span></td>
+                        <td>動画から音声抽出処理</td>
+                        <td><span class="location">zoomRecordingService.js</span></td>
+                        <td><a href="test-specification.html#tc206" class="test-case">TC206</a></td>
+                    </tr>
+                    <tr data-category="system">
+                        <td><span class="error-code">RECORDING_PROCESSING_FAILED</span></td>
+                        <td><span class="category category-system">システム</span></td>
+                        <td><span class="severity severity-high">High</span></td>
+                        <td>録画処理失敗</td>
+                        <td><span class="location">zoomRecordingService.js</span></td>
+                        <td><a href="test-specification.html#tc206" class="test-case">TC206</a></td>
+                    </tr>
+
                     <!-- 音声圧縮関連エラー -->
                     <tr data-category="system">
                         <td><span class="error-code">E_AUDIO_COMPRESSION</span></td>
@@ -790,7 +808,7 @@ try {
         </div>
 
         <div class="last-updated">
-            最終更新: 2025年8月14日 | エラーコード総数: 80件
+            最終更新: 2025年9月3日 | エラーコード総数: 82件
         </div>
     </div>
 

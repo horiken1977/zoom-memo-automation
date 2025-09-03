@@ -11,6 +11,96 @@ class AudioSummaryService {
   }
 
   /**
+   * 動画バッファをGeminiで文字起こし＆要約処理（Vercel環境用）
+   * @param {Buffer} videoBuffer - 動画ファイルのBuffer
+   * @param {string} fileName - ファイル名
+   * @param {Object} meetingInfo - 会議情報
+   * @returns {Object} 文字起こしと要約の結果
+   */
+  async processVideoBuffer(videoBuffer, fileName, meetingInfo) {
+    try {
+      logger.info(`Processing video buffer: ${fileName} (${videoBuffer.length} bytes)`);
+
+      // バッファサイズ確認
+      logger.info(`Video buffer size: ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+      // 動画ファイル形式を検証（ファイル名から）
+      if (!fileName.toLowerCase().endsWith('.mp4')) {
+        throw new Error(`Unsupported video format: ${fileName}. Only MP4 is supported.`);
+      }
+
+      // Gemini AIで動画から直接文字起こし・要約処理
+      // 注：Gemini 2.0以降は動画ファイルも直接処理可能
+      return await this.processRealVideoBuffer(videoBuffer, fileName, meetingInfo);
+
+    } catch (error) {
+      logger.error('Failed to process video buffer:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 実際の動画バッファを処理（Vercel環境用）
+   * Gemini 2.0以降対応
+   */
+  async processRealVideoBuffer(videoBuffer, fileName, meetingInfo) {
+    const startTime = Date.now();
+    const debugTimer = (step, detail = '') => {
+      const elapsed = Date.now() - startTime;
+      logger.info(`🎬 VideoSummaryService [${elapsed}ms] ${step} ${detail}`);
+      return elapsed;
+    };
+
+    try {
+      debugTimer('processRealVideoBuffer開始', `fileName: ${fileName}, bufferSize: ${videoBuffer.length}`);
+      
+      // Gemini AIサービス初期化
+      debugTimer('Step 1: AI Service初期化');
+      const modelName = await this.aiService.initializeModel();
+      debugTimer('Step 1: AI Service初期化完了', `model: ${modelName}`);
+      
+      // 動画ファイルから文字起こし
+      debugTimer('Step 2: 動画文字起こし開始');
+      const transcriptionResult = await this.aiService.transcribeVideoBuffer(
+        videoBuffer,
+        fileName
+      );
+      const transcriptionTime = debugTimer('Step 2: 動画文字起こし完了', 
+        `文字数: ${transcriptionResult?.transcription?.length || 0}`
+      );
+      
+      // 文字起こしから要約生成
+      debugTimer('Step 3: 構造化要約生成開始');
+      const summaryResult = await this.generateStructuredSummary(
+        transcriptionResult
+      );
+      const summaryTime = debugTimer('Step 3: 構造化要約生成完了');
+      
+      const totalTime = Date.now() - startTime;
+      debugTimer('processRealVideoBuffer完了', `総処理時間: ${totalTime}ms`);
+      
+      return {
+        transcription: transcriptionResult,
+        structuredSummary: summaryResult,
+        processingTime: {
+          transcription: transcriptionTime,
+          summary: summaryTime,
+          total: totalTime
+        },
+        processedFrom: 'video',
+        fileName: fileName,
+        fileSize: videoBuffer.length,
+        model: modelName
+      };
+      
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      logger.error(`🎬 VideoSummaryService [${elapsed}ms] エラー:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 音声バッファをGeminiで文字起こし＆要約処理（Vercel環境用）
    * @param {Buffer} audioBuffer - 音声ファイルのBuffer
    * @param {string} fileName - ファイル名
