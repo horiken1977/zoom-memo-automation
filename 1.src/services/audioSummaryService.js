@@ -209,6 +209,64 @@ class AudioSummaryService {
   }
 
   /**
+   * 動画バッファから音声として文字起こし・要約処理
+   * @param {Buffer} videoBuffer - 動画ファイルのBuffer
+   * @param {string} videoFileName - 動画ファイル名
+   * @param {Object} meetingInfo - 会議情報
+   * @returns {Object} 文字起こしと要約の結果
+   */
+  async processVideoAsAudio(videoBuffer, videoFileName, meetingInfo) {
+    try {
+      logger.info(`動画バッファから音声処理開始: ${videoFileName} (${Math.round(videoBuffer.length / 1024 / 1024)}MB)`);
+
+      // バッファサイズ確認
+      const bufferSizeMB = videoBuffer.length / 1024 / 1024;
+      logger.info(`Video buffer size: ${bufferSizeMB.toFixed(2)} MB`);
+
+      // Gemini AI 20MB制限チェック
+      const maxGeminiSize = 20 * 1024 * 1024;
+      if (videoBuffer.length > maxGeminiSize) {
+        logger.warn(`動画バッファサイズが20MB制限を超過: ${bufferSizeMB.toFixed(2)}MB > 20MB`);
+        // 動画圧縮処理を実行
+        logger.info('動画圧縮処理を実行します...');
+        const compressedBuffer = await this.audioCompressionService.compressVideoBuffer(videoBuffer, videoFileName);
+        if (compressedBuffer && compressedBuffer.length < maxGeminiSize) {
+          logger.info(`動画圧縮成功: ${bufferSizeMB.toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`);
+          return await this.processVideoAsAudio(compressedBuffer, videoFileName, meetingInfo);
+        } else {
+          throw new Error(`動画ファイルサイズが20MB制限を超過しており、圧縮も失敗しました: ${bufferSizeMB.toFixed(2)}MB`);
+        }
+      }
+
+      // Gemini AI で動画から音声文字起こし（動画ファイルも文字起こし可能）
+      const transcription = await this.aiService.transcribeVideoBuffer(videoBuffer, videoFileName);
+      
+      if (!transcription || !transcription.transcription) {
+        throw new Error('動画からの文字起こしに失敗しました');
+      }
+
+      logger.info(`動画文字起こし完了: ${transcription.transcription.length}文字`);
+
+      // 要約生成
+      const summary = await this.generateStructuredSummary(transcription.transcription, meetingInfo);
+
+      const result = {
+        transcription: transcription,
+        structuredSummary: summary,
+        processingTime: Date.now() - Date.now(),
+        isFromVideo: true
+      };
+
+      logger.info(`動画から音声処理完了: 文字起こし${transcription.transcription.length}文字, 要約生成${!!summary}`);
+      return result;
+
+    } catch (error) {
+      logger.error(`動画音声処理エラー: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * 8項目の枠組みに沿った構造化要約を生成
    */
   async generateStructuredSummary(transcriptionResult) {

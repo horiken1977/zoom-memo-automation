@@ -198,7 +198,8 @@ class ZoomRecordingService {
       const videoResult = await this.processVideoFile(recording, executionLogger);
       
       // Step 2: 音声ファイル処理 (取得 → AI処理 → メモリ破棄)
-      const audioResult = await this.processAudioFile(recording, executionLogger);
+      // 動画バッファを音声処理に渡してバッファリング使用
+      const audioResult = await this.processAudioFile(recording, executionLogger, videoResult.videoBuffer);
       
       // Step 3: 文書保存処理 (文字起こし・要約をGoogle Driveに保存)
       let documentResult = null;
@@ -286,7 +287,7 @@ class ZoomRecordingService {
    * 動画ファイルの処理 (取得 → Google Drive保存)
    * @param {Object} recording - 録画データ
    * @param {ExecutionLogger} executionLogger - 実行ログ
-   * @returns {Promise<Object>} 動画処理結果
+   * @returns {Promise<Object>} 動画処理結果 + videoBuffer（バッファリング用）
    */
   async processVideoFile(recording, executionLogger = null) {
     try {
@@ -330,7 +331,8 @@ class ZoomRecordingService {
         fileSize: videoFile.file_size,
         driveFileId: saveResult.fileId,
         shareLink: saveResult.viewLink,
-        folderPath: saveResult.folderPath
+        folderPath: saveResult.folderPath,
+        videoBuffer: videoBuffer // バッファリング用に返す
       };
       
     } catch (error) {
@@ -344,11 +346,13 @@ class ZoomRecordingService {
 
   /**
    * 音声ファイルの処理 (取得 → AI処理 → メモリ破棄)
+   * 音声ファイルがない場合は動画ファイルから文字起こし
    * @param {Object} recording - 録画データ
    * @param {ExecutionLogger} executionLogger - 実行ログ
+   * @param {Buffer} videoBuffer - 既に取得済みの動画バッファ（バッファリング使用）
    * @returns {Promise<Object>} 音声処理結果
    */
-  async processAudioFile(recording, executionLogger = null) {
+  async processAudioFile(recording, executionLogger = null, videoBuffer = null) {
     try {
       if (executionLogger) {
         executionLogger.startStep('AUDIO_PROCESSING');
@@ -358,47 +362,86 @@ class ZoomRecordingService {
       const audioFile = recording.recording_files.find(file => file.file_type === 'M4A') ||
                        recording.recording_files.find(file => file.file_type === 'MP3');
       
-      if (!audioFile) {
-        throw new Error('音声ファイル(M4A/MP3)が見つかりません');
-      }
-      
-      // ファイル名のフォールバック処理
-      const audioFileName = audioFile.file_name || `audio_${recording.id}.${audioFile.file_type.toLowerCase()}`;
-      
-      logger.info(`音声ファイル取得開始: ${audioFileName} (${Math.round(audioFile.file_size / 1024 / 1024)}MB)`);
-      
-      // 音声ファイルをメモリバッファとして取得
-      const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
-      
-      // Gemini AIで文字起こし・要約処理
-      const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
-        audioBuffer,
-        audioFileName,
-        this.extractMeetingInfo(recording)
-      );
-      
-      if (executionLogger) {
-        executionLogger.completeStep('AUDIO_PROCESSING', {
-          fileName: audioFileName,
+      if (audioFile) {
+        // 通常の音声ファイル処理
+        const audioFileName = audioFile.file_name || `audio_${recording.id}.${audioFile.file_type.toLowerCase()}`;
+        
+        logger.info(`音声ファイル取得開始: ${audioFileName} (${Math.round(audioFile.file_size / 1024 / 1024)}MB)`);
+        
+        // 音声ファイルをメモリバッファとして取得
+        const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
+        
+        // Gemini AIで文字起こし・要約処理
+        const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
+          audioBuffer,
+          audioFileName,
+          this.extractMeetingInfo(recording)
+        );
+        
+        if (executionLogger) {
+          executionLogger.completeStep('AUDIO_PROCESSING', {
+            fileName: audioFileName,
+            fileSize: audioFile.file_size,
+            transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
+            summaryGenerated: !!analysisResult.structuredSummary
+          });
+        }
+        
+        logger.info(`音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+        
+        return {
+          success: true,
+          fileName: audioFile.file_name,
           fileSize: audioFile.file_size,
-          transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
-          summaryGenerated: !!analysisResult.structuredSummary
-        });
+          transcription: analysisResult.transcription,
+          summary: analysisResult.structuredSummary,
+          processingTime: analysisResult.processingTime
+        };
+      } else {
+        // 音声ファイルがない場合：動画バッファから文字起こし
+        logger.info('音声ファイルが見つからないため、動画ファイルから文字起こしを実行');
+        
+        if (!videoBuffer) {
+          throw new Error('音声ファイルなし、かつ動画バッファも提供されていません');
+        }
+        
+        const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
+        if (!videoFile) {
+          throw new Error('動画ファイルも見つかりません');
+        }
+        
+        const videoFileName = videoFile.file_name || `video_${recording.id}.mp4`;
+        logger.info(`動画バッファから文字起こし開始: ${videoFileName} (${Math.round(videoBuffer.length / 1024 / 1024)}MB)`);
+        
+        // 動画バッファから文字起こし処理
+        const analysisResult = await this.audioSummaryService.processVideoAsAudio(
+          videoBuffer,
+          videoFileName,
+          this.extractMeetingInfo(recording)
+        );
+        
+        if (executionLogger) {
+          executionLogger.completeStep('AUDIO_PROCESSING', {
+            fileName: videoFileName,
+            fileSize: videoBuffer.length,
+            transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
+            summaryGenerated: !!analysisResult.structuredSummary,
+            processedFromVideo: true
+          });
+        }
+        
+        logger.info(`動画から音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+        
+        return {
+          success: true,
+          fileName: videoFileName,
+          fileSize: videoBuffer.length,
+          transcription: analysisResult.transcription,
+          summary: analysisResult.structuredSummary,
+          processingTime: analysisResult.processingTime,
+          processedFromVideo: true
+        };
       }
-      
-      logger.info(`音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
-      
-      // メモリからaudioBufferを明示的に解放
-      // (JavaScriptのGCに頼るが、参照をnullにして解放を促進)
-      
-      return {
-        success: true,
-        fileName: audioFile.file_name,
-        fileSize: audioFile.file_size,
-        transcription: analysisResult.transcription,
-        summary: analysisResult.structuredSummary,
-        processingTime: analysisResult.processingTime
-      };
       
     } catch (error) {
       if (executionLogger) {

@@ -109,6 +109,95 @@ class AIService {
 
 
   /**
+   * 動画バッファから文字起こし（20MB制限対応）
+   * @param {Buffer} videoBuffer - 動画ファイルのBuffer
+   * @param {string} fileName - ファイル名
+   * @returns {Promise<Object>} 文字起こし結果
+   */
+  async transcribeVideoBuffer(videoBuffer, fileName) {
+    try {
+      await this.initializeModel();
+      
+      const bufferSizeMB = videoBuffer.length / 1024 / 1024;
+      logger.info(`動画バッファ文字起こし開始: ${fileName} (${bufferSizeMB.toFixed(2)}MB)`);
+      
+      // Gemini 20MB制限チェック
+      const maxSize = 20 * 1024 * 1024;
+      if (videoBuffer.length > maxSize) {
+        throw new Error(`動画ファイルサイズが20MB制限を超過: ${bufferSizeMB.toFixed(2)}MB`);
+      }
+      
+      // 動画形式を推定（拡張子から）
+      const mimeType = this.getVideoMimeType(fileName);
+      
+      const prompt = `この動画ファイルの音声を文字起こししてください。
+      
+以下の形式でJSONとして返してください：
+{
+  "transcription": "文字起こし内容",
+  "confidence": "信頼度",
+  "language": "検出言語"
+}
+
+要件：
+- 音声の内容をそのまま正確に文字起こししてください
+- 話者が複数いる場合は区別してください
+- 「えー」「あのー」などの言葉も含めてください
+- JSONフォーマットを守ってください`;
+
+      const imagePart = {
+        inlineData: {
+          data: videoBuffer.toString('base64'),
+          mimeType: mimeType
+        }
+      };
+
+      const result = await this.model.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      const text = response.text();
+
+      // JSON抽出・パース
+      const transcriptionData = this.extractJSON(text);
+      
+      if (!transcriptionData.transcription) {
+        throw new Error('文字起こし結果が取得できませんでした');
+      }
+
+      logger.info(`動画文字起こし完了: ${transcriptionData.transcription.length}文字`);
+      
+      return transcriptionData;
+
+    } catch (error) {
+      logger.error(`動画文字起こしエラー: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 動画ファイルのMIMEタイプを取得
+   * @param {string} fileName - ファイル名
+   * @returns {string} MIMEタイプ
+   */
+  getVideoMimeType(fileName) {
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'mp4':
+        return 'video/mp4';
+      case 'avi':
+        return 'video/x-msvideo';
+      case 'mov':
+        return 'video/quicktime';
+      case 'mkv':
+        return 'video/x-matroska';
+      case 'webm':
+        return 'video/webm';
+      default:
+        return 'video/mp4'; // デフォルト
+    }
+  }
+
+  /**
    * 音声ファイルを文字起こし
    */
   async transcribeAudio(audioFilePath, meetingInfo) {
