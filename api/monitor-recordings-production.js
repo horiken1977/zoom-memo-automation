@@ -128,7 +128,11 @@ module.exports = async function handler(req, res) {
           // Slack完了通知（要約付き）
           if (recordingResult.summary) {
             try {
-              await slackService.sendCompletionMessage(recordingResult.summary);
+              await slackService.sendMeetingSummaryWithRecording(
+                recordingResult, 
+                recordingResult.driveResult || { viewLink: recordingResult.driveLink }, 
+                recordingResult.logResult
+              );
             } catch (slackError) {
               logger.error('Slack完了通知失敗:', slackError);
             }

@@ -165,7 +165,7 @@ class DocumentStorageService {
     return `Zoom Meeting ${docTypeName}
 
 会議名: ${meetingInfo.topic}
-開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}
+開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 時間: ${meetingInfo.duration}分
 主催者: ${meetingInfo.hostName || 'N/A'}
 参加者数: ${additionalInfo.participantCount || 'N/A'}
@@ -175,7 +175,7 @@ ${additionalInfo.aiModel ? `AI処理モデル: ${additionalInfo.aiModel}` : ''}
 ${additionalInfo.processingTime ? `処理時間: ${Math.round(additionalInfo.processingTime/1000)}秒` : ''}
 ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.transcriptionLength}文字` : ''}
 
-自動生成: ${new Date().toLocaleString('ja-JP')}
+自動生成: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 システム: Zoom Meeting Automation`;
   }
 
@@ -383,7 +383,7 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
 
 ## 基本情報
 - 会議名: ${meetingInfo.topic}
-- 開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}
+- 開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 - 時間: ${meetingInfo.duration}分
 - 主催者: ${meetingInfo.hostName || 'N/A'}
 - 参加者数: ${summaryData.participants?.length || 'N/A'}名
@@ -458,7 +458,7 @@ ${(summaryData.nextActionsWithDueDate || summaryData.homework || summaryData.act
 
 ## 基本情報
 - 会議名: ${meetingInfo.topic}
-- 開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}
+- 開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 - 時間: ${meetingInfo.duration}分
 - 主催者: ${meetingInfo.hostName || 'N/A'}
 - 文字数: ${transcriptionData.transcription?.length || 0}文字

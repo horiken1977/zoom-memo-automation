@@ -152,7 +152,7 @@ class SlackService {
       elements: [
         {
           type: "mrkdwn",
-          text: `🤖 自動生成 | 📅 ${new Date().toLocaleString('ja-JP')} | 🎬 Zoom Recording Auto-Summary`
+          text: `🤖 自動生成 | 📅 ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} | 🎬 Zoom Recording Auto-Summary`
         }
       ]
     });
@@ -381,7 +381,7 @@ ${analysisResult.transcription}
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `🔄 *会議の処理を開始しました*\\n*会議名:* ${meetingInfo.topic}\\n*開始時刻:* ${new Date(meetingInfo.startTime).toLocaleString('ja-JP')}`
+            text: `🔄 *会議の処理を開始しました*\\n*会議名:* ${meetingInfo.topic}\\n*開始時刻:* ${new Date(meetingInfo.startTime).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`
           }
         },
         {
@@ -891,7 +891,7 @@ ${analysisResult.transcription}
       elements: [
         {
           type: "mrkdwn",
-          text: `🤖 ${footerText} | 📅 ${new Date().toLocaleString('ja-JP')} | 📊 処理時間: ${driveResult.uploadTime || 0}秒`
+          text: `🤖 ${footerText} | 📅 ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} | 📊 処理時間: ${driveResult.uploadTime || 0}秒`
         }
       ]
     });
