@@ -107,16 +107,7 @@ module.exports = async function handler(req, res) {
           recordingFiles: recording.recording_files?.length || 0
         });
         
-        // Slack処理開始通知
-        try {
-          await slackService.sendProcessingNotification({
-            topic: recording.topic,
-            startTime: recording.start_time,
-            duration: recording.duration
-          });
-        } catch (slackError) {
-          logger.error('Slack開始通知失敗（処理は継続）:', slackError);
-        }
+        // Slack処理開始通知を削除（完了時の1回のみに統一）
         
         // 録画処理実行（動画保存、AI処理、文書保存を含む）
         const recordingResult = await zoomRecordingService.processRecording(
@@ -128,9 +119,17 @@ module.exports = async function handler(req, res) {
           // Slack完了通知（要約付き）
           if (recordingResult.summary) {
             try {
+              // 正しい動画リンク構造を設定
+              const driveResult = {
+                viewLink: recordingResult.video?.shareLink || recordingResult.driveLink,
+                folderPath: recordingResult.video?.folderPath || 'Zoom録画フォルダ',
+                uploadTime: recordingResult.video?.processingTime || 0,
+                documentLinks: recordingResult.documents?.links || []
+              };
+              
               await slackService.sendMeetingSummaryWithRecording(
                 recordingResult, 
-                recordingResult.driveResult || { viewLink: recordingResult.driveLink }, 
+                driveResult,
                 recordingResult.logResult
               );
             } catch (slackError) {
@@ -169,14 +168,6 @@ module.exports = async function handler(req, res) {
           logger.info(`✅ 処理完了: ${recording.topic} (${Date.now() - recordingStartTime}ms)`);
         } else {
           throw new Error(recordingResult.error || '録画処理失敗');
-        }
-        
-        // 実行ログ保存
-        try {
-          const logSaveResult = await executionLogger.saveToGoogleDrive();
-          logger.info('📋 実行ログ保存完了:', logSaveResult.viewLink);
-        } catch (logError) {
-          logger.error('実行ログ保存失敗:', logError);
         }
         
       } catch (error) {
