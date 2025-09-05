@@ -1110,27 +1110,28 @@ ${transcription}`;
         if (attempt < maxRetries) {
           let waitTime;
           
-          // エラーコード別の待機時間決定
+          // エラーコード別の待機時間決定（Free Tier制限対応）
           if (errorCode === 'E_GEMINI_QUOTA') {
             // API配当制限エラー: APIから推奨された待機時間を採用
             const retryDelayMatch = error.message.match(/retryDelay":"(\d+)s"/);
             if (retryDelayMatch) {
               const recommendedDelay = parseInt(retryDelayMatch[1]) * 1000; // 秒をミリ秒に変換
-              waitTime = Math.min(recommendedDelay, 60000); // 最大60秒
+              waitTime = Math.max(recommendedDelay, 35000); // 最低35秒（Free Tier: 2リクエスト/分を守る）
               logger.info(`Using API-recommended delay for quota limit: ${waitTime}ms (${waitTime/1000}s)`);
             } else {
-              // APIからの推奨待機時間が不明な場合のデフォルト
-              waitTime = Math.min(30000 + (attempt * 10000), 60000); // 30秒から60秒まで段階的増加
-              logger.info(`Using default quota limit delay: ${waitTime}ms (${waitTime/1000}s)`);
+              // APIからの推奨待機時間が不明な場合のデフォルト（Free Tier対応）
+              waitTime = 35000 + (attempt * 10000); // 35秒、45秒、55秒...と増加
+              logger.info(`Using Free Tier safe delay for quota limit: ${waitTime}ms (${waitTime/1000}s)`);
             }
-          } else if (errorCode === 'E_GEMINI_PROCESSING') {
-            // API認証・処理エラー: 通常の指数バックオフ
-            waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
-            logger.info(`Using exponential backoff for processing error: ${waitTime}ms (${waitTime/1000}s)`);
+          } else if (errorCode === 'E_GEMINI_PROCESSING' || error.message.includes('[503 Service Unavailable]')) {
+            // API認証・処理エラーまたはサービス過負荷: Free Tier安全な待機時間
+            // 1分間に2リクエストの制限を守るため、最低35秒待機
+            waitTime = Math.max(35000, 35000 + (attempt - 1) * 10000); // 35秒、45秒、55秒...
+            logger.info(`Using Free Tier safe backoff for processing/overload error: ${waitTime}ms (${waitTime/1000}s)`);
           } else {
-            // その他のエラー: 標準の指数バックオフ
-            waitTime = Math.min(2000 * Math.pow(2, attempt - 1), 20000);
-            logger.info(`Using standard backoff: ${waitTime}ms (${waitTime/1000}s)`);
+            // その他のエラー: Free Tier対応の待機時間
+            waitTime = Math.max(35000, 30000 + (attempt * 5000)); // 最低35秒
+            logger.info(`Using Free Tier safe standard backoff: ${waitTime}ms (${waitTime/1000}s)`);
           }
           
           logger.info(`Waiting ${waitTime}ms before retry...`);
