@@ -426,11 +426,47 @@ const ERROR_CODES = {
 
   E_GEMINI_QUOTA: {
     code: 'E_GEMINI_QUOTA',
-    message: 'Gemini API制限超過',
-    messageEn: 'Gemini API quota exceeded',
+    message: 'Gemini API制限超過（Free Tier: 1分間2リクエスト）',
+    messageEn: 'Gemini API quota exceeded (Free Tier: 2 requests per minute)',
     retryable: true,
     notifySlack: true,
-    troubleshooting: 'APIクォータを確認し、しばらく待ってからリトライしてください'
+    troubleshooting: '無料プランの制限（1分間に2リクエスト）に達しました。1-2分待ってから再実行してください。または有料プランへのアップグレードをご検討ください'
+  },
+  
+  E_GEMINI_SERVICE_OVERLOAD: {
+    code: 'E_GEMINI_SERVICE_OVERLOAD',
+    message: 'Geminiサービス一時的過負荷',
+    messageEn: 'Gemini service temporarily overloaded',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'Geminiサービスが一時的に過負荷状態です。1-2分待ってから再実行してください'
+  },
+  
+  E_GEMINI_INTERNAL_ERROR: {
+    code: 'E_GEMINI_INTERNAL_ERROR',
+    message: 'Geminiサーバー内部エラー',
+    messageEn: 'Gemini server internal error',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'Geminiサービス側でエラーが発生しました。しばらく待ってから再実行してください'
+  },
+  
+  E_GEMINI_GENERAL: {
+    code: 'E_GEMINI_GENERAL',
+    message: 'Gemini API一般エラー',
+    messageEn: 'Gemini API general error',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'Gemini APIでエラーが発生しました。エラー詳細を確認してください'
+  },
+  
+  E_GEMINI_UNKNOWN: {
+    code: 'E_GEMINI_UNKNOWN',
+    message: '不明なGeminiエラー',
+    messageEn: 'Unknown Gemini error',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '予期しないエラーが発生しました。エラー詳細を確認してください'
   },
 
   E_GEMINI_INVALID_FORMAT: {

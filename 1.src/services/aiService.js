@@ -1080,12 +1080,15 @@ ${transcription}`;
         if (error.message.includes('Audio content is too short') || error.message.includes('Minimum 10 seconds') || error.message.includes('duration: 3 seconds')) {
           errorCode = 'E_GEMINI_INSUFFICIENT_CONTENT'; // 音声コンテンツ不足
           logger.warn(`Audio processing error: ${errorCode} - Audio content insufficient (under 10 seconds)`);
+        } else if (error.message.includes('[503 Service Unavailable]') || error.message.includes('model is overloaded')) {
+          errorCode = 'E_GEMINI_SERVICE_OVERLOAD'; // サービス過負荷（503エラー専用）
+          logger.warn(`Audio processing error: ${errorCode} - Service temporarily overloaded (503)`);
         } else if (error.message.includes('[429 Too Many Requests]') || error.message.includes('Resource has been exhausted') || error.message.includes('quota')) {
           errorCode = 'E_GEMINI_QUOTA'; // APIクォータ制限超過
           logger.warn(`Audio processing error: ${errorCode} - API quota/rate limit exceeded`);
-        } else if (error.message.includes('[500 Internal Server Error]') || error.message.includes('GoogleGenerativeAI Error')) {
-          errorCode = 'E_GEMINI_PROCESSING'; // APIキー認証エラー（500エラーは通常認証失敗）
-          logger.warn(`Audio processing error: ${errorCode} - API key authentication error (500)`);
+        } else if (error.message.includes('[500 Internal Server Error]')) {
+          errorCode = 'E_GEMINI_INTERNAL_ERROR'; // サーバー内部エラー
+          logger.warn(`Audio processing error: ${errorCode} - Server internal error (500)`);
         } else if (error.message.includes('[401') || error.message.includes('[403') || error.message.includes('PERMISSION_DENIED')) {
           errorCode = 'E_GEMINI_PROCESSING'; // 明示的な認証エラー
           logger.warn(`Audio processing error: ${errorCode} - Authentication failed (401/403)`);
@@ -1098,9 +1101,12 @@ ${transcription}`;
         } else if (error.message.includes('audio') || error.message.includes('buffer')) {
           errorCode = 'E_AUDIO_COMPRESSION'; // 音声圧縮エラー
           logger.warn(`Audio processing error: ${errorCode} - Audio buffer processing failed`);
+        } else if (error.message.includes('GoogleGenerativeAI Error')) {
+          errorCode = 'E_GEMINI_GENERAL'; // Gemini API一般エラー
+          logger.warn(`Audio processing error: ${errorCode} - General Gemini API error`);
         } else {
-          errorCode = 'E_GEMINI_PROCESSING'; // その他はAPIキー認証エラーとして扱う
-          logger.warn(`Audio processing error: ${errorCode} - General API authentication error`);
+          errorCode = 'E_GEMINI_UNKNOWN'; // 不明なエラー
+          logger.warn(`Audio processing error: ${errorCode} - Unknown error type`);
         }
         
         // エラーコードをログに記録
@@ -1123,7 +1129,12 @@ ${transcription}`;
               waitTime = 35000 + (attempt * 10000); // 35秒、45秒、55秒...と増加
               logger.info(`Using Free Tier safe delay for quota limit: ${waitTime}ms (${waitTime/1000}s)`);
             }
-          } else if (errorCode === 'E_GEMINI_PROCESSING' || error.message.includes('[503 Service Unavailable]')) {
+          } else if (errorCode === 'E_GEMINI_SERVICE_OVERLOAD' || errorCode === 'E_GEMINI_INTERNAL_ERROR') {
+            // サービス過負荷または内部エラー: Free Tier安全な待機時間
+            // 1分間に2リクエストの制限を守るため、最低35秒待機
+            waitTime = Math.max(35000, 35000 + (attempt - 1) * 10000); // 35秒、45秒、55秒...
+            logger.info(`Using Free Tier safe backoff for service overload/internal error: ${waitTime}ms (${waitTime/1000}s)`);
+          } else if (errorCode === 'E_GEMINI_PROCESSING') {
             // API認証・処理エラーまたはサービス過負荷: Free Tier安全な待機時間
             // 1分間に2リクエストの制限を守るため、最低35秒待機
             waitTime = Math.max(35000, 35000 + (attempt - 1) * 10000); // 35秒、45秒、55秒...

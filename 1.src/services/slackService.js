@@ -967,10 +967,16 @@ ${analysisResult.transcription}
 
       // エラーメッセージからエラーコードを推定
       if (errorInfo.error) {
-        if (errorInfo.error.includes('Gemini') && errorInfo.error.includes('quota')) {
+        if (errorInfo.error.includes('[503 Service Unavailable]') || errorInfo.error.includes('model is overloaded')) {
+          errorCode = 'E_GEMINI_SERVICE_OVERLOAD';
+        } else if (errorInfo.error.includes('[429 Too Many Requests]') || errorInfo.error.includes('quota')) {
           errorCode = 'E_GEMINI_QUOTA';
-        } else if (errorInfo.error.includes('Gemini') || errorInfo.error.includes('Transcription')) {
+        } else if (errorInfo.error.includes('[500 Internal Server Error]')) {
+          errorCode = 'E_GEMINI_INTERNAL_ERROR';
+        } else if (errorInfo.error.includes('[401') || errorInfo.error.includes('[403')) {
           errorCode = 'E_GEMINI_PROCESSING';
+        } else if (errorInfo.error.includes('Gemini')) {
+          errorCode = 'E_GEMINI_GENERAL';
         } else if (errorInfo.error.includes('音声処理エラー')) {
           errorCode = 'RECORDING_PROCESSING_FAILED';
         }
@@ -984,16 +990,29 @@ ${analysisResult.transcription}
 
       // 特定のエラーに対する追加の対処法情報
       let actionableSteps = '';
-      if (errorCode === 'E_GEMINI_QUOTA') {
+      if (errorCode === 'E_GEMINI_SERVICE_OVERLOAD') {
         actionableSteps = `
-📋 *Gemini API制限エラーの対処法:*
-• 30-60秒待ってから再実行
-• 有料プランへのアップグレード検討
-• Free Tier制限: 2リクエスト/分 → 60リクエスト/分に向上
+📋 *サービス一時過負荷の対処法:*
+• 1-2分待ってから再実行してください
+• Geminiサービスが一時的に混雑しています
+• 処理は自動的にリトライされます（最大5回）
+• 時間を置いてから再度お試しください`;
+      } else if (errorCode === 'E_GEMINI_QUOTA') {
+        actionableSteps = `
+📋 *API制限超過の対処法:*
+• 現在Free Tierプラン（1分間2リクエスト）を利用中
+• 1-2分待ってから再実行してください
+• 頻繁に制限に達する場合は有料プランへのアップグレードをご検討ください
 • API利用状況: https://ai.google.dev/pricing`;
+      } else if (errorCode === 'E_GEMINI_INTERNAL_ERROR') {
+        actionableSteps = `
+📋 *サーバー内部エラーの対処法:*
+• Geminiサービス側の一時的な問題です
+• 5-10分待ってから再実行してください
+• 問題が継続する場合はGoogleのステータスページを確認`;
       } else if (errorCode === 'E_GEMINI_PROCESSING') {
         actionableSteps = `
-📋 *Gemini API認証エラーの対処法:*
+📋 *API認証エラーの対処法:*
 • GOOGLE_AI_API_KEYの確認
 • APIキーの有効性チェック
 • プロジェクトのアクセス権限確認
