@@ -544,7 +544,39 @@
                         <td><span class="error-code">E_GEMINI_QUOTA</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
                         <td><span class="severity severity-critical">Critical</span></td>
-                        <td>API利用上限超過</td>
+                        <td>API制限超過（Free Tier: 1分間2リクエスト）</td>
+                        <td><span class="location">aiService.js</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                    </tr>
+                    <tr data-category="gemini">
+                        <td><span class="error-code">E_GEMINI_SERVICE_OVERLOAD</span></td>
+                        <td><span class="category category-gemini">Gemini AI</span></td>
+                        <td><span class="severity severity-high">High</span></td>
+                        <td>サービス一時的過負荷（503エラー）</td>
+                        <td><span class="location">aiService.js</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                    </tr>
+                    <tr data-category="gemini">
+                        <td><span class="error-code">E_GEMINI_INTERNAL_ERROR</span></td>
+                        <td><span class="category category-gemini">Gemini AI</span></td>
+                        <td><span class="severity severity-high">High</span></td>
+                        <td>サーバー内部エラー（500エラー）</td>
+                        <td><span class="location">aiService.js</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                    </tr>
+                    <tr data-category="gemini">
+                        <td><span class="error-code">E_GEMINI_GENERAL</span></td>
+                        <td><span class="category category-gemini">Gemini AI</span></td>
+                        <td><span class="severity severity-medium">Medium</span></td>
+                        <td>Gemini API一般エラー</td>
+                        <td><span class="location">aiService.js</span></td>
+                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                    </tr>
+                    <tr data-category="gemini">
+                        <td><span class="error-code">E_GEMINI_UNKNOWN</span></td>
+                        <td><span class="category category-gemini">Gemini AI</span></td>
+                        <td><span class="severity severity-medium">Medium</span></td>
+                        <td>不明なGeminiエラー</td>
                         <td><span class="location">aiService.js</span></td>
                         <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
                     </tr>
