@@ -208,60 +208,50 @@ class VideoStorageService {
    * クライアント名からフォルダ名を生成
    */
   extractClientName(meetingInfo) {
-    // 1. 会議名からクライアント名を抽出
-    if (meetingInfo.topic) {
-      // パターン1: 「○○様_」形式
-      const pattern1 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+様)_/);
-      if (pattern1) {
-        return pattern1[1];
-      }
-      
-      // パターン2: 「株式会社○○_」形式
-      const pattern2 = meetingInfo.topic.match(/^(株式会社[一-龯ァ-ヶー\w]+)_/);
-      if (pattern2) {
-        return pattern2[1];
-      }
-      
-      // パターン3: 「○○株式会社_」形式
-      const pattern3 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+株式会社)_/);
-      if (pattern3) {
-        return pattern3[1];
-      }
-      
-      // パターン4: 「○○社_」形式
-      const pattern4 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+社)_/);
-      if (pattern4) {
-        return pattern4[1];
-      }
-      
-      // パターン5: 「○○グループ_」形式
-      const pattern5 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]+グループ)_/);
-      if (pattern5) {
-        return pattern5[1];
-      }
-      
-      // パターン6: 「○○_」形式（汎用）
-      const pattern6 = meetingInfo.topic.match(/^([一-龯ァ-ヶー\w]{2,15})_/);
-      if (pattern6) {
-        const candidate = pattern6[1];
-        // 一般的な単語を除外
-        const excludeWords = ['会議', '定例', '打合せ', '打ち合わせ', 'MTG', 'ミーティング', '相談', '説明会'];
-        if (!excludeWords.includes(candidate)) {
-          return candidate + '様';
-        }
+    // 1. AIで抽出されたクライアント名を最優先で使用（構造化要約結果から）
+    if (meetingInfo.structuredSummary && meetingInfo.structuredSummary.clientName) {
+      const aiClientName = meetingInfo.structuredSummary.clientName;
+      if (aiClientName && aiClientName !== '不明' && aiClientName !== 'N/A') {
+        logger.info(`Using AI-extracted client name: "${aiClientName}" (from structured summary)`);
+        return aiClientName;
       }
     }
     
-    // 2. AIで抽出されたクライアント名がある場合（構造化要約結果から）
-    if (meetingInfo.summary && meetingInfo.summary.client && meetingInfo.summary.client !== '不明') {
-      return meetingInfo.summary.client;
+    // 旧形式のsummaryフィールドもチェック（後方互換性）
+    if (meetingInfo.summary && meetingInfo.summary.client) {
+      const aiClientName = meetingInfo.summary.client;
+      if (aiClientName && aiClientName !== '不明' && aiClientName !== 'N/A') {
+        logger.info(`Using AI-extracted client name: "${aiClientName}" (from legacy summary)`);
+        return aiClientName;
+      }
+    }
+    
+    // 2. 会議名から汎用的な方法でクライアント名を抽出
+    if (meetingInfo.topic) {
+      // 「_」で分割して最初の部分を企業名として扱う
+      const parts = meetingInfo.topic.split('_');
+      if (parts.length > 1 && parts[0]) {
+        const clientName = parts[0].trim();
+        
+        // 空文字や短すぎる名前を除外
+        if (clientName.length >= 2) {
+          // 一般的な会議関連の単語のみの場合は除外
+          const excludeWords = ['会議', '定例', '打合せ', '打ち合わせ', 'MTG', 'ミーティング', '相談', '説明会', '面談', '商談'];
+          if (!excludeWords.includes(clientName)) {
+            logger.info(`Extracted client name from topic: "${clientName}" (from: "${meetingInfo.topic}")`);
+            return clientName;
+          }
+        }
+      }
     }
     
     // 3. フォールバック: 年月フォルダ
     const date = new Date(meetingInfo.start_time || new Date());
     const year = date.getFullYear().toString();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    return `${year}-${month}`;
+    const fallbackName = `${year}-${month}`;
+    logger.info(`Using fallback folder name: "${fallbackName}" (no client name found)`);
+    return fallbackName;
   }
 
   /**
