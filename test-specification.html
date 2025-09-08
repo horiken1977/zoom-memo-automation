@@ -885,6 +885,27 @@
                             <td>🎉 成功</td>
                             <td>全機能正常動作確認済み</td>
                         </tr>
+                        <tr class="priority-high" style="background-color: #e8f5e8;">
+                            <td><strong>修正履歴 (2025-09-08)</strong></td>
+                            <td><strong>企業名フォルダ構造問題修正 (コミット: cf240d1)</strong></td>
+                            <td>✅ 修正完了</td>
+                            <td>AI抽出企業名を最優先化</td>
+                        </tr>
+                        <tr style="background-color: #f8f9fa;">
+                            <td>修正内容詳細</td>
+                            <td>extractClientName方法を3段階優先順位で改善:<br>
+                                1. AI抽出クライアント名 (structuredSummary.clientName)<br>
+                                2. トピック名から企業名抽出 (split('_')[0])<br>
+                                3. 日付フォールバック (YYYY-MM)</td>
+                            <td>🔧 実装済</td>
+                            <td>パターンマッチング廃止、汎用性向上</td>
+                        </tr>
+                        <tr style="background-color: #f8f9fa;">
+                            <td>影響範囲</td>
+                            <td>videoStorageService.js, documentStorageService.js</td>
+                            <td>✅ テスト完了</td>
+                            <td>正常な企業名/YYYY-MM/フォルダ構造確認済</td>
+                        </tr>
                     </table>
                 </div>
 
