@@ -698,6 +698,133 @@ ${transcription}`;
   }
 
   /**
+   * 複数JSONブロック抽出処理
+   * AIが複数のJSONブロックを返すケースに対応
+   */
+  extractMultipleJsonBlocks(response) {
+    const jsonBlocks = [];
+    const logger = require('../utils/logger');
+    
+    try {
+      // パターン1: 複数の```json```ブロック
+      const markdownMatches = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/g);
+      if (markdownMatches) {
+        for (const match of markdownMatches) {
+          const content = match.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+          try {
+            const parsed = JSON.parse(content);
+            if (parsed && typeof parsed === 'object') {
+              jsonBlocks.push(parsed);
+            }
+          } catch (e) {
+            // このブロックは無視して次へ
+          }
+        }
+      }
+      
+      // パターン2: 複数の{...}オブジェクト
+      if (jsonBlocks.length === 0) {
+        const objectMatches = response.match(/{[\s\S]*?}/g);
+        if (objectMatches) {
+          for (const match of objectMatches) {
+            try {
+              const parsed = JSON.parse(match);
+              if (parsed && typeof parsed === 'object' && (parsed.transcription || parsed.summary)) {
+                jsonBlocks.push(parsed);
+              }
+            } catch (e) {
+              // このブロックは無視して次へ
+            }
+          }
+        }
+      }
+      
+      logger.info(`extractMultipleJsonBlocks: Found ${jsonBlocks.length} valid JSON blocks`);
+      return jsonBlocks;
+      
+    } catch (error) {
+      logger.error('extractMultipleJsonBlocks failed:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * 改良されたfallback処理 - JSONレスポンスから適切にデータを抽出
+   */
+  extractDataFromJsonResponse(response) {
+    const logger = require('../utils/logger');
+    
+    try {
+      // JSONっぽい文字列から転写と要約を抽出
+      let transcription = '';
+      let summary = null;
+      
+      // transcriptionを抽出
+      const transcriptionMatch = response.match(/["']transcription["']\s*:\s*["']([\s\S]*?)["']/);
+      if (transcriptionMatch) {
+        transcription = transcriptionMatch[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+          .trim();
+      }
+      
+      // summaryオブジェクトを抽出
+      const summaryMatch = response.match(/["']summary["']\s*:\s*({[\s\S]*?})(?=\s*[,}]|$)/);
+      if (summaryMatch) {
+        try {
+          // 不完全なJSONを修正してパース
+          let summaryJson = summaryMatch[1];
+          // 末尾の不完全な部分を修正
+          summaryJson = this.fixIncompleteJson(summaryJson);
+          summary = JSON.parse(summaryJson);
+        } catch (e) {
+          logger.warn('Summary JSON parsing failed, using text extraction');
+          summary = this.extractSummaryFromText(response);
+        }
+      }
+      
+      if (!transcription || transcription.length < 50) {
+        throw new Error('Transcription extraction failed or too short');
+      }
+      
+      if (!summary) {
+        summary = this.extractSummaryFromText(response);
+      }
+      
+      logger.info(`extractDataFromJsonResponse: Extracted transcription (${transcription.length} chars) and summary`);
+      
+      return {
+        transcription: transcription,
+        summary: summary
+      };
+      
+    } catch (error) {
+      logger.error('extractDataFromJsonResponse failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 不完全なJSONを修正
+   */
+  fixIncompleteJson(jsonStr) {
+    let fixed = jsonStr.trim();
+    
+    // 末尾が不完全な場合の修正
+    const openBraces = (fixed.match(/{/g) || []).length;
+    const closeBraces = (fixed.match(/}/g) || []).length;
+    
+    if (openBraces > closeBraces) {
+      // 不足する}を追加
+      fixed += '}'.repeat(openBraces - closeBraces);
+    }
+    
+    return fixed;
+  }
+
+  /**
    * テキストから構造化要約を抽出（JSONパース失敗時のフォールバック）
    */
   extractSummaryFromText(text) {
@@ -1013,14 +1140,41 @@ ${transcription}`;
                   parsedResult = JSON.parse(cleanedResponse);
                   logger.info('JSON parsing success with method 5 (line-by-line cleaning)');
                 } catch (parseError5) {
-                  logger.warn(`All JSON parsing attempts failed, using fallback. Errors: Direct(${parseError1.message}), Markdown(${parseError2.message}), Bracket(${parseError3.message}), Cleaning(${parseError4.message}), LineFilter(${parseError5.message})`);
-                  
-                  // フォールバック: テキストベースの構造化データ生成
-                  parsedResult = {
-                    transcription: response.length > 100 ? response : `文字起こし解析失敗: ${response}`,
-                    summary: this.extractSummaryFromText(response)
-                  };
-                  logger.info('Using fallback text-based summary extraction');
+                  try {
+                    // 手法6: 複数JSONブロック対応 - 最初の完全なJSONオブジェクトを抽出
+                    const jsonBlocks = this.extractMultipleJsonBlocks(response);
+                    if (jsonBlocks.length > 0) {
+                      parsedResult = jsonBlocks[0]; // 最初のJSONブロックを使用
+                      logger.info(`JSON parsing success with method 6 (multiple JSON blocks extraction) - found ${jsonBlocks.length} blocks`);
+                    } else {
+                      throw new Error('No valid JSON blocks found');
+                    }
+                  } catch (parseError6) {
+                    try {
+                      // 手法7: 改良されたfallback処理 - JSONレスポンスから適切にデータを抽出
+                      parsedResult = this.extractDataFromJsonResponse(response);
+                      logger.info('JSON parsing success with method 7 (improved fallback extraction)');
+                    } catch (parseError7) {
+                      logger.warn(`All JSON parsing attempts failed, using minimal fallback. Errors: Direct(${parseError1.message}), Markdown(${parseError2.message}), Bracket(${parseError3.message}), Cleaning(${parseError4.message}), LineFilter(${parseError5.message}), MultiBlock(${parseError6.message}), ImprovedFallback(${parseError7.message})`);
+                      
+                      // 最小限fallback: 解析失敗を明示
+                      parsedResult = {
+                        transcription: '⚠️ JSON解析エラー - AIレスポンスの形式解析に失敗しました',
+                        summary: {
+                          overview: 'JSON解析エラーのため要約生成できませんでした',
+                          client: '不明',
+                          attendees: [],
+                          agenda: [],
+                          discussions: [],
+                          decisions: [],
+                          actionItems: [],
+                          nextSteps: [],
+                          audioQuality: { clarity: 'unknown', issues: ['JSON解析失敗'], transcriptionConfidence: 'low' }
+                        }
+                      };
+                      logger.error('Using minimal fallback due to complete JSON parsing failure');
+                    }
+                  }
                 }
               }
             }
@@ -1029,8 +1183,16 @@ ${transcription}`;
         
         // 結果の検証と追加改善
         if (!parsedResult.transcription || parsedResult.transcription.length < 50) {
-          throw new Error('Transcription too short or missing');
+          // JSON解析エラーの場合は例外をスローせず警告ログのみ
+          if (parsedResult.transcription && parsedResult.transcription.includes('⚠️ JSON解析エラー')) {
+            logger.warn('JSON parsing failed - using error transcription');
+          } else {
+            throw new Error('Transcription too short or missing');
+          }
         }
+        
+        // パース結果の詳細ログ（デバッグ用）
+        logger.info(`JSON parsing result validation: transcription=${parsedResult.transcription ? parsedResult.transcription.length : 0} chars, summary=${parsedResult.summary ? 'present' : 'missing'}`);
         
         // クライアント名が「不明」の場合、会議名から抽出を試行
         if (parsedResult.summary && (!parsedResult.summary.client || parsedResult.summary.client === '不明')) {
@@ -1044,9 +1206,14 @@ ${transcription}`;
         const processingTime = Date.now() - startTime;
         logger.info(`Unified audio processing successful on attempt ${attempt} (${processingTime}ms)`);
         
+        // 最終的な品質チェック
+        const qualityScore = this.calculateResponseQuality(parsedResult);
+        logger.info(`Response quality score: ${qualityScore.score}/100 (${qualityScore.details})`);
+        
         // 成功時の返却データ
         return {
           success: true,
+          qualityScore: qualityScore,
           meetingInfo: meetingInfo,
           transcription: parsedResult.transcription,
           structuredSummary: parsedResult.summary,
@@ -1155,6 +1322,52 @@ ${transcription}`;
     const totalTime = Date.now() - startTime;
     logger.error(`All ${maxRetries} unified audio processing attempts failed for ${meetingInfo.topic} (${totalTime}ms)`);
     throw new Error(`Unified audio processing failed after ${maxRetries} attempts: ${lastError.message}`);
+  }
+
+  /**
+   * レスポンス品質評価
+   */
+  calculateResponseQuality(result) {
+    let score = 0;
+    const details = [];
+    
+    // 文字起こしの品質チェック
+    if (result.transcription) {
+      if (result.transcription.includes('⚠️ JSON解析エラー')) {
+        score += 0;
+        details.push('JSON解析失敗');
+      } else if (result.transcription.length > 1000) {
+        score += 50;
+        details.push('十分な長さの文字起こし');
+      } else if (result.transcription.length > 100) {
+        score += 30;
+        details.push('短めの文字起こし');
+      } else {
+        score += 10;
+        details.push('非常に短い文字起こし');
+      }
+    }
+    
+    // 要約の品質チェック
+    if (result.summary) {
+      if (result.summary.overview && result.summary.overview !== 'JSON解析エラーのため要約生成できませんでした') {
+        score += 30;
+        details.push('要約生成成功');
+      }
+      if (result.summary.client && result.summary.client !== '不明') {
+        score += 10;
+        details.push('クライアント特定');
+      }
+      if (result.summary.attendees && result.summary.attendees.length > 0) {
+        score += 10;
+        details.push('参加者情報');
+      }
+    }
+    
+    return {
+      score: Math.min(score, 100),
+      details: details.join(', ') || '評価項目なし'
+    };
   }
 
   /**
