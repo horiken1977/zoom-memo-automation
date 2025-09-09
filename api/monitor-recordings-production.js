@@ -58,46 +58,43 @@ module.exports = async function handler(req, res) {
     const allRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate);
     
     // ========== TC206テストコード開始（一時的追加） ==========
-    // TC206テスト: 異常系シミュレーション
-    if (req.query.tc206_test) {
+    // TC206テスト: 異常系シミュレーション（任意の録画に対して適用）
+    if (req.query.tc206_test && allRecordings.length > 0) {
       logger.info(`🧪 TC206テストモード: ${req.query.tc206_test}`);
       
-      allRecordings.forEach(recording => {
-        // TC206プレフィックス付き録画のみ対象
-        if (recording.topic?.includes('[TC206]')) {
-          logger.info(`📝 TC206テスト対象録画: ${recording.topic}`);
+      // 最初の録画を対象にテスト条件を適用（どの録画でも可）
+      const targetRecording = allRecordings[0];
+      logger.info(`📝 TC206テスト対象録画: ${targetRecording.topic}`);
+      
+      // 元のファイルリストを保存（ログ用）
+      const originalFiles = targetRecording.recording_files?.map(f => f.file_type) || [];
+      
+      switch(req.query.tc206_test) {
+        case 's1': // 音声ファイルなし（動画のみ）
+          targetRecording.recording_files = targetRecording.recording_files?.filter(
+            file => file.file_type !== 'M4A' && file.file_type !== 'MP3'
+          ) || [];
+          logger.warn(`⚠️ TC206-S1: 音声ファイルを除外しました（元: ${originalFiles.join(',')} → 現: ${targetRecording.recording_files.map(f => f.file_type).join(',')}）`);
+          break;
           
-          // 元のファイルリストを保存（ログ用）
-          const originalFiles = recording.recording_files?.map(f => f.file_type) || [];
+        case 's2': // 動画ファイルなし（音声のみ）
+          targetRecording.recording_files = targetRecording.recording_files?.filter(
+            file => file.file_type !== 'MP4'
+          ) || [];
+          logger.warn(`⚠️ TC206-S2: 動画ファイルを除外しました（元: ${originalFiles.join(',')} → 現: ${targetRecording.recording_files.map(f => f.file_type).join(',')}）`);
+          break;
           
-          switch(req.query.tc206_test) {
-            case 's1': // 音声ファイルなし（動画のみ）
-              recording.recording_files = recording.recording_files?.filter(
-                file => file.file_type !== 'M4A' && file.file_type !== 'MP3'
-              ) || [];
-              logger.warn(`⚠️ TC206-S1: 音声ファイルを除外しました（元: ${originalFiles.join(',')} → 現: ${recording.recording_files.map(f => f.file_type).join(',')}）`);
-              break;
-              
-            case 's2': // 動画ファイルなし（音声のみ）
-              recording.recording_files = recording.recording_files?.filter(
-                file => file.file_type !== 'MP4'
-              ) || [];
-              logger.warn(`⚠️ TC206-S2: 動画ファイルを除外しました（元: ${originalFiles.join(',')} → 現: ${recording.recording_files.map(f => f.file_type).join(',')}）`);
-              break;
-              
-            case 's3': // 音声品質低下シミュレーション
-              // 音声ファイルのサイズを極端に小さく偽装
-              recording.recording_files?.forEach(file => {
-                if (file.file_type === 'M4A' || file.file_type === 'MP3') {
-                  file.original_file_size = file.file_size;
-                  file.file_size = 1000; // 1KBに偽装（異常に小さい）
-                  logger.warn(`⚠️ TC206-S3: 音声ファイルサイズを劣化させました（${file.original_file_size} → ${file.file_size}）`);
-                }
-              });
-              break;
-          }
-        }
-      });
+        case 's3': // 音声品質低下シミュレーション
+          // 音声ファイルのサイズを極端に小さく偽装
+          targetRecording.recording_files?.forEach(file => {
+            if (file.file_type === 'M4A' || file.file_type === 'MP3') {
+              file.original_file_size = file.file_size;
+              file.file_size = 1000; // 1KBに偽装（異常に小さい）
+              logger.warn(`⚠️ TC206-S3: 音声ファイルサイズを劣化させました（${file.original_file_size} → ${file.file_size}）`);
+            }
+          });
+          break;
+      }
     }
     // ========== TC206テストコード終了 ==========
     
