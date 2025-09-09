@@ -560,7 +560,11 @@
                         <td><span class="error-code">E_GEMINI_SERVICE_OVERLOAD</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
                         <td><span class="severity severity-high">High</span></td>
-                        <td>サービス一時的過負荷（503エラー）</td>
+                        <td>Gemini AIサービス一時的過負荷（503エラー）<br>
+                            <small><strong>原因:</strong> API利用者集中によるサービス過負荷<br>
+                            <strong>対策:</strong> 自動リトライ（35-45秒間隔）で復旧待機<br>
+                            <strong>発生時:</strong> TC206テスト等での高負荷時に確認済み</small>
+                        </td>
                         <td><span class="location">aiService.js</span></td>
                         <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
                     </tr>

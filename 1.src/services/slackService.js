@@ -560,7 +560,16 @@ ${analysisResult.transcription}
     });
 
     // 録画・文書リンクセクション（強化版）
-    let linkText = `🎥 *録画ファイル:* <${driveResult.viewLink || 'リンク取得中'}|Google Driveで視聴>\n📁 *保存場所:* ${driveResult.folderPath || 'Zoom録画フォルダ'}\n⏱️ *開催日時:* ${this.formatMeetingStartTime(meetingInfo)}\n🕐 *時間:* ${meetingInfo.duration}分`;
+    // TC206-S2対応: 動画ファイルの有無による条件分岐
+    let linkText;
+    if (driveResult.viewLink) {
+      linkText = `🎥 *録画ファイル:* <${driveResult.viewLink}|Google Driveで視聴>`;
+    } else {
+      linkText = `⚠️ *録画ファイル:* 動画ファイルなし（音声のみ処理済み）`;
+    }
+    linkText += `\n📁 *保存場所:* ${driveResult.folderPath || 'Zoom録画フォルダ'}`;
+    linkText += `\n⏱️ *開催日時:* ${this.formatMeetingStartTime(meetingInfo)}`;
+    linkText += `\n🕐 *時間:* ${meetingInfo.duration}分`;
     
     // 文書リンクを追加
     if (driveResult.documentLinks && driveResult.documentLinks.length > 0) {
