@@ -1206,9 +1206,30 @@ ${transcription}`;
         const processingTime = Date.now() - startTime;
         logger.info(`Unified audio processing successful on attempt ${attempt} (${processingTime}ms)`);
         
+        // Phase 1: 個別プロパティ内のJSON混在データ清浄化
+        parsedResult = this.cleanJsonMixedContent(parsedResult);
+        logger.info('JSON mixed content cleaning completed for all properties');
+        
+        // Phase 3: 品質監視と自動再処理
+        const qualityReport = this.detectAndEvaluateContentQuality(parsedResult);
+        logger.info(`Content quality evaluation: ${qualityReport.overallScore}/100 (Issues: ${qualityReport.issues.length})`);
+        
+        // 品質問題がある場合の自動再処理
+        if (qualityReport.needsReprocessing) {
+          logger.warn(`Quality issues detected, initiating auto-reprocessing...`);
+          const reprocessResult = await this.autoReprocessContent(parsedResult, qualityReport);
+          
+          if (reprocessResult.success) {
+            parsedResult = reprocessResult.reprocessedData;
+            logger.info(`Auto-reprocessing completed: ${reprocessResult.improvementsMade.join(', ')}`);
+          } else {
+            logger.warn(`Auto-reprocessing did not significantly improve quality`);
+          }
+        }
+        
         // 最終的な品質チェック
         const qualityScore = this.calculateResponseQuality(parsedResult);
-        logger.info(`Response quality score: ${qualityScore.score}/100 (${qualityScore.details})`);
+        logger.info(`Final response quality score: ${qualityScore.score}/100 (${qualityScore.details})`);
         
         // 成功時の返却データ
         return {
@@ -1324,6 +1345,382 @@ ${transcription}`;
     throw new Error(`Unified audio processing failed after ${maxRetries} attempts: ${lastError.message}`);
   }
 
+  /**
+   * JSON混在コンテンツを清浄化する（Phase 1実装）
+   * 個別プロパティ内のJSONフラグメントや混在データを除去
+   */
+  cleanJsonMixedContent(data) {
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    const cleanedData = JSON.parse(JSON.stringify(data)); // ディープコピー
+
+    // 再帰的にオブジェクト内の全文字列プロパティを清浄化
+    const cleanObject = (obj, path = '') => {
+      for (const key in obj) {
+        if (!obj.hasOwnProperty(key)) continue;
+        
+        const currentPath = path ? `${path}.${key}` : key;
+        const value = obj[key];
+        
+        if (typeof value === 'string') {
+          // JSON混在パターンの検出と清浄化
+          const originalLength = value.length;
+          let cleanedValue = value;
+          
+          // パターン1: JSONオブジェクト形式の除去 {"key":"value"}
+          if (cleanedValue.includes('{') && cleanedValue.includes('}')) {
+            // JSONブロックを検出して除去（ただし、文章の一部として使われる{}は保持）
+            cleanedValue = cleanedValue.replace(/\{[^{}]*"[^"]+"\s*:\s*[^{}]*\}/g, '');
+            
+            // 複数階層のネストされたJSONも除去
+            let prevLength;
+            do {
+              prevLength = cleanedValue.length;
+              cleanedValue = cleanedValue.replace(/\{[^{}]*\{[^{}]*\}[^{}]*\}/g, '');
+            } while (cleanedValue.length < prevLength && cleanedValue.includes('{'));
+          }
+          
+          // パターン2: JSON配列形式の除去 ["item1","item2"]
+          if (cleanedValue.includes('[') && cleanedValue.includes(']')) {
+            cleanedValue = cleanedValue.replace(/\[[^\[\]]*"[^"]+"[^\[\]]*\]/g, '');
+          }
+          
+          // パターン3: エスケープされたJSON文字列の除去
+          cleanedValue = cleanedValue.replace(/\\"/g, '"');
+          
+          // パターン4: 残存するJSON構文の除去
+          cleanedValue = cleanedValue
+            .replace(/"\s*:\s*"/g, ': ')
+            .replace(/"\s*,\s*"/g, ', ')
+            .replace(/\[\s*"/g, '')
+            .replace(/"\s*\]/g, '')
+            .replace(/\{\s*"/g, '')
+            .replace(/"\s*\}/g, '');
+          
+          // パターン5: 連続する空白・改行の正規化
+          cleanedValue = cleanedValue
+            .replace(/\n\s*\n\s*\n/g, '\n\n')
+            .replace(/\s\s+/g, ' ')
+            .trim();
+          
+          // 清浄化結果の検証
+          if (cleanedValue !== value) {
+            const cleanedLength = cleanedValue.length;
+            const reduction = originalLength - cleanedLength;
+            logger.debug(`Cleaned property '${currentPath}': removed ${reduction} chars of JSON content`);
+            
+            // 空文字になった場合のフォールバック
+            if (cleanedValue.length === 0 && originalLength > 0) {
+              logger.warn(`Property '${currentPath}' became empty after cleaning, using fallback`);
+              cleanedValue = 'データ処理中にエラーが発生しました';
+            }
+          }
+          
+          obj[key] = cleanedValue;
+        } else if (typeof value === 'object' && value !== null) {
+          // 再帰的に子オブジェクト/配列も処理
+          if (Array.isArray(value)) {
+            value.forEach((item, index) => {
+              if (typeof item === 'object' && item !== null) {
+                cleanObject(item, `${currentPath}[${index}]`);
+              } else if (typeof item === 'string') {
+                // 配列内の文字列要素も清浄化
+                const cleanedItem = this.cleanStringValue(item);
+                if (cleanedItem !== item) {
+                  value[index] = cleanedItem;
+                  logger.debug(`Cleaned array item at '${currentPath}[${index}]'`);
+                }
+              }
+            });
+          } else {
+            cleanObject(value, currentPath);
+          }
+        }
+      }
+    };
+
+    // 特に重要なフィールドを優先的に清浄化
+    const criticalFields = [
+      'transcription',
+      'summary.overview', 
+      'summary.meetingPurpose',
+      'structuredSummary.overview',
+      'structuredSummary.meetingPurpose'
+    ];
+    
+    criticalFields.forEach(fieldPath => {
+      const parts = fieldPath.split('.');
+      let target = cleanedData;
+      let parent = null;
+      let lastKey = null;
+      
+      for (let i = 0; i < parts.length; i++) {
+        if (target && typeof target === 'object') {
+          parent = target;
+          lastKey = parts[i];
+          target = target[parts[i]];
+        } else {
+          break;
+        }
+      }
+      
+      if (parent && lastKey && typeof target === 'string') {
+        const cleaned = this.cleanStringValue(target);
+        if (cleaned !== target) {
+          parent[lastKey] = cleaned;
+          logger.info(`Critical field '${fieldPath}' cleaned: ${target.length} -> ${cleaned.length} chars`);
+        }
+      }
+    });
+
+    // 全体的な清浄化処理
+    cleanObject(cleanedData);
+    
+    return cleanedData;
+  }
+
+  /**
+   * 文字列値のJSON混在コンテンツを清浄化（ヘルパーメソッド）
+   */
+  cleanStringValue(value) {
+    if (typeof value !== 'string') return value;
+    
+    let cleaned = value;
+    
+    // JSONパターンの段階的除去
+    cleaned = cleaned
+      // Step 1: 明確なJSONブロックを除去
+      .replace(/\{[^{}]*"[^"]+"\s*:\s*[^{}]*\}/g, '')
+      // Step 2: ネストされたJSONを除去
+      .replace(/\{[^{}]*\{[^{}]*\}[^{}]*\}/g, '')
+      // Step 3: JSON配列を除去
+      .replace(/\[[^\[\]]*"[^"]+"[^\[\]]*\]/g, '')
+      // Step 4: エスケープ文字を正規化
+      .replace(/\\"/g, '"')
+      // Step 5: JSON構文の残骸を除去
+      .replace(/"\s*:\s*"/g, ': ')
+      .replace(/"\s*,\s*"/g, ', ')
+      // Step 6: 空白の正規化
+      .replace(/\s\s+/g, ' ')
+      .trim();
+    
+    return cleaned;
+  }
+
+  /**
+   * Phase 3: 品質監視・自動再処理機能
+   * JSON混在コンテンツの検出と品質評価
+   */
+  detectAndEvaluateContentQuality(data) {
+    const qualityReport = {
+      overallScore: 100,
+      issues: [],
+      jsonMixedDetected: false,
+      needsReprocessing: false,
+      details: {
+        transcriptionQuality: 100,
+        summaryQuality: 100,
+        structuralIntegrity: 100
+      }
+    };
+    
+    // JSON混在パターンの検出
+    const checkJsonMixed = (value, fieldName) => {
+      if (typeof value !== 'string') return true;
+      
+      // JSONパターンの特定
+      const jsonPatterns = [
+        /\{[^{}]*"[^"]+"\s*:\s*[^{}]*\}/,  // 基本的なJSONオブジェクト
+        /\[[^\[\]]*"[^"]+"[^\[\]]*\]/,     // JSON配列
+        /"transcription":\s*"[^"]*"/,      // 特定JSONフィールド
+        /\{[^{}]*\{[^{}]*\}[^{}]*\}/        // ネストされたJSON
+      ];
+      
+      for (const pattern of jsonPatterns) {
+        if (pattern.test(value)) {
+          qualityReport.issues.push({
+            type: 'JSON_MIXED_CONTENT',
+            field: fieldName,
+            severity: 'HIGH',
+            description: `JSON混在コンテンツが検出されました: ${fieldName}`,
+            pattern: pattern.toString(),
+            sampleContent: value.substring(0, 100) + '...'
+          });
+          
+          qualityReport.jsonMixedDetected = true;
+          qualityReport.overallScore -= 25; // 重大な品質問題
+          
+          if (fieldName === 'transcription') {
+            qualityReport.details.transcriptionQuality = 30;
+          } else if (fieldName.includes('summary') || fieldName.includes('overview')) {
+            qualityReport.details.summaryQuality = 20;
+          }
+          
+          return false;
+        }
+      }
+      return true;
+    };
+    
+    // 再帰的な品質チェック
+    const checkObjectRecursively = (obj, path = '') => {
+      for (const key in obj) {
+        if (!obj.hasOwnProperty(key)) continue;
+        
+        const currentPath = path ? `${path}.${key}` : key;
+        const value = obj[key];
+        
+        if (typeof value === 'string') {
+          checkJsonMixed(value, currentPath);
+          
+          // 空文字チェック
+          if (value.length === 0) {
+            qualityReport.issues.push({
+              type: 'EMPTY_CONTENT',
+              field: currentPath,
+              severity: 'MEDIUM',
+              description: `空のコンテンツ: ${currentPath}`
+            });
+            qualityReport.overallScore -= 10;
+          }
+          
+          // 異常に短いコンテンツチェック
+          if (key === 'transcription' && value.length < 50) {
+            qualityReport.issues.push({
+              type: 'INSUFFICIENT_CONTENT',
+              field: currentPath,
+              severity: 'HIGH',
+              description: `文字起こしが不十分: ${value.length}文字`
+            });
+            qualityReport.details.transcriptionQuality = 40;
+            qualityReport.overallScore -= 20;
+          }
+          
+        } else if (typeof value === 'object' && value !== null) {
+          if (Array.isArray(value)) {
+            value.forEach((item, index) => {
+              if (typeof item === 'object' && item !== null) {
+                checkObjectRecursively(item, `${currentPath}[${index}]`);
+              } else if (typeof item === 'string') {
+                checkJsonMixed(item, `${currentPath}[${index}]`);
+              }
+            });
+          } else {
+            checkObjectRecursively(value, currentPath);
+          }
+        }
+      }
+    };
+    
+    // 品質チェック実行
+    checkObjectRecursively(data);
+    
+    // 再処理必要性の判定
+    qualityReport.needsReprocessing = (
+      qualityReport.jsonMixedDetected ||
+      qualityReport.overallScore < 70 ||
+      qualityReport.issues.some(issue => issue.severity === 'HIGH')
+    );
+    
+    // 品質スコアの下限制限
+    qualityReport.overallScore = Math.max(0, qualityReport.overallScore);
+    
+    return qualityReport;
+  }
+  
+  /**
+   * Phase 3: 自動再処理機能
+   * 品質問題が発見された場合の自動修正
+   */
+  async autoReprocessContent(originalData, qualityReport) {
+    logger.warn(`Auto-reprocessing triggered due to quality issues. Score: ${qualityReport.overallScore}/100`);
+    
+    let reprocessedData = JSON.parse(JSON.stringify(originalData)); // ディープコピー
+    let improvementsMade = [];
+    
+    // JSON混在問題の修正
+    qualityReport.issues.forEach(issue => {
+      if (issue.type === 'JSON_MIXED_CONTENT') {
+        const fieldPath = issue.field;
+        const pathParts = fieldPath.split('.');
+        
+        let target = reprocessedData;
+        let parent = null;
+        let lastKey = null;
+        
+        // フィールドパスを辿って対象を特定
+        for (let i = 0; i < pathParts.length; i++) {
+          if (target && typeof target === 'object') {
+            parent = target;
+            lastKey = pathParts[i];
+            target = target[pathParts[i]];
+          } else {
+            break;
+          }
+        }
+        
+        if (parent && lastKey && typeof target === 'string') {
+          const cleanedContent = this.cleanStringValue(target);
+          if (cleanedContent !== target) {
+            parent[lastKey] = cleanedContent;
+            improvementsMade.push(`Fixed JSON mixed content in ${fieldPath}`);
+            logger.info(`Auto-reprocessing: Cleaned ${fieldPath} (${target.length} -> ${cleanedContent.length} chars)`);
+          }
+        }
+      }
+    });
+    
+    // 空コンテンツの修正
+    qualityReport.issues.forEach(issue => {
+      if (issue.type === 'EMPTY_CONTENT') {
+        const fieldPath = issue.field;
+        const pathParts = fieldPath.split('.');
+        
+        let target = reprocessedData;
+        let parent = null;
+        let lastKey = null;
+        
+        for (let i = 0; i < pathParts.length; i++) {
+          if (target && typeof target === 'object') {
+            parent = target;
+            lastKey = pathParts[i];
+            target = target[pathParts[i]];
+          } else {
+            break;
+          }
+        }
+        
+        if (parent && lastKey && target === '') {
+          parent[lastKey] = 'データ処理中に問題が発生しました';
+          improvementsMade.push(`Fixed empty content in ${fieldPath}`);
+          logger.info(`Auto-reprocessing: Added fallback content to ${fieldPath}`);
+        }
+      }
+    });
+    
+    // 再処理結果の品質再評価
+    const reprocessedQuality = this.detectAndEvaluateContentQuality(reprocessedData);
+    
+    const reprocessingResult = {
+      success: reprocessedQuality.overallScore > qualityReport.overallScore,
+      originalScore: qualityReport.overallScore,
+      improvedScore: reprocessedQuality.overallScore,
+      improvementsMade: improvementsMade,
+      reprocessedData: reprocessedData,
+      finalQuality: reprocessedQuality
+    };
+    
+    if (reprocessingResult.success) {
+      logger.info(`Auto-reprocessing successful: ${qualityReport.overallScore} -> ${reprocessedQuality.overallScore} points`);
+    } else {
+      logger.warn(`Auto-reprocessing completed but quality not significantly improved`);
+    }
+    
+    return reprocessingResult;
+  }
+  
   /**
    * レスポンス品質評価
    */

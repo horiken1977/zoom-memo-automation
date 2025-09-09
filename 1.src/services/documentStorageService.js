@@ -361,6 +361,63 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
   }
 
   /**
+   * Phase 2: JSON混在コンテンツをサニタイズする防御メソッド
+   * @param {string} value - サニタイズ対象の文字列
+   * @returns {string} - JSON混在を除去した文字列
+   */
+  sanitizeJsonMixedContent(value) {
+    if (!value || typeof value !== 'string') return value || '';
+    
+    // JSON混在パターンの検出と除去
+    let sanitized = value;
+    
+    // パターン1: JSONオブジェクト形式 {"key":"value"}
+    sanitized = sanitized.replace(/\{[^{}]*"[^"]+"\s*:\s*[^{}]*\}/g, '');
+    
+    // パターン2: ネストされたJSON
+    let prevLength;
+    do {
+      prevLength = sanitized.length;
+      sanitized = sanitized.replace(/\{[^{}]*\{[^{}]*\}[^{}]*\}/g, '');
+    } while (sanitized.length < prevLength && sanitized.includes('{'));
+    
+    // パターン3: JSON配列形式 ["item1","item2"]
+    sanitized = sanitized.replace(/\[[^\[\]]*"[^"]+"[^\[\]]*\]/g, '');
+    
+    // パターン4: エスケープされたJSON文字列
+    sanitized = sanitized.replace(/\\"/g, '"');
+    
+    // パターン5: JSON構文の残骸除去
+    sanitized = sanitized
+      .replace(/"\s*:\s*"/g, ': ')
+      .replace(/"\s*,\s*"/g, ', ')
+      .replace(/\[\s*"/g, '')
+      .replace(/"\s*\]/g, '')
+      .replace(/\{\s*"/g, '')
+      .replace(/"\s*\}/g, '');
+    
+    // 空白の正規化
+    sanitized = sanitized
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .replace(/\s\s+/g, ' ')
+      .trim();
+    
+    // 空文字になった場合のフォールバック
+    if (sanitized.length === 0 && value.length > 0) {
+      logger.warn(`DocumentStorage: Content became empty after sanitization, using fallback`);
+      return 'データ処理中にエラーが発生しました';
+    }
+    
+    // サニタイズ結果のログ（デバッグ用）
+    if (sanitized !== value) {
+      const reduction = value.length - sanitized.length;
+      logger.debug(`DocumentStorage: Sanitized content, removed ${reduction} chars of JSON`);
+    }
+    
+    return sanitized;
+  }
+  
+  /**
    * 要約テキストを読みやすい形式に整形
    */
   formatSummaryText(summaryData, meetingInfo) {
@@ -379,10 +436,10 @@ ${additionalInfo.transcriptionLength ? `文字起こし長: ${additionalInfo.tra
 - 参加者数: ${summaryData.participants?.length || 'N/A'}名
 
 ## 会議目的
-${summaryData.meetingPurpose || summaryData.overview || 'N/A'}
+${this.sanitizeJsonMixedContent(summaryData.meetingPurpose || summaryData.overview) || 'N/A'}
 
 ## クライアント名
-${summaryData.clientName || summaryData.client || 'N/A'}
+${this.sanitizeJsonMixedContent(summaryData.clientName || summaryData.client) || 'N/A'}
 
 ## 出席者・会社名
 ${summaryData.attendeesAndCompanies?.map(p => `- ${p.name || p} (${p.company || '不明'}) ${p.role ? ` - ${p.role}` : ''}`).join('\n') || summaryData.participants?.map(p => `- ${p.name || p}`).join('\n') || '情報なし'}

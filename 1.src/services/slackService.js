@@ -11,6 +11,63 @@ class SlackService {
   }
 
   /**
+   * Phase 2: JSON混在コンテンツをサニタイズする防御メソッド
+   * @param {string} value - サニタイズ対象の文字列
+   * @returns {string} - JSON混在を除去した文字列
+   */
+  sanitizeJsonMixedContent(value) {
+    if (!value || typeof value !== 'string') return value || '';
+    
+    // JSON混在パターンの検出と除去
+    let sanitized = value;
+    
+    // パターン1: JSONオブジェクト形式 {"key":"value"}
+    sanitized = sanitized.replace(/\{[^{}]*"[^"]+"\s*:\s*[^{}]*\}/g, '');
+    
+    // パターン2: ネストされたJSON
+    let prevLength;
+    do {
+      prevLength = sanitized.length;
+      sanitized = sanitized.replace(/\{[^{}]*\{[^{}]*\}[^{}]*\}/g, '');
+    } while (sanitized.length < prevLength && sanitized.includes('{'));
+    
+    // パターン3: JSON配列形式 ["item1","item2"]
+    sanitized = sanitized.replace(/\[[^\[\]]*"[^"]+"[^\[\]]*\]/g, '');
+    
+    // パターン4: エスケープされたJSON文字列
+    sanitized = sanitized.replace(/\\"/g, '"');
+    
+    // パターン5: JSON構文の残骸除去
+    sanitized = sanitized
+      .replace(/"\s*:\s*"/g, ': ')
+      .replace(/"\s*,\s*"/g, ', ')
+      .replace(/\[\s*"/g, '')
+      .replace(/"\s*\]/g, '')
+      .replace(/\{\s*"/g, '')
+      .replace(/"\s*\}/g, '');
+    
+    // 空白の正規化
+    sanitized = sanitized
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .replace(/\s\s+/g, ' ')
+      .trim();
+    
+    // 空文字になった場合のフォールバック
+    if (sanitized.length === 0 && value.length > 0) {
+      logger.warn(`SlackService: Content became empty after sanitization, using fallback`);
+      return 'データ処理中にエラーが発生しました';
+    }
+    
+    // サニタイズ結果のログ（デバッグ用）
+    if (sanitized !== value) {
+      const reduction = value.length - sanitized.length;
+      logger.debug(`SlackService: Sanitized content, removed ${reduction} chars of JSON`);
+    }
+    
+    return sanitized;
+  }
+  
+  /**
    * 会議要約をSlackに送信（従来版・互換性維持）
    */
   async sendMeetingSummary(analysisResult) {
@@ -615,22 +672,25 @@ ${analysisResult.transcription}
         // 文字列の場合は適切な長さで切り詰めて表示
         meetingPurpose = this.extractShortSummary(summary);
       } else if (summary.overview) {
-        meetingPurpose = summary.overview;
+        // Phase 2: overviewをサニタイズしてからセット
+        meetingPurpose = this.sanitizeJsonMixedContent(summary.overview);
       } else if (summary.summary) {
         // オブジェクトの場合は適切な長さで切り詰めて表示
         meetingPurpose = this.extractShortSummary(summary.summary);
       } else if (summary.meetingPurpose) {
-        // 構造化要約の場合のフォールバック
-        meetingPurpose = summary.meetingPurpose;
+        // 構造化要約の場合のフォールバック（Phase 2: サニタイズ付き）
+        meetingPurpose = this.sanitizeJsonMixedContent(summary.meetingPurpose);
       }
     }
     
     if (meetingPurpose) {
+      // Phase 2: 最終的なサニタイズを確実に実行
+      const sanitizedPurpose = this.sanitizeJsonMixedContent(meetingPurpose);
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*🎯 会議目的*\n${meetingPurpose}`
+          text: `*🎯 会議目的*\n${sanitizedPurpose}`
         }
       });
     }
