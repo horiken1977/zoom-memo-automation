@@ -242,6 +242,24 @@ class AudioSummaryService {
       
       const totalTime = debugTimer('processRealAudioBuffer完了');
       
+      // TC206対応: warnings配列を追加
+      const warnings = [];
+      
+      // TC206-S3: 音声品質低下の場合
+      if (qualityCheckResult && qualityCheckResult.isLowQuality) {
+        warnings.push('音声ファイルの品質が低い状態でした');
+        warnings.push('代替処理: 品質チェックを実施しましたが、処理を継続しました');
+        warnings.push('推奨: 動画ファイルから高品質音声を再抽出することを検討してください');
+      }
+      
+      // TC206-S2: 動画なし・音声のみの場合の警告
+      // meetingInfoから動画ファイルの有無を確認
+      if (meetingInfo && meetingInfo.hasVideoFile === false) {
+        warnings.push('動画ファイルが存在しませんでした');
+        warnings.push('代替処理: 音声ファイルのみで文字起こし・要約を実行しました');
+        warnings.push('注意事項: 画面共有の内容は含まれていません');
+      }
+      
       return {
         status: 'success',
         transcription: transcriptionResult,
@@ -252,6 +270,7 @@ class AudioSummaryService {
         processedAudioBufferSize: processedAudioBuffer.length,
         compressionStats: compressionStats, // 圧縮統計情報
         qualityCheckResult: qualityCheckResult, // 音声品質チェック結果
+        warnings: warnings.length > 0 ? warnings : undefined, // TC206対応
         meetingInfo: meetingInfo,
         processedAt: new Date().toISOString(),
         totalProcessingTime: totalTime,

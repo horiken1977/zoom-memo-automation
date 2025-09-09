@@ -377,11 +377,15 @@ class ZoomRecordingService {
         // 音声ファイルをメモリバッファとして取得
         const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
         
+        // meetingInfoに動画ファイルの有無を追加
+        const meetingInfo = this.extractMeetingInfo(recording);
+        meetingInfo.hasVideoFile = !!videoFile; // TC206-S2対応
+        
         // Gemini AIで文字起こし・要約処理
         const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
           audioBuffer,
           audioFileName,
-          this.extractMeetingInfo(recording)
+          meetingInfo
         );
         
         if (executionLogger) {
