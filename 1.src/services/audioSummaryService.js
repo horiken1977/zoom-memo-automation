@@ -317,15 +317,10 @@ class AudioSummaryService {
       const maxGeminiSize = 20 * 1024 * 1024;
       if (videoBuffer.length > maxGeminiSize) {
         logger.warn(`動画バッファサイズが20MB制限を超過: ${bufferSizeMB.toFixed(2)}MB > 20MB`);
-        // 動画圧縮処理を実行
-        logger.info('動画圧縮処理を実行します...');
-        const compressedBuffer = await this.audioCompressionService.compressVideoBuffer(videoBuffer, videoFileName);
-        if (compressedBuffer && compressedBuffer.length < maxGeminiSize) {
-          logger.info(`動画圧縮成功: ${bufferSizeMB.toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`);
-          return await this.processVideoAsAudio(compressedBuffer, videoFileName, meetingInfo);
-        } else {
-          throw new Error(`動画ファイルサイズが20MB制限を超過しており、圧縮も失敗しました: ${bufferSizeMB.toFixed(2)}MB`);
-        }
+        logger.warn('音声ファイルなし・大容量動画のため、文字起こし処理を中止します');
+        
+        // TC206-S1用のエラーメッセージ
+        throw new Error(`動画ファイルが大きすぎるため、文字起こしできません（${bufferSizeMB.toFixed(2)}MB > 20MB制限）。音声ファイルを確認してください。`);
       }
 
       // Gemini AI で動画から音声文字起こし（動画ファイルも文字起こし可能）

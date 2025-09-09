@@ -995,6 +995,8 @@ ${analysisResult.transcription}
           // TC206関連エラーの詳細判定
           if (errorInfo.error.includes('path is not defined')) {
             errorCode = 'E_AUDIO_MISSING_VIDEO_EXTRACTION_FAILED';
+          } else if (errorInfo.error.includes('動画ファイルが大きすぎるため、文字起こしできません')) {
+            errorCode = 'E_AUDIO_MISSING_VIDEO_TOO_LARGE';
           } else {
             errorCode = 'RECORDING_PROCESSING_FAILED';
           }
@@ -1036,6 +1038,13 @@ ${analysisResult.transcription}
 • APIキーの有効性チェック
 • プロジェクトのアクセス権限確認
 • Google AI Studio: https://ai.google.dev/`;
+      } else if (errorCode === 'E_AUDIO_MISSING_VIDEO_TOO_LARGE') {
+        actionableSteps = `
+📋 *音声ファイルなし・大容量動画の対処法:*
+• 音声ファイルが存在しません
+• 動画ファイルが大きすぎます（20MB制限超過）
+• 対処法: 音声ファイルを手動で再アップロードしてください
+• または: Zoom録画設定で音声を有効にしてください`;
       } else if (errorCode === 'RECORDING_PROCESSING_FAILED') {
         actionableSteps = `
 📋 *録画処理失敗の対処法:*
