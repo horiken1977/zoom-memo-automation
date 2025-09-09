@@ -197,8 +197,15 @@ class ZoomRecordingService {
       // Step 1: 動画ファイル処理 (取得 → Google Drive保存)
       const videoResult = await this.processVideoFile(recording, executionLogger);
       
+      // TC206-S2対応: 動画処理が失敗/スキップされても音声処理を継続
+      const warnings = [];
+      if (!videoResult.success && videoResult.warning) {
+        warnings.push(videoResult.warning);
+        logger.info('動画処理をスキップして音声処理に進みます');
+      }
+      
       // Step 2: 音声ファイル処理 (取得 → AI処理 → メモリ破棄)
-      // 動画バッファを音声処理に渡してバッファリング使用
+      // 動画バッファを音声処理に渡してバッファリング使用（nullの場合もある）
       const audioResult = await this.processAudioFile(recording, executionLogger, videoResult.videoBuffer);
       
       // Step 3: 文書保存処理 (文字起こし・要約をGoogle Driveに保存)
@@ -241,12 +248,13 @@ class ZoomRecordingService {
         meetingId: meetingId,
         meetingTopic: meetingTopic,
         meetingInfo: this.extractMeetingInfo(recording),
-        video: videoResult,
+        video: videoResult.skipped ? null : videoResult,  // 動画がスキップされた場合はnull
         audio: audioResult,
         documents: documentResult,
         // Slack通知用フィールド
         summary: audioResult.summary,
-        driveLink: videoResult.driveLink,
+        driveLink: videoResult.skipped ? null : videoResult.driveLink,  // 動画なしの場合はnull
+        warnings: warnings.length > 0 ? warnings : undefined,  // TC206警告メッセージ
         processedAt: new Date().toISOString(),
         // 処理方法の情報を追加
         processingDetails: {
@@ -255,6 +263,11 @@ class ZoomRecordingService {
           hasAudio: !audioResult?.processedFromVideo
         }
       };
+      
+      // TC206用: 音声処理の警告も統合
+      if (audioResult.warnings && audioResult.warnings.length > 0) {
+        result.warnings = [...(result.warnings || []), ...audioResult.warnings];
+      }
       
       if (executionLogger) {
         executionLogger.logSuccess('RECORDING_COMPLETE_PROCESSING', {
@@ -304,7 +317,27 @@ class ZoomRecordingService {
       // 動画ファイルを特定
       const videoFile = recording.recording_files.find(file => file.file_type === 'MP4');
       if (!videoFile) {
-        throw new Error('MP4動画ファイルが見つかりません');
+        // TC206-S2対応: 動画ファイルがない場合は警告付きで処理を継続
+        logger.warn('MP4動画ファイルが見つかりません - 音声のみで処理を続行します');
+        
+        if (executionLogger) {
+          executionLogger.logWarning('VIDEO_NOT_FOUND', {
+            message: '動画ファイルが存在しませんでした',
+            recordingId: recording.id,
+            availableFiles: recording.recording_files?.map(f => f.file_type).join(', ')
+          });
+          executionLogger.completeStep('VIDEO_PROCESSING', {
+            skipped: true,
+            reason: 'No video file available'
+          });
+        }
+        
+        return {
+          success: false,
+          warning: '動画ファイルが存在しませんでした',
+          videoBuffer: null,
+          skipped: true
+        };
       }
       
       logger.info(`動画ファイル取得開始: ${videoFile.file_name} (${Math.round(videoFile.file_size / 1024 / 1024)}MB)`);

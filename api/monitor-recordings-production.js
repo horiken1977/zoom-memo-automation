@@ -160,10 +160,10 @@ module.exports = async function handler(req, res) {
           // Slack完了通知（要約付き）
           if (recordingResult.summary) {
             try {
-              // 正しい動画リンク構造を設定
+              // 正しい動画リンク構造を設定（TC206-S2: 動画なしの場合も考慮）
               const driveResult = {
-                viewLink: recordingResult.video?.shareLink || recordingResult.driveLink,
-                folderPath: recordingResult.video?.folderPath || 'Zoom録画フォルダ',
+                viewLink: recordingResult.video?.shareLink || recordingResult.driveLink || null,
+                folderPath: recordingResult.video?.folderPath || recordingResult.documents?.folderPath || 'Zoom録画フォルダ',
                 uploadTime: recordingResult.video?.processingTime || 0,
                 documentLinks: recordingResult.documents?.links || []
               };
