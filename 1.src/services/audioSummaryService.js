@@ -344,7 +344,8 @@ class AudioSummaryService {
         transcription: transcription,
         structuredSummary: summary,
         processingTime: Date.now() - Date.now(),
-        isFromVideo: true
+        isFromVideo: true,
+        warnings: ['音声ファイルが存在しませんでした', '代替処理: 動画ファイルから音声を抽出して文字起こしを実行しました', '処理結果: 正常に完了']
       };
 
       logger.info(`動画から音声処理完了: 文字起こし${transcription.transcription.length}文字, 要約生成${!!summary}`);

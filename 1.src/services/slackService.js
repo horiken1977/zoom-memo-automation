@@ -99,6 +99,20 @@ class SlackService {
     // 区切り線
     blocks.push({ type: "divider" });
 
+    // 警告メッセージ（TC206対応）
+    if (analysisResult.warnings && analysisResult.warnings.length > 0) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `⚠️ *処理時の警告*\\n${analysisResult.warnings.map(w => `• ${w}`).join('\\n')}`
+        }
+      });
+      
+      // 警告後の区切り線
+      blocks.push({ type: "divider" });
+    }
+
     // 参加者情報
     if (participants.length > 0) {
       const participantText = participants
@@ -978,7 +992,12 @@ ${analysisResult.transcription}
         } else if (errorInfo.error.includes('Gemini')) {
           errorCode = 'E_GEMINI_GENERAL';
         } else if (errorInfo.error.includes('音声処理エラー')) {
-          errorCode = 'RECORDING_PROCESSING_FAILED';
+          // TC206関連エラーの詳細判定
+          if (errorInfo.error.includes('path is not defined')) {
+            errorCode = 'E_AUDIO_MISSING_VIDEO_EXTRACTION_FAILED';
+          } else {
+            errorCode = 'RECORDING_PROCESSING_FAILED';
+          }
         }
       }
 

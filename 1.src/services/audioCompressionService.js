@@ -1,3 +1,4 @@
+const path = require('path');
 const logger = require('../utils/logger');
 
 /**
