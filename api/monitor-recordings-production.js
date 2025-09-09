@@ -57,6 +57,50 @@ module.exports = async function handler(req, res) {
     // 組織全体の録画を取得
     const allRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate);
     
+    // ========== TC206テストコード開始（一時的追加） ==========
+    // TC206テスト: 異常系シミュレーション
+    if (req.query.tc206_test) {
+      logger.info(`🧪 TC206テストモード: ${req.query.tc206_test}`);
+      
+      allRecordings.forEach(recording => {
+        // TC206プレフィックス付き録画のみ対象
+        if (recording.topic?.includes('[TC206]')) {
+          logger.info(`📝 TC206テスト対象録画: ${recording.topic}`);
+          
+          // 元のファイルリストを保存（ログ用）
+          const originalFiles = recording.recording_files?.map(f => f.file_type) || [];
+          
+          switch(req.query.tc206_test) {
+            case 's1': // 音声ファイルなし（動画のみ）
+              recording.recording_files = recording.recording_files?.filter(
+                file => file.file_type !== 'M4A' && file.file_type !== 'MP3'
+              ) || [];
+              logger.warn(`⚠️ TC206-S1: 音声ファイルを除外しました（元: ${originalFiles.join(',')} → 現: ${recording.recording_files.map(f => f.file_type).join(',')}）`);
+              break;
+              
+            case 's2': // 動画ファイルなし（音声のみ）
+              recording.recording_files = recording.recording_files?.filter(
+                file => file.file_type !== 'MP4'
+              ) || [];
+              logger.warn(`⚠️ TC206-S2: 動画ファイルを除外しました（元: ${originalFiles.join(',')} → 現: ${recording.recording_files.map(f => f.file_type).join(',')}）`);
+              break;
+              
+            case 's3': // 音声品質低下シミュレーション
+              // 音声ファイルのサイズを極端に小さく偽装
+              recording.recording_files?.forEach(file => {
+                if (file.file_type === 'M4A' || file.file_type === 'MP3') {
+                  file.original_file_size = file.file_size;
+                  file.file_size = 1000; // 1KBに偽装（異常に小さい）
+                  logger.warn(`⚠️ TC206-S3: 音声ファイルサイズを劣化させました（${file.original_file_size} → ${file.file_size}）`);
+                }
+              });
+              break;
+          }
+        }
+      });
+    }
+    // ========== TC206テストコード終了 ==========
+    
     // 処理可能な録画のみフィルタ（動画または音声ファイルが存在）
     const availableRecordings = allRecordings.filter(recording => {
       const hasVideo = recording.recording_files?.some(file => file.file_type === 'MP4');
