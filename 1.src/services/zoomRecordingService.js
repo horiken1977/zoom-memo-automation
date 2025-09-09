@@ -326,8 +326,9 @@ class ZoomRecordingService {
             recordingId: recording.id,
             availableFiles: recording.recording_files?.map(f => f.file_type).join(', ')
           });
-          executionLogger.completeStep('VIDEO_PROCESSING', {
-            skipped: true,
+          // スキップ時は完了ではなく警告として記録（ログ表示改善）
+          executionLogger.logWarning('VIDEO_PROCESSING_SKIPPED', {
+            message: '動画ファイル処理をスキップしました',
             reason: 'No video file available'
           });
         }
@@ -410,9 +411,11 @@ class ZoomRecordingService {
         // 音声ファイルをメモリバッファとして取得
         const audioBuffer = await this.zoomService.downloadFileAsBuffer(audioFile.download_url);
         
-        // meetingInfoに動画ファイルの有無を追加
+        // meetingInfoに動画ファイルの有無を追加（TC206-S2対応）
         const meetingInfo = this.extractMeetingInfo(recording);
-        meetingInfo.hasVideoFile = !!videoFile; // TC206-S2対応
+        // TC206-S1と同様の方法: recording.recording_filesから動画ファイル存在を確認
+        const hasVideoFile = recording.recording_files?.some(file => file.file_type === 'MP4');
+        meetingInfo.hasVideoFile = hasVideoFile;
         
         // Gemini AIで文字起こし・要約処理
         const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
