@@ -769,19 +769,37 @@ ${analysisResult.transcription}
             timeRange = end ? ` [${start}-${end}]` : ` [${start}～]`;
           }
           
-          // 内容の要約（最初の80文字程度）
+          // 内容の要約を取得（複数のソースから）
           let contentSummary = '';
-          if (discussion.contents && discussion.contents.length > 0) {
-            const firstContent = discussion.contents[0];
-            if (typeof firstContent === 'string') {
-              contentSummary = firstContent.length > 80 ? firstContent.substring(0, 77) + '...' : firstContent;
-            } else if (firstContent.content) {
-              contentSummary = firstContent.content.length > 80 ? firstContent.content.substring(0, 77) + '...' : firstContent.content;
+          
+          // discussionFlowから背景や論理展開を取得
+          if (discussion.discussionFlow) {
+            if (discussion.discussionFlow.backgroundContext) {
+              contentSummary = discussion.discussionFlow.backgroundContext;
+            } else if (discussion.discussionFlow.logicalProgression) {
+              contentSummary = discussion.discussionFlow.logicalProgression;
             }
-          } else if (discussion.summary) {
-            contentSummary = discussion.summary.length > 80 ? discussion.summary.substring(0, 77) + '...' : discussion.summary;
-          } else if (discussion.content) {
-            contentSummary = discussion.content.length > 80 ? discussion.content.substring(0, 77) + '...' : discussion.content;
+          }
+          
+          // discussionFlowがない場合、他のフィールドから取得
+          if (!contentSummary) {
+            if (discussion.contents && discussion.contents.length > 0) {
+              const firstContent = discussion.contents[0];
+              if (typeof firstContent === 'string') {
+                contentSummary = firstContent;
+              } else if (firstContent.content) {
+                contentSummary = firstContent.content;
+              }
+            } else if (discussion.summary) {
+              contentSummary = discussion.summary;
+            } else if (discussion.content) {
+              contentSummary = discussion.content;
+            }
+          }
+          
+          // 長すぎる場合は切り詰め
+          if (contentSummary && contentSummary.length > 80) {
+            contentSummary = contentSummary.substring(0, 77) + '...';
           }
           
           // 論点の詳細表示
@@ -790,9 +808,12 @@ ${analysisResult.transcription}
             discussionText += `\n     → ${contentSummary}`;
           }
           
-          // 結論や成果があれば追加
-          if (discussion.conclusion) {
-            const conclusion = discussion.conclusion.length > 60 ? discussion.conclusion.substring(0, 57) + '...' : discussion.conclusion;
+          // 結論や成果があれば追加（outcomeフィールドも確認）
+          let conclusion = discussion.outcome || discussion.conclusion;
+          if (conclusion) {
+            if (typeof conclusion === 'string' && conclusion.length > 60) {
+              conclusion = conclusion.substring(0, 57) + '...';
+            }
             discussionText += `\n     ✓ ${conclusion}`;
           }
           
@@ -836,12 +857,14 @@ ${analysisResult.transcription}
     // 論点から結論を抽出して決定事項として追加
     if (discussions && discussions.length > 0) {
       discussions.forEach(discussion => {
-        if (discussion.conclusion && !allDecisions.some(d => 
-          (typeof d === 'string' ? d : (d.decision || d.content || '')).includes(discussion.conclusion)
+        const conclusion = discussion.outcome || discussion.conclusion;
+        if (conclusion && !allDecisions.some(d => 
+          (typeof d === 'string' ? d : (d.decision || d.content || '')).includes(conclusion)
         )) {
           allDecisions.push({
-            decision: discussion.conclusion,
-            topic: discussion.topicTitle || discussion.topic
+            decision: conclusion,
+            topic: discussion.topicTitle || discussion.topic,
+            relatedTopic: discussion.topicTitle || discussion.topic
           });
         }
       });
