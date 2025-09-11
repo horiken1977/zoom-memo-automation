@@ -690,9 +690,13 @@
                         <td><span class="error-code">E_SYSTEM_VERCEL_LIMIT</span></td>
                         <td><span class="category category-system">システム</span></td>
                         <td><span class="severity severity-critical">Critical</span></td>
-                        <td>Vercel実行時間制限</td>
-                        <td><span class="location">Vercel環境</span></td>
-                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a></td>
+                        <td>Vercel実行時間制限（300秒）<br>
+                            <small><strong>原因:</strong> Vercel Hobbyプランの実行時間制限超過<br>
+                            <strong>対策:</strong> 295秒でタイムアウト検知、Slack通知送信<br>
+                            <strong>発生時:</strong> 大容量ファイル処理やAI処理リトライ時</small>
+                        </td>
+                        <td><span class="location">monitor-recordings-production.js</span></td>
+                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
                     </tr>
                     <tr data-category="system">
                         <td><span class="error-code">E_SYSTEM_ENV_MISSING</span></td>
@@ -852,7 +856,7 @@ try {
         </div>
 
         <div class="last-updated">
-            最終更新: 2025年9月3日 | エラーコード総数: 82件
+            最終更新: 2025年9月11日 | エラーコード総数: 82件
         </div>
     </div>
 
