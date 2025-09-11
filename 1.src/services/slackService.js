@@ -742,7 +742,7 @@ ${analysisResult.transcription}
       });
     }
 
-    // 4. 議論内容・論点（7項目構造対応）
+    // 4. 議論内容・論点（詳細版）
     const discussions = analysisResult.structuredSummary?.discussionsByTopic || 
                        analysisResult.summary?.discussionsByTopic || 
                        analysisResult.analysis?.discussionsByTopic ||
@@ -752,18 +752,16 @@ ${analysisResult.transcription}
                        analysisResult.analysis?.discussions || [];
     
     if (discussions && discussions.length > 0) {
-      // Phase 1: 簡潔化 - 40文字以内の箇条書き + インデント表示
-      const discussionList = discussions.slice(0, 5).map((discussion, index) => {
+      // 詳細版: 論点の内容も含めて表示
+      const discussionList = discussions.slice(0, 4).map((discussion, index) => {
         if (typeof discussion === 'string') {
-          // 文字列の場合は35文字以内に制限
-          const shortTitle = discussion.length > 35 ? discussion.substring(0, 32) + '...' : discussion;
-          return `  ${String.fromCharCode(97 + index)}) ${shortTitle}`;
+          // 文字列の場合
+          return `  ${index + 1}. ${discussion}`;
         } else {
-          // オブジェクトの場合は簡潔なタイトル + 時間帯
+          // オブジェクトの場合はタイトル + 内容要約 + 時間帯
           const title = discussion.topicTitle || discussion.topic || '論点';
-          const shortTitle = title.length > 35 ? title.substring(0, 32) + '...' : title;
           
-          // 時間帯表示（簡潔版）
+          // 時間帯表示
           let timeRange = '';
           if (discussion.timeRange && (discussion.timeRange.startTime || discussion.timeRange.endTime)) {
             const start = discussion.timeRange.startTime || '00:00';
@@ -771,38 +769,136 @@ ${analysisResult.transcription}
             timeRange = end ? ` [${start}-${end}]` : ` [${start}～]`;
           }
           
-          return `  ${String.fromCharCode(97 + index)}) ${shortTitle}${timeRange}`;
+          // 内容の要約（最初の80文字程度）
+          let contentSummary = '';
+          if (discussion.contents && discussion.contents.length > 0) {
+            const firstContent = discussion.contents[0];
+            if (typeof firstContent === 'string') {
+              contentSummary = firstContent.length > 80 ? firstContent.substring(0, 77) + '...' : firstContent;
+            } else if (firstContent.content) {
+              contentSummary = firstContent.content.length > 80 ? firstContent.content.substring(0, 77) + '...' : firstContent.content;
+            }
+          } else if (discussion.summary) {
+            contentSummary = discussion.summary.length > 80 ? discussion.summary.substring(0, 77) + '...' : discussion.summary;
+          } else if (discussion.content) {
+            contentSummary = discussion.content.length > 80 ? discussion.content.substring(0, 77) + '...' : discussion.content;
+          }
+          
+          // 論点の詳細表示
+          let discussionText = `  ${index + 1}. *${title}*${timeRange}`;
+          if (contentSummary) {
+            discussionText += `\n     → ${contentSummary}`;
+          }
+          
+          // 結論や成果があれば追加
+          if (discussion.conclusion) {
+            const conclusion = discussion.conclusion.length > 60 ? discussion.conclusion.substring(0, 57) + '...' : discussion.conclusion;
+            discussionText += `\n     ✓ ${conclusion}`;
+          }
+          
+          return discussionText;
         }
-      }).join('\n');
+      }).join('\n\n');
       
-      // 表示件数調整と簡潔なメッセージ
-      const displayCount = Math.min(discussions.length, 5);
-      const remainingCount = discussions.length > 5 ? discussions.length - 5 : 0;
+      // 表示件数調整
+      const remainingCount = discussions.length > 4 ? discussions.length - 4 : 0;
       
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*💭 論点・議論内容*\n${discussionList}${remainingCount > 0 ? `\n  …他${remainingCount}件` : ''}`
+          text: `*💭 論点・議論内容*\n${discussionList}${remainingCount > 0 ? `\n\n  …他${remainingCount}件の論点` : ''}`
         }
       });
     }
 
-    // 5. 決定事項・結論
+    // 5. 決定事項・結論（新規追加セクション）
+    // decisionsがない場合でも、他のフィールドから決定事項を抽出
+    let allDecisions = [];
+    
+    // 既存のdecisionsフィールド
     if (decisions && decisions.length > 0) {
-      const decisionList = decisions.map((decision, index) => {
-        if (typeof decision === 'string') {
-          return `${index + 1}. ${decision}`;
-        } else {
-          return `${index + 1}. ${decision.decision || decision.content || decision}`;
+      allDecisions = [...decisions];
+    }
+    
+    // structuredSummaryから決定事項を抽出
+    const structuredDecisions = analysisResult.structuredSummary?.decisions || 
+                                analysisResult.structuredSummary?.decisionsMade || 
+                                analysisResult.summary?.decisions ||
+                                analysisResult.summary?.decisionsMade ||
+                                analysisResult.analysis?.decisions ||
+                                analysisResult.analysis?.decisionsMade || [];
+    
+    if (structuredDecisions.length > 0) {
+      allDecisions = [...allDecisions, ...structuredDecisions];
+    }
+    
+    // 論点から結論を抽出して決定事項として追加
+    if (discussions && discussions.length > 0) {
+      discussions.forEach(discussion => {
+        if (discussion.conclusion && !allDecisions.some(d => 
+          (typeof d === 'string' ? d : (d.decision || d.content || '')).includes(discussion.conclusion)
+        )) {
+          allDecisions.push({
+            decision: discussion.conclusion,
+            topic: discussion.topicTitle || discussion.topic
+          });
         }
-      }).join('\n');
+      });
+    }
+    
+    // 重複を削除
+    const uniqueDecisions = [];
+    const seenDecisions = new Set();
+    
+    allDecisions.forEach(decision => {
+      const decisionText = typeof decision === 'string' ? decision : (decision.decision || decision.content || '');
+      if (decisionText && !seenDecisions.has(decisionText.toLowerCase())) {
+        seenDecisions.add(decisionText.toLowerCase());
+        uniqueDecisions.push(decision);
+      }
+    });
+    
+    if (uniqueDecisions.length > 0) {
+      const decisionList = uniqueDecisions.slice(0, 5).map((decision, index) => {
+        if (typeof decision === 'string') {
+          return `  ${index + 1}. ${decision}`;
+        } else {
+          let decisionText = `  ${index + 1}. ${decision.decision || decision.content || decision}`;
+          
+          // 関連する論点があれば追加
+          if (decision.topic) {
+            decisionText += `\n     （${decision.topic}に関する決定）`;
+          }
+          
+          // 責任者や期限があれば追加
+          if (decision.assignee || decision.responsible) {
+            decisionText += `\n     担当: ${decision.assignee || decision.responsible}`;
+          }
+          if (decision.deadline || decision.dueDate) {
+            decisionText += `\n     期限: ${decision.deadline || decision.dueDate}`;
+          }
+          
+          return decisionText;
+        }
+      }).join('\n\n');
       
+      const remainingCount = uniqueDecisions.length > 5 ? uniqueDecisions.length - 5 : 0;
+      
+      blocks.push({
+        type: "section", 
+        text: {
+          type: "mrkdwn",
+          text: `*✅ 決定事項・結論*\n${decisionList}${remainingCount > 0 ? `\n\n  …他${remainingCount}件の決定事項` : ''}`
+        }
+      });
+    } else {
+      // 決定事項がない場合でも、セクションを表示
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*✅ 決定事項・結論*\n${decisionList}`
+          text: `*✅ 決定事項・結論*\n  （明確な決定事項は記録されていません）`
         }
       });
     }
