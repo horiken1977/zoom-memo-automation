@@ -752,89 +752,38 @@ ${analysisResult.transcription}
                        analysisResult.analysis?.discussions || [];
     
     if (discussions && discussions.length > 0) {
-      const discussionList = discussions.slice(0, 3).map((discussion, index) => {
+      // Phase 1: 簡潔化 - 40文字以内の箇条書き + インデント表示
+      const discussionList = discussions.slice(0, 5).map((discussion, index) => {
         if (typeof discussion === 'string') {
-          return `${index + 1}. ${discussion}`;
+          // 文字列の場合は35文字以内に制限
+          const shortTitle = discussion.length > 35 ? discussion.substring(0, 32) + '...' : discussion;
+          return `  ${String.fromCharCode(97 + index)}) ${shortTitle}`;
         } else {
-          // 一時的コメントアウト: 簡潔版
-          // let topicText = discussion.topicTitle || discussion.topic || discussion.content || discussion;
-          // if (discussion.timeRange) {
-          //   topicText += ` (${discussion.timeRange.startTime || ''}-${discussion.timeRange.endTime || ''})`;
-          // }
-          // return `${index + 1}. ${topicText}`;
+          // オブジェクトの場合は簡潔なタイトル + 時間帯
+          const title = discussion.topicTitle || discussion.topic || '論点';
+          const shortTitle = title.length > 35 ? title.substring(0, 32) + '...' : title;
           
-          // 詳細版: AIServiceの7項目構造に対応した詳細表示
-          let detailedText = `${index + 1}. **${discussion.topicTitle || discussion.topic || '論点'}**`;
-          
-          if (discussion.timeRange) {
-            detailedText += `\n⏱️ 時間: ${discussion.timeRange.startTime || ''} ～ ${discussion.timeRange.endTime || ''}`;
+          // 時間帯表示（簡潔版）
+          let timeRange = '';
+          if (discussion.timeRange && (discussion.timeRange.startTime || discussion.timeRange.endTime)) {
+            const start = discussion.timeRange.startTime || '00:00';
+            const end = discussion.timeRange.endTime || '';
+            timeRange = end ? ` [${start}-${end}]` : ` [${start}～]`;
           }
           
-          // AIServiceのdiscussionFlow構造に対応
-          if (discussion.discussionFlow) {
-            if (discussion.discussionFlow.backgroundContext) {
-              detailedText += `\n📝 背景: ${discussion.discussionFlow.backgroundContext}`;
-            }
-            
-            if (discussion.discussionFlow.keyArguments && discussion.discussionFlow.keyArguments.length > 0) {
-              detailedText += `\n👥 主要発言:`;
-              discussion.discussionFlow.keyArguments.slice(0, 3).forEach((arg) => {
-                if (arg.speaker) {
-                  detailedText += `\n• **${arg.speaker}** (${arg.company || '不明'}) [${arg.timestamp || ''}]:`;
-                  detailedText += `\n  主張: ${arg.argument ? arg.argument.substring(0, 150) : ''}${arg.argument && arg.argument.length > 150 ? '...' : ''}`;
-                  if (arg.reasoning) {
-                    detailedText += `\n  根拠: ${arg.reasoning.substring(0, 100)}${arg.reasoning.length > 100 ? '...' : ''}`;
-                  }
-                  if (arg.reactionFromOthers) {
-                    detailedText += `\n  反応: ${arg.reactionFromOthers.substring(0, 80)}${arg.reactionFromOthers.length > 80 ? '...' : ''}`;
-                  }
-                }
-              });
-            }
-            
-            if (discussion.discussionFlow.logicalProgression) {
-              detailedText += `\n🔄 論理展開: ${discussion.discussionFlow.logicalProgression.substring(0, 200)}${discussion.discussionFlow.logicalProgression.length > 200 ? '...' : ''}`;
-            }
-            
-            if (discussion.discussionFlow.decisionProcess) {
-              detailedText += `\n🎯 決定過程: ${discussion.discussionFlow.decisionProcess.substring(0, 150)}${discussion.discussionFlow.decisionProcess.length > 150 ? '...' : ''}`;
-            }
-          }
-          
-          // 後方互換性: 旧構造のspeakers/background/conclusionも参照
-          else {
-            if (discussion.background) {
-              detailedText += `\n📝 背景: ${discussion.background}`;
-            }
-            
-            if (discussion.speakers && discussion.speakers.length > 0) {
-              detailedText += `\n👥 主要発言者:`;
-              discussion.speakers.slice(0, 2).forEach((speaker) => {
-                if (speaker.name && speaker.statement) {
-                  detailedText += `\n• **${speaker.name}**: ${speaker.statement.substring(0, 100)}${speaker.statement.length > 100 ? '...' : ''}`;
-                }
-              });
-            }
-            
-            if (discussion.conclusion) {
-              detailedText += `\n✅ 結論: ${discussion.conclusion}`;
-            }
-          }
-          
-          // outcomeは新旧共通
-          if (discussion.outcome) {
-            detailedText += `\n✅ 結論: ${discussion.outcome}`;
-          }
-          
-          return detailedText;
+          return `  ${String.fromCharCode(97 + index)}) ${shortTitle}${timeRange}`;
         }
-      }).join('\n\n');
+      }).join('\n');
+      
+      // 表示件数調整と簡潔なメッセージ
+      const displayCount = Math.min(discussions.length, 5);
+      const remainingCount = discussions.length > 5 ? discussions.length - 5 : 0;
       
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*💭 論点・議論内容（時系列順）*\n${discussionList}${discussions.length > 3 ? '\n...（他にもあり）' : ''}`
+          text: `*💭 論点・議論内容*\n${discussionList}${remainingCount > 0 ? `\n  …他${remainingCount}件` : ''}`
         }
       });
     }
