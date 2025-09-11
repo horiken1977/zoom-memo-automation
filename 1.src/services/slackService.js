@@ -999,7 +999,9 @@ ${analysisResult.transcription}
 
       // エラーメッセージからエラーコードを推定
       if (errorInfo.error) {
-        if (errorInfo.error.includes('[503 Service Unavailable]') || errorInfo.error.includes('model is overloaded')) {
+        if (errorInfo.error.includes('E_SYSTEM_VERCEL_LIMIT') || errorInfo.error.includes('Vercel実行時間制限')) {
+          errorCode = 'E_SYSTEM_VERCEL_LIMIT';
+        } else if (errorInfo.error.includes('[503 Service Unavailable]') || errorInfo.error.includes('model is overloaded')) {
           errorCode = 'E_GEMINI_SERVICE_OVERLOAD';
         } else if (errorInfo.error.includes('[429 Too Many Requests]') || errorInfo.error.includes('quota')) {
           errorCode = 'E_GEMINI_QUOTA';
@@ -1029,7 +1031,15 @@ ${analysisResult.transcription}
 
       // 特定のエラーに対する追加の対処法情報
       let actionableSteps = '';
-      if (errorCode === 'E_GEMINI_SERVICE_OVERLOAD') {
+      if (errorCode === 'E_SYSTEM_VERCEL_LIMIT') {
+        actionableSteps = `
+📋 *Vercelタイムアウトの対処法:*
+• Vercelの実行時間制限（300秒）に達しました
+• 数分待ってから再実行してください
+• 処理ステータス: ${errorInfo.details?.processingStatus || '未処理'}
+• 実行時間: ${errorInfo.details?.executionTime || 'N/A'}秒
+• ${errorInfo.details?.retryRecommendation || '大容量ファイルの場合、ファイルサイズを確認してください'}`;
+      } else if (errorCode === 'E_GEMINI_SERVICE_OVERLOAD') {
         actionableSteps = `
 📋 *サービス一時過負荷の対処法:*
 • 1-2分待ってから再実行してください

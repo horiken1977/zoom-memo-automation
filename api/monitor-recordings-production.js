@@ -33,6 +33,10 @@ module.exports = async function handler(req, res) {
   const startTime = Date.now();
   const executionId = `PROD-${Date.now()}`;
   
+  // Vercelタイムアウト監視設定（290秒で警告、295秒で強制終了）
+  const VERCEL_TIMEOUT_WARNING = 290000; // 290秒
+  const VERCEL_TIMEOUT_LIMIT = 295000;   // 295秒（余裕を持たせて5秒前）
+  
   logger.info('🚀 本番環境録画監視処理開始', { 
     executionId, 
     timestamp: new Date().toISOString() 
@@ -42,6 +46,22 @@ module.exports = async function handler(req, res) {
   const processedRecordings = [];
   const errors = [];
   
+  // Vercelタイムアウト監視関数
+  const checkVercelTimeout = () => {
+    const currentTime = Date.now();
+    const elapsed = currentTime - startTime;
+    
+    if (elapsed >= VERCEL_TIMEOUT_LIMIT) {
+      throw new Error(`E_SYSTEM_VERCEL_LIMIT: Vercel実行時間制限に達しました (${Math.round(elapsed/1000)}秒経過)`);
+    }
+    
+    if (elapsed >= VERCEL_TIMEOUT_WARNING) {
+      logger.warn(`⚠️ Vercelタイムアウト警告: ${Math.round(elapsed/1000)}秒経過 (制限: 300秒)`);
+    }
+    
+    return elapsed;
+  };
+  
   try {
     // サービス初期化
     const zoomRecordingService = new ZoomRecordingService();
@@ -50,12 +70,18 @@ module.exports = async function handler(req, res) {
     // Step 1: 新規録画チェック（組織全体）
     logger.info('📡 組織全体の新規録画を監視中...');
     
+    // タイムアウト監視
+    checkVercelTimeout();
+    
     // 監視期間設定（日次バッチ想定: 過去24時間）
     const fromDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const toDate = new Date().toISOString().split('T')[0];
     
     // 組織全体の録画を取得
     const allRecordings = await zoomRecordingService.getAllUsersRecordings(fromDate, toDate);
+    
+    // タイムアウト監視
+    checkVercelTimeout();
     
     // ========== TC206テストコード開始（一時的追加） ==========
     // TC206テスト: 異常系シミュレーション（任意の録画に対して適用）
@@ -135,6 +161,9 @@ module.exports = async function handler(req, res) {
       try {
         logger.info(`\\n🎯 処理開始: ${recording.topic}`);
         
+        // タイムアウト監視
+        checkVercelTimeout();
+        
         // 実行ログ開始
         const meetingInfo = zoomRecordingService.extractMeetingInfo(recording);
         const recordingExecutionId = `PROD-${recording.id}-${Date.now()}`;
@@ -151,10 +180,16 @@ module.exports = async function handler(req, res) {
         // Slack処理開始通知を削除（完了時の1回のみに統一）
         
         // 録画処理実行（動画保存、AI処理、文書保存を含む）
+        // タイムアウト監視
+        checkVercelTimeout();
+        
         const recordingResult = await zoomRecordingService.processRecording(
           recording,
           executionLogger
         );
+        
+        // 処理完了後もタイムアウト監視
+        checkVercelTimeout();
         
         if (recordingResult.success) {
           // Slack完了通知（要約付き）
@@ -290,6 +325,10 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     logger.error('💥 本番環境録画監視処理で重大エラー:', error);
     
+    // Vercelタイムアウトエラーの特別処理
+    const isVercelTimeout = error.message && error.message.includes('E_SYSTEM_VERCEL_LIMIT');
+    const elapsed = Date.now() - startTime;
+    
     if (executionLogger) {
       executionLogger.logError('CRITICAL_ERROR', error);
       try {
@@ -299,12 +338,36 @@ module.exports = async function handler(req, res) {
       }
     }
     
+    // Vercelタイムアウト時はSlackにエラー通知
+    if (isVercelTimeout) {
+      try {
+        const slackService = new SlackService();
+        await slackService.sendErrorNotification({
+          topic: 'Vercelタイムアウト制限',
+          error: `実行時間制限(300秒)に達したため処理を中断しました`,
+          details: {
+            errorCode: 'E_SYSTEM_VERCEL_LIMIT',
+            executionTime: `${Math.round(elapsed/1000)}秒`,
+            processingStatus: processedRecordings.length > 0 ? `${processedRecordings.length}件処理済み` : '未処理',
+            retryRecommendation: '数分後に再実行してください。長時間の処理が必要な場合は、録画ファイルサイズを確認してください。'
+          }
+        });
+        logger.info('📱 Vercelタイムアウトエラー通知をSlackに送信しました');
+      } catch (slackError) {
+        logger.error('Slackタイムアウトエラー通知失敗:', slackError);
+      }
+    }
+    
     return res.status(500).json({
       status: 'error',
-      message: '本番環境録画監視処理で重大エラーが発生しました',
+      message: isVercelTimeout 
+        ? 'Vercel実行時間制限(300秒)に達しました' 
+        : '本番環境録画監視処理で重大エラーが発生しました',
       error: error.message,
+      errorCode: isVercelTimeout ? 'E_SYSTEM_VERCEL_LIMIT' : 'E_SYSTEM_GENERAL',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      processing_time: `${Date.now() - startTime}ms`,
+      processing_time: `${elapsed}ms (${Math.round(elapsed/1000)}秒)`,
+      processed_recordings: processedRecordings,
       timestamp: new Date().toISOString()
     });
   }
