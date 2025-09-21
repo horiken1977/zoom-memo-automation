@@ -248,6 +248,8 @@ class AIService {
    * 音声ファイルを文字起こし
    */
   async transcribeAudio(audioFilePath, meetingInfo) {
+    const startTime = Date.now();
+    
     try {
       // モデルの初期化を確認
       await this.ensureModelInitialized();
@@ -292,21 +294,49 @@ class AIService {
       };
       const mimeType = mimeTypes[ext] || 'audio/aac'; // デフォルトをAACに変更
 
+      // 処理時間の監視開始
+      const midTime = Date.now();
+      const setupDuration = midTime - startTime;
+      logger.info(`Audio setup completed in ${setupDuration}ms`);
+
       // Google AI API に送信
       const prompt = this.buildTranscriptionPrompt(meetingInfo);
       
-      const result = await this.model.generateContent([
-        {
-          inlineData: {
-            data: base64Audio,
-            mimeType: mimeType
-          }
-        },
-        prompt
-      ]);
+      const result = await this.model.generateContent({
+        contents: [{
+          parts: [
+            {
+              inlineData: {
+                data: base64Audio,
+                mimeType: mimeType
+              }
+            },
+            { text: prompt }
+          ]
+        }],
+        generationConfig: {
+          maxOutputTokens: 65536,  // Gemini 2.5 Proの最大出力トークン数
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40
+        }
+      });
 
       const response = result.response;
       const transcription = response.text();
+
+      // 処理時間の測定と警告
+      const endTime = Date.now();
+      const totalDuration = endTime - startTime;
+      const apiDuration = endTime - midTime;
+      
+      logger.info(`Transcription API completed in ${apiDuration}ms`);
+      logger.info(`Total transcription time: ${totalDuration}ms`);
+      
+      // 290秒（5分弱）を超えた場合の警告
+      if (totalDuration > 290000) {
+        logger.warn(`⚠️ Transcription processing time warning: ${(totalDuration/1000).toFixed(1)}s - approaching Vercel timeout limit`);
+      }
 
       logger.info(`Transcription completed for meeting: ${meetingInfo.topic}`);
 
@@ -316,11 +346,26 @@ class AIService {
         filePath: audioFilePath,
         timestamp: new Date().toISOString(),
         audioLength: stats.size,
-        model: this.selectedModel
+        model: this.selectedModel,
+        processingTime: totalDuration,
+        setupTime: setupDuration,
+        apiTime: apiDuration
       };
 
     } catch (error) {
-      logger.error(`Transcription failed for ${audioFilePath}:`, error.message);
+      const errorTime = Date.now();
+      const totalDuration = errorTime - startTime;
+      
+      logger.error(`Transcription failed for ${audioFilePath} after ${totalDuration}ms:`, error.message);
+      
+      // トークン制限やタイムアウトエラーの詳細ログ
+      if (error.message.includes('TOKEN') || error.message.includes('limit')) {
+        logger.error('🔴 Token limit exceeded - consider implementing chunk processing');
+      }
+      if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+        logger.error('🔴 API timeout - file may be too large for single processing');
+      }
+      
       throw error;
     }
   }

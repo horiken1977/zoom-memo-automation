@@ -167,11 +167,31 @@ class AudioSummaryService {
     const debugTimer = (step, detail = '') => {
       const elapsed = Date.now() - startTime;
       logger.info(`🔧 AudioSummaryService [${elapsed}ms] ${step} ${detail}`);
+      
+      // Phase1: 処理時間警告システム
+      if (elapsed > 240000) { // 4分経過で警告
+        logger.warn(`⚠️ Processing time warning: ${(elapsed/1000).toFixed(1)}s - approaching timeout`);
+      }
+      
       return elapsed;
     };
 
     try {
       debugTimer('processRealAudioBuffer開始', `fileName: ${fileName}, bufferSize: ${audioBuffer.length}`);
+      
+      // Phase1: Slack通知用の処理時間監視
+      const shouldSendTimeoutWarning = async (currentTime) => {
+        const elapsed = currentTime - startTime;
+        if (elapsed > 270000) { // 4.5分経過でSlack警告
+          try {
+            const SlackService = require('./slackService');
+            const slackService = new SlackService();
+            await slackService.sendTimeoutWarning(meetingInfo, elapsed);
+          } catch (slackError) {
+            logger.warn('Failed to send timeout warning to Slack:', slackError.message);
+          }
+        }
+      };
       
       // 0. 音声圧縮処理（文字起こし精度向上のため）
       debugTimer('Step 0: 音声圧縮処理開始');
@@ -215,12 +235,32 @@ class AudioSummaryService {
         debugTimer('Step 0: 音声圧縮スキップ', '10MB未満のため圧縮不要');
       }
       
+      // Phase1: タイムアウト警告チェック
+      await shouldSendTimeoutWarning(Date.now());
+      
       // 1. 統合AI処理（文字起こし＋構造化要約を1回のAPI呼び出しで実行、5回リトライ付き）
       debugTimer('Step 1: processAudioWithStructuredOutput開始（統合AI処理）');
       logger.info('Starting unified audio processing with Gemini (transcription + structured summary)...');
       
       const unifiedResult = await this.aiService.processAudioWithStructuredOutput(processedAudioBuffer, fileName, meetingInfo);
       debugTimer('Step 1: processAudioWithStructuredOutput完了', `transcription length: ${unifiedResult?.transcription?.length || 0}, summary generated: ${!!unifiedResult?.structuredSummary}`);
+      
+      // Phase1: 処理完了後の詳細通知
+      const processingDetails = {
+        totalTime: Date.now() - startTime,
+        setupTime: debugTimer('setup', '') || 0,
+        apiTime: unifiedResult.processingTime || 0,
+        transcriptionLength: unifiedResult?.transcription?.length || 0
+      };
+      
+      // Slack処理完了通知を送信
+      try {
+        const SlackService = require('./slackService');
+        const slackService = new SlackService();
+        await slackService.sendProcessingCompleteNotification(meetingInfo, processingDetails);
+      } catch (slackError) {
+        logger.warn('Failed to send processing complete notification to Slack:', slackError.message);
+      }
       
       // 統合結果から個別データを抽出（後方互換性のため）
       const transcriptionResult = {
@@ -277,11 +317,27 @@ class AudioSummaryService {
         // 統合AI処理の追加情報
         apiCallReduction: '50%', // 2回→1回のAPI呼び出し削減
         retryCapability: '5回リトライ対応',
-        unifiedProcessing: true
+        unifiedProcessing: true,
+        // Phase1改善情報
+        phase1Improvements: {
+          maxOutputTokens: 65536,
+          timeoutWarning: totalTime > 240000,
+          slackNotification: true
+        }
       };
 
     } catch (error) {
-      logger.error('Failed to process real audio buffer:', error.message);
+      const elapsed = Date.now() - startTime;
+      logger.error(`Failed to process real audio buffer after ${elapsed}ms:`, error.message);
+      
+      // Phase1: エラー時のフォールバック情報
+      if (error.message.includes('TOKEN') || error.message.includes('limit')) {
+        logger.error('🔴 Token limit exceeded - Phase2 chunk processing recommended');
+      }
+      if (elapsed > 290000) {
+        logger.error('🔴 Processing timeout - consider implementing chunk processing');
+      }
+      
       throw error;
     }
   }

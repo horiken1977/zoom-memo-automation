@@ -518,6 +518,127 @@ ${analysisResult.transcription}
   }
 
   /**
+   * 処理時間警告をSlackに送信
+   */
+  async sendTimeoutWarning(meetingInfo, elapsedTime) {
+    try {
+      const elapsedSeconds = Math.round(elapsedTime / 1000);
+      const remainingSeconds = 300 - elapsedSeconds; // Vercel制限まで残り時間
+      
+      const warningMessage = {
+        channel: config.slack.channelId,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `⚠️ *処理時間警告* - ${meetingInfo.topic || '会議'}`
+            }
+          },
+          {
+            type: "section",
+            fields: [
+              {
+                type: "mrkdwn",
+                text: `*経過時間:* ${elapsedSeconds}秒`
+              },
+              {
+                type: "mrkdwn",
+                text: `*残り時間:* ${remainingSeconds}秒`
+              },
+              {
+                type: "mrkdwn",
+                text: `*ステータス:* 処理継続中`
+              },
+              {
+                type: "mrkdwn",
+                text: `*対象:* ${meetingInfo.duration || 'N/A'}分の会議`
+              }
+            ]
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: "Vercel制限に近づいています。処理が完了しない場合は自動でタイムアウトされます。"
+              }
+            ]
+          }
+        ]
+      };
+
+      const result = await this.client.chat.postMessage(warningMessage);
+      logger.info(`Timeout warning sent to Slack: ${result.ts}`);
+      
+      return result;
+    } catch (error) {
+      logger.error('Failed to send timeout warning to Slack:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 処理完了通知（成功時の詳細情報付き）
+   */
+  async sendProcessingCompleteNotification(meetingInfo, processingDetails) {
+    try {
+      const { totalTime, setupTime, apiTime, transcriptionLength } = processingDetails;
+      
+      const completeMessage = {
+        channel: config.slack.channelId,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `✅ *処理完了* - ${meetingInfo.topic || '会議'}`
+            }
+          },
+          {
+            type: "section",
+            fields: [
+              {
+                type: "mrkdwn",
+                text: `*総処理時間:* ${Math.round(totalTime/1000)}秒`
+              },
+              {
+                type: "mrkdwn",
+                text: `*API処理時間:* ${Math.round(apiTime/1000)}秒`
+              },
+              {
+                type: "mrkdwn",
+                text: `*文字起こし長:* ${transcriptionLength || 0}文字`
+              },
+              {
+                type: "mrkdwn",
+                text: `*会議時間:* ${meetingInfo.duration || 'N/A'}分`
+              }
+            ]
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: `Phase1改善により maxOutputTokens: 65536 で処理完了 | ${new Date().toLocaleString('ja-JP')}`
+              }
+            ]
+          }
+        ]
+      };
+
+      const result = await this.client.chat.postMessage(completeMessage);
+      logger.info(`Processing complete notification sent to Slack: ${result.ts}`);
+      
+      return result;
+    } catch (error) {
+      logger.error('Failed to send processing complete notification to Slack:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 会議要約と録画リンクをSlackに送信（エラー回復機能付き）
    */
   async sendMeetingSummaryWithRecording(analysisResult, driveResult, executionLogResult = null) {
