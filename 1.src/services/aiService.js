@@ -1339,3 +1339,5 @@ ${transcriptionText}
     }
   }
 }
+
+module.exports = AIService;
