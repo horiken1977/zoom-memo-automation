@@ -10,6 +10,9 @@ class AIService {
     this.model = null;
     this.selectedModel = null;
     this.availableModels = null;
+    // 【Step1追加】文字起こし専用軽量モデル
+    this.transcriptionModel = null;
+    this.selectedTranscriptionModel = null;
   }
 
   /**
@@ -105,6 +108,45 @@ class AIService {
       await this.initializeModel();
     }
     return this.model;
+  }
+
+  /**
+   * 文字起こし専用軽量モデルの初期化
+   */
+  async ensureTranscriptionModelInitialized() {
+    if (!this.transcriptionModel) {
+      // 文字起こし専用: 軽量・高速モデルを優先
+      const transcriptionModels = [
+        'gemini-1.5-flash',      // 軽量・高速（推奨）
+        'gemini-1.0-pro',        // 最軽量
+        'gemini-2.0-flash',      // 代替案
+        'gemini-2.5-pro'         // フォールバック
+      ];
+      
+      for (const modelName of transcriptionModels) {
+        try {
+          const testModel = this.genAI.getGenerativeModel({ model: modelName });
+          // 軽量テストで利用可能性確認
+          await testModel.generateContent('テスト');
+          this.transcriptionModel = testModel;
+          this.selectedTranscriptionModel = modelName;
+          logger.info(`文字起こし専用軽量モデル選択: ${modelName}`);
+          break;
+        } catch (error) {
+          logger.debug(`文字起こしモデル ${modelName} 利用不可:`, error.message);
+          continue;
+        }
+      }
+      
+      if (!this.transcriptionModel) {
+        // フォールバック: 通常モデルを使用
+        await this.ensureModelInitialized();
+        this.transcriptionModel = this.model;
+        this.selectedTranscriptionModel = this.selectedModel;
+        logger.warn('文字起こし専用モデル取得失敗、通常モデルを使用');
+      }
+    }
+    return this.transcriptionModel;
   }
 
 
@@ -969,10 +1011,11 @@ ${transcription}`;
       // リトライループ
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          await this.ensureModelInitialized();
+          // 【重要】文字起こし専用軽量モデルを使用
+          await this.ensureTranscriptionModelInitialized();
           logger.info(`Transcription attempt ${attempt}/${maxRetries} for: ${meetingInfo.topic}`);
 
-          const result = await this.model.generateContent([
+          const result = await this.transcriptionModel.generateContent([
             transcriptionPrompt,
             {
               inlineData: {
@@ -1006,7 +1049,7 @@ ${transcription}`;
             processingTime,
             compressionInfo,
             meetingInfo,
-            model: this.selectedModel,
+            model: this.selectedTranscriptionModel, // 軽量モデル名を返す
             timestamp: new Date().toISOString()
           };
           

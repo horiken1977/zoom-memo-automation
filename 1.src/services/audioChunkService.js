@@ -82,15 +82,15 @@ class AudioChunkService {
     const estimatedDuration = this.estimateDurationFromBuffer(audioBuffer, meetingInfo);
     const audioSizeMB = audioBuffer.length / (1024 * 1024);
     
-    // 音声時間とサイズに基づく動的調整
-    if (estimatedDuration <= 1200) { // 20分以下
+    // 【Step1最適化】軽量モデル対応でチャンク時間を大幅拡大（処理回数削減）
+    if (estimatedDuration <= 1800) { // 30分以下
       return Math.max(this.minChunkDurationSeconds, estimatedDuration / 2); // 2分割
-    } else if (estimatedDuration <= 2400) { // 40分以下
-      return 600; // 10分チャンク
     } else if (estimatedDuration <= 3600) { // 60分以下
-      return 480; // 8分チャンク（タイムアウト対策）
+      return 900; // 【重要】15分チャンク（軽量モデル対応）
+    } else if (estimatedDuration <= 5400) { // 90分以下
+      return 900; // 15分チャンク維持
     } else {
-      return 360; // 6分チャンク（長時間会議対策）
+      return 720; // 12分チャンク（超長時間会議）
     }
   }
 
