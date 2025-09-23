@@ -342,6 +342,9 @@ class AudioCompressionService {
         targetCompressionRatio = 0.7;
       }
       
+      // Phase A+B修正: 高速化アルゴリズム（1バイトループ廃止）
+      const targetSize = Math.floor(audioBuffer.length * targetCompressionRatio);
+      
       // 音声ファイルヘッダーサイズを推定
       const audioFormat = this.detectAudioFormatFromBuffer(audioBuffer);
       let headerSize = 0;
@@ -349,50 +352,53 @@ class AudioCompressionService {
       if (audioFormat === 'wav') {
         headerSize = 44; // WAVヘッダー
       } else if (audioFormat === 'm4a' || audioFormat === 'mp3') {
-        // M4A/MP3ヘッダーサイズを推定（可変長のため概算）
-        headerSize = Math.min(1024, Math.floor(audioBuffer.length * 0.05));
+        headerSize = Math.min(1024, Math.floor(audioBuffer.length * 0.01)); // 1%または1KB
       }
       
-      // 全音声データを保持しつつ、品質を下げて圧縮
+      // 高速サンプリング圧縮: 等間隔スキップによる全時間カバー
       const audioDataStart = headerSize;
       const audioDataLength = audioBuffer.length - headerSize;
-      const targetSize = Math.floor(audioBuffer.length * targetCompressionRatio);
       const targetAudioDataSize = targetSize - headerSize;
       
-      // 簡易的な品質圧縮: サンプリング間隔を調整して全時間をカバー
-      const samplingInterval = Math.max(1, Math.floor(audioDataLength / targetAudioDataSize));
-      
-      let compressedAudioData = Buffer.alloc(0);
-      let currentPos = audioDataStart;
-      
-      while (currentPos < audioBuffer.length && compressedAudioData.length < targetAudioDataSize) {
-        // サンプリング間隔でデータを抽出（全時間をカバー）
-        const chunkSize = Math.min(1, audioBuffer.length - currentPos);
-        if (chunkSize > 0) {
-          const chunk = audioBuffer.slice(currentPos, currentPos + chunkSize);
-          compressedAudioData = Buffer.concat([compressedAudioData, chunk]);
-        }
-        currentPos += samplingInterval;
+      if (targetAudioDataSize <= 0 || audioDataLength <= 0) {
+        logger.warn('⚠️ 圧縮後サイズが無効、元バッファを返却');
+        return audioBuffer;
       }
       
-      let compressedBuffer;
+      // 効率的なサンプリング間隔計算
+      const skipInterval = Math.max(1, Math.floor(audioDataLength / targetAudioDataSize));
+      
+      // 高速バッファ作成（事前サイズ確保）
+      const compressedAudioData = Buffer.allocUnsafe(targetAudioDataSize);
+      let writeIndex = 0;
+      
+      // 高速サンプリング（skipIntervalで間引き処理）
+      for (let readIndex = audioDataStart; readIndex < audioBuffer.length && writeIndex < targetAudioDataSize; readIndex += skipInterval) {
+        compressedAudioData[writeIndex] = audioBuffer[readIndex];
+        writeIndex++;
+      }
+      
+      // 実際に書き込まれたサイズに調整
+      const actualCompressedData = compressedAudioData.slice(0, writeIndex);
+      
+      let finalBuffer;
       if (headerSize > 0) {
         // ヘッダーを保持して圧縮音声データを結合
         const header = audioBuffer.slice(0, headerSize);
-        compressedBuffer = Buffer.concat([header, compressedAudioData]);
-        
-        logger.info(`🎵 全音声品質圧縮: ヘッダー${headerSize}B + 圧縮音声${compressedAudioData.length}B = ${compressedBuffer.length}B`);
+        finalBuffer = Buffer.concat([header, actualCompressedData]);
+        logger.info(`🎵 高速全音声圧縮: ヘッダー${headerSize}B + 圧縮音声${actualCompressedData.length}B = ${finalBuffer.length}B`);
       } else {
-        // ヘッダーなしの場合は圧縮音声データのみ
-        compressedBuffer = compressedAudioData;
-        logger.info(`🎵 全音声品質圧縮: 圧縮音声${compressedBuffer.length}B`);
+        finalBuffer = actualCompressedData;
+        logger.info(`🎵 高速全音声圧縮: 圧縮音声${finalBuffer.length}B`);
       }
       
-      logger.info(`🎯 全音声圧縮完了: ${audioBuffer.length} → ${compressedBuffer.length}バイト (${Math.round((1 - compressedBuffer.length / audioBuffer.length) * 100)}%削減)`);
-      return compressedBuffer;
+      const compressionRatio = Math.round((1 - finalBuffer.length / audioBuffer.length) * 100);
+      logger.info(`🎯 高速圧縮完了: ${audioBuffer.length} → ${finalBuffer.length}バイト (${compressionRatio}%削減, skipInterval=${skipInterval})`);
+      
+      return finalBuffer;
       
     } catch (error) {
-      logger.error('全音声データ保持圧縮エラー:', error);
+      logger.error('高速音声データ保持圧縮エラー:', error);
       // エラー時は元のバッファを返す
       return audioBuffer;
     }

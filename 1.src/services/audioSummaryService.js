@@ -179,6 +179,23 @@ class AudioSummaryService {
     try {
       debugTimer('processRealAudioBuffer開始', `fileName: ${fileName}, bufferSize: ${audioBuffer.length}`);
       
+      // 【Phase A+B統合】タイムアウト検出システム：大容量音声の自動チャンク分割
+      const audioSizeMB = audioBuffer.length / (1024 * 1024);
+      const estimatedDuration = meetingInfo.duration || (audioSizeMB * 60); // 1MB≈1分と仮定
+      
+      // チャンク分割条件判定（複数条件でチェック）
+      const shouldUseChunking = 
+        audioSizeMB > 20 ||                    // 20MB超過
+        estimatedDuration > 1200 ||            // 20分超過
+        (audioSizeMB > 15 && estimatedDuration > 900); // 15MB&15分超過
+      
+      if (shouldUseChunking) {
+        logger.info(`🎯 大容量音声検出: ${audioSizeMB.toFixed(1)}MB (推定${Math.round(estimatedDuration/60)}分) → チャンク分割処理に切り替え`);
+        return await this.processAudioInChunks(audioBuffer, fileName, meetingInfo);
+      }
+      
+      logger.info(`📦 標準処理: ${audioSizeMB.toFixed(1)}MB (推定${Math.round(estimatedDuration/60)}分) → 通常処理を実行`);
+      
       // Phase1: Slack通知用の処理時間監視（60分会議用に調整）
       const shouldSendTimeoutWarning = async (currentTime) => {
         const elapsed = currentTime - startTime;
@@ -301,11 +318,13 @@ class AudioSummaryService {
         apiCallReduction: '50%', // 2回→1回のAPI呼び出し削減
         retryCapability: '5回リトライ対応',
         unifiedProcessing: true,
-        // Phase1改善情報
-        phase1Improvements: {
+        // Phase A+B改善情報
+        phaseABImprovements: {
           maxOutputTokens: 65536,
           timeoutWarning: totalTime > 180000, // 3分に調整
-          slackNotification: true
+          slackNotification: true,
+          chunkingAvailable: true, // チャンク分割対応済み
+          autoChunkingThreshold: `${audioSizeMB.toFixed(1)}MB < 20MB`
         }
       };
 
@@ -313,16 +332,463 @@ class AudioSummaryService {
       const elapsed = Date.now() - startTime;
       logger.error(`Failed to process real audio buffer after ${elapsed}ms:`, error.message);
       
-      // Phase1: エラー時のフォールバック情報
+      // Phase A+B: エラー時のフォールバック情報
       if (error.message.includes('TOKEN') || error.message.includes('limit')) {
-        logger.error('🔴 Token limit exceeded - Phase2 chunk processing recommended');
+        logger.error('🔴 Token limit exceeded - チャンク分割処理を推奨');
       }
       if (elapsed > 290000) {
-        logger.error('🔴 Processing timeout - consider implementing chunk processing');
+        logger.error('🔴 Processing timeout - チャンク分割処理が必要');
       }
       
       throw error;
     }
+  }
+
+  /**
+   * Phase A+B: 音声チャンク分割処理（大容量音声対応）
+   */
+  async processAudioInChunks(audioBuffer, fileName, meetingInfo) {
+    const startTime = Date.now();
+    const AudioChunkService = require('./audioChunkService');
+    
+    const debugTimer = (step, detail = '') => {
+      const elapsed = Date.now() - startTime;
+      logger.info(`🔧 ChunkedAudioProcessor [${elapsed}ms] ${step} ${detail}`);
+      
+      // タイムアウト警告（Phase A+B統合）
+      if (elapsed > 180000) { // 3分警告
+        logger.warn(`⚠️ チャンク処理時間警告: ${(elapsed/1000).toFixed(1)}s - タイムアウト接近中`);
+      }
+      
+      return elapsed;
+    };
+
+    try {
+      debugTimer('音声チャンク分割処理開始', `fileName: ${fileName}, bufferSize: ${audioBuffer.length}`);
+      
+      // Phase A+B: タイムアウト早期検出
+      const estimatedProcessingTime = this.estimateChunkProcessingTime(audioBuffer, meetingInfo);
+      if (estimatedProcessingTime > 240000) { // 4分予測
+        logger.warn(`⚠️ 処理時間予測: ${estimatedProcessingTime/1000}秒 - 高速モードに切り替え`);
+        meetingInfo.fastMode = true;
+      }
+      
+      // Step 1: 音声分割
+      debugTimer('Step 1: 音声分割開始');
+      const chunkService = new AudioChunkService();
+      const splittingResult = chunkService.splitAudioByTime(audioBuffer, null, meetingInfo);
+      const { chunks, metadata } = splittingResult;
+      
+      // 分割妥当性検証
+      const validation = chunkService.validateChunks(chunks);
+      if (!validation.isValid) {
+        throw new Error(`音声分割検証失敗: ${validation.errors.join(', ')}`);
+      }
+      
+      if (validation.warnings.length > 0) {
+        logger.warn('🚨 分割警告:', validation.warnings);
+      }
+      
+      debugTimer('Step 1: 音声分割完了', `${chunks.length}チャンク生成`);
+      
+      // Step 2: チャンク順次処理
+      debugTimer('Step 2: チャンク処理開始');
+      const chunkResults = [];
+      let successCount = 0;
+      let failureCount = 0;
+      
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const chunkStartTime = Date.now();
+        
+        // タイムアウトチェック（Phase A+B統合）
+        const totalElapsed = Date.now() - startTime;
+        if (totalElapsed > 250000) { // 250秒で緊急停止
+          logger.error(`🚨 緊急タイムアウト停止: チャンク${i+1}/${chunks.length}で中断`);
+          break;
+        }
+        
+        try {
+          logger.info(`⚡ チャンク${i+1}/${chunks.length}処理開始: ${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')}`);
+          
+          // 個別チャンク処理
+          const chunkResult = await this.processIndividualChunk(chunk, i, meetingInfo);
+          
+          chunkResults.push({
+            success: true,
+            chunkIndex: i,
+            timeRange: [chunk.startTime, chunk.endTime],
+            data: chunkResult,
+            processingTime: Date.now() - chunkStartTime
+          });
+          
+          successCount++;
+          logger.info(`✅ チャンク${i+1}完了: ${Date.now() - chunkStartTime}ms`);
+          
+        } catch (chunkError) {
+          logger.error(`❌ チャンク${i+1}処理失敗:`, chunkError.message);
+          
+          // フォールバック結果生成
+          chunkResults.push({
+            success: false,
+            chunkIndex: i,
+            timeRange: [chunk.startTime, chunk.endTime],
+            error: chunkError.message,
+            fallback: this.createChunkFallback(chunk, i, chunkError)
+          });
+          
+          failureCount++;
+        }
+      }
+      
+      debugTimer('Step 2: チャンク処理完了', `成功:${successCount}, 失敗:${failureCount}`);
+      
+      // Step 3: 結果統合
+      debugTimer('Step 3: 結果統合開始');
+      const mergedResult = await this.mergeChunkResults(chunkResults, metadata);
+      debugTimer('Step 3: 結果統合完了');
+      
+      const totalTime = debugTimer('音声チャンク分割処理完了');
+      
+      return {
+        ...mergedResult,
+        // Phase A+B メタデータ
+        chunkedProcessing: true,
+        chunkMetadata: {
+          totalChunks: chunks.length,
+          successfulChunks: successCount,
+          failedChunks: failureCount,
+          completionRate: Math.round(successCount / chunks.length * 100),
+          totalProcessingTime: totalTime,
+          ...metadata
+        },
+        warnings: mergedResult.warnings || []
+      };
+      
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      logger.error(`チャンク分割処理失敗 after ${elapsed}ms:`, error.message);
+      
+      // 緊急フォールバック
+      throw new Error(`Chunked audio processing failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * 個別チャンク処理
+   */
+  async processIndividualChunk(chunk, chunkIndex, meetingInfo) {
+    // 高速モード対応（Phase A+B）
+    const processingOptions = {
+      maxRetries: meetingInfo.fastMode ? 2 : 5,
+      mimeType: 'audio/aac'
+    };
+    
+    // チャンク用のmeetingInfo作成
+    const chunkMeetingInfo = {
+      ...meetingInfo,
+      topic: `${meetingInfo.topic || 'Unknown'} (チャンク${chunkIndex + 1})`,
+      duration: chunk.duration,
+      chunkInfo: {
+        index: chunkIndex,
+        startTime: chunk.startTime,
+        endTime: chunk.endTime,
+        isFirst: chunk.isFirst,
+        isLast: chunk.isLast
+      }
+    };
+    
+    return await this.aiService.processAudioWithStructuredOutput(
+      chunk.data, 
+      chunkMeetingInfo, 
+      processingOptions
+    );
+  }
+
+  /**
+   * チャンク処理時間推定
+   */
+  estimateChunkProcessingTime(audioBuffer, meetingInfo = {}) {
+    const audioSizeMB = audioBuffer.length / (1024 * 1024);
+    const estimatedDuration = meetingInfo.duration || (audioSizeMB * 60); // 1MB≈1分と仮定
+    
+    // チャンク数推定
+    const estimatedChunks = Math.ceil(estimatedDuration / 600); // 10分チャンク
+    
+    // チャンクあたり処理時間推定（経験値ベース）
+    const baseProcessingTime = 45; // 秒/チャンク
+    const totalEstimate = estimatedChunks * baseProcessingTime * 1000; // ミリ秒
+    
+    logger.info(`📊 処理時間推定: ${Math.round(audioSizeMB)}MB → ${estimatedChunks}チャンク → ${Math.round(totalEstimate/1000)}秒`);
+    
+    return totalEstimate;
+  }
+
+  /**
+   * チャンク失敗時のフォールバック生成
+   */
+  createChunkFallback(chunk, chunkIndex, error) {
+    return {
+      transcription: `[チャンク${chunkIndex + 1} (${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')}): 処理失敗 - ${error.message}]`,
+      structuredSummary: {
+        meetingPurpose: 'N/A (チャンク処理失敗)',
+        clientName: 'Unknown',
+        attendeesAndCompanies: [],
+        materials: [],
+        discussionsByTopic: [],
+        decisions: [],
+        nextActionsWithDueDate: [],
+        audioQuality: 'エラーにより処理不可'
+      },
+      processingTime: 0,
+      chunkIndex,
+      isFallback: true
+    };
+  }
+
+  /**
+   * Phase A+B: チャンク結果統合（基本実装）
+   */
+  async mergeChunkResults(chunkResults, metadata) {
+    const startTime = Date.now();
+    
+    try {
+      logger.info(`🔄 結果統合開始: ${chunkResults.length}チャンク`);
+      
+      // 成功したチャンクのみを抽出
+      const successfulResults = chunkResults.filter(result => result.success && result.data);
+      const failedResults = chunkResults.filter(result => !result.success);
+      
+      if (successfulResults.length === 0) {
+        throw new Error('統合可能な成功チャンクが存在しません');
+      }
+      
+      logger.info(`📊 統合対象: 成功${successfulResults.length}件、失敗${failedResults.length}件`);
+      
+      // Step 1: 文字起こし統合
+      const mergedTranscription = this.mergeTranscriptions(successfulResults, failedResults);
+      
+      // Step 2: 構造化要約統合  
+      const mergedSummary = this.mergeStructuredSummaries(successfulResults, metadata);
+      
+      // Step 3: 警告・エラー情報統合
+      const warnings = this.compileWarnings(successfulResults, failedResults, metadata);
+      
+      const processingTime = Date.now() - startTime;
+      logger.info(`✅ 結果統合完了: ${processingTime}ms`);
+      
+      return {
+        status: 'success',
+        transcription: mergedTranscription,
+        structuredSummary: mergedSummary,
+        analysis: mergedSummary, // 後方互換性
+        audioFileName: metadata.originalFileName || 'chunked_audio',
+        audioBufferSize: metadata.totalSize || 0,
+        processedAudioBufferSize: metadata.totalSize || 0,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        meetingInfo: metadata.meetingInfo || {},
+        processedAt: new Date().toISOString(),
+        totalProcessingTime: metadata.totalProcessingTime || 0,
+        // Phase A+B 統合情報
+        mergeMetadata: {
+          totalChunks: chunkResults.length,
+          successfulChunks: successfulResults.length,
+          failedChunks: failedResults.length,
+          completionRate: Math.round(successfulResults.length / chunkResults.length * 100),
+          mergeProcessingTime: processingTime,
+          chunkingMethod: metadata.splitMethod || 'time_based'
+        }
+      };
+      
+    } catch (error) {
+      logger.error('結果統合エラー:', error);
+      throw new Error(`Chunk results merge failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * 文字起こし統合（Phase A+B基本実装）
+   */
+  mergeTranscriptions(successfulResults, failedResults) {
+    logger.info('📝 文字起こし統合開始');
+    
+    const transcriptionParts = [];
+    const totalChunks = successfulResults.length + failedResults.length;
+    
+    // チャンクインデックス順にソート
+    const allResults = [...successfulResults, ...failedResults].sort(
+      (a, b) => a.chunkIndex - b.chunkIndex
+    );
+    
+    for (const result of allResults) {
+      if (result.success && result.data?.transcription) {
+        // 成功チャンクの文字起こし
+        const timeStamp = this.formatTimeRange(result.timeRange);
+        transcriptionParts.push(`\n--- ${timeStamp} ---\n${result.data.transcription}`);
+      } else if (result.fallback?.transcription) {
+        // 失敗チャンクのフォールバック
+        transcriptionParts.push(`\n${result.fallback.transcription}`);
+      } else {
+        // 完全失敗チャンク
+        const timeStamp = this.formatTimeRange(result.timeRange);
+        transcriptionParts.push(`\n--- ${timeStamp} ---\n[処理失敗: ${result.error || 'Unknown error'}]`);
+      }
+    }
+    
+    const mergedText = transcriptionParts.join('\n');
+    logger.info(`📝 文字起こし統合完了: ${mergedText.length}文字`);
+    
+    return mergedText;
+  }
+
+  /**
+   * 構造化要約統合（Phase A+B基本実装）
+   */
+  mergeStructuredSummaries(successfulResults, metadata) {
+    logger.info('📋 構造化要約統合開始');
+    
+    if (successfulResults.length === 0) {
+      return this.createEmptySummary();
+    }
+    
+    // 最初のチャンクから基本情報を取得
+    const firstChunk = successfulResults[0].data.structuredSummary;
+    
+    // 全チャンクからの情報統合
+    const allDiscussions = [];
+    const allDecisions = [];
+    const allNextActions = [];
+    const allAttendees = new Set();
+    
+    for (const result of successfulResults) {
+      const summary = result.data.structuredSummary;
+      
+      if (summary.discussionsByTopic) {
+        // 時間情報付きでディスカッション追加
+        const timeAdjustedDiscussions = summary.discussionsByTopic.map(discussion => ({
+          ...discussion,
+          chunkInfo: {
+            chunkIndex: result.chunkIndex,
+            timeRange: this.formatTimeRange(result.timeRange)
+          }
+        }));
+        allDiscussions.push(...timeAdjustedDiscussions);
+      }
+      
+      if (summary.decisions) {
+        allDecisions.push(...summary.decisions);
+      }
+      
+      if (summary.nextActionsWithDueDate) {
+        allNextActions.push(...summary.nextActionsWithDueDate);
+      }
+      
+      if (summary.attendeesAndCompanies) {
+        summary.attendeesAndCompanies.forEach(attendee => allAttendees.add(attendee));
+      }
+    }
+    
+    const mergedSummary = {
+      meetingPurpose: firstChunk.meetingPurpose || '不明',
+      clientName: firstChunk.clientName || metadata.clientName || 'Unknown',
+      attendeesAndCompanies: Array.from(allAttendees),
+      materials: firstChunk.materials || [],
+      discussionsByTopic: allDiscussions,
+      decisions: allDecisions,
+      nextActionsWithDueDate: allNextActions,
+      audioQuality: this.aggregateAudioQuality(successfulResults)
+    };
+    
+    logger.info(`📋 構造化要約統合完了: ${allDiscussions.length}議論、${allDecisions.length}決定、${allNextActions.length}アクション`);
+    
+    return mergedSummary;
+  }
+
+  /**
+   * 警告情報統合
+   */
+  compileWarnings(successfulResults, failedResults, metadata) {
+    const warnings = [];
+    
+    // 失敗チャンク警告
+    if (failedResults.length > 0) {
+      warnings.push(`${failedResults.length}/${successfulResults.length + failedResults.length}チャンクの処理に失敗しました`);
+      
+      const failedTimeRanges = failedResults.map(r => this.formatTimeRange(r.timeRange));
+      warnings.push(`失敗時間帯: ${failedTimeRanges.join(', ')}`);
+    }
+    
+    // 完成度警告
+    const completionRate = successfulResults.length / (successfulResults.length + failedResults.length);
+    if (completionRate < 0.8) {
+      warnings.push(`処理完成度が${Math.round(completionRate * 100)}%です。一部情報が欠落している可能性があります`);
+    }
+    
+    // 音声品質警告
+    const qualityIssues = successfulResults.filter(r => 
+      r.data.structuredSummary?.audioQuality?.includes('低') || 
+      r.data.structuredSummary?.audioQuality?.includes('悪')
+    );
+    
+    if (qualityIssues.length > 0) {
+      warnings.push(`${qualityIssues.length}チャンクで音声品質の問題が検出されました`);
+    }
+    
+    return warnings;
+  }
+
+  /**
+   * ユーティリティ: 時間範囲フォーマット
+   */
+  formatTimeRange(timeRange) {
+    if (!timeRange || timeRange.length !== 2) return 'Unknown';
+    
+    const [start, end] = timeRange;
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+    
+    return `${formatTime(start)}-${formatTime(end)}`;
+  }
+
+  /**
+   * 音声品質情報統合
+   */
+  aggregateAudioQuality(successfulResults) {
+    const qualityReports = successfulResults
+      .map(r => r.data.structuredSummary?.audioQuality)
+      .filter(q => q && q !== 'N/A');
+    
+    if (qualityReports.length === 0) return '品質情報なし';
+    
+    const goodQuality = qualityReports.filter(q => q.includes('良好') || q.includes('良')).length;
+    const totalReports = qualityReports.length;
+    
+    if (goodQuality / totalReports > 0.8) {
+      return '全体的に良好';
+    } else if (goodQuality / totalReports > 0.5) {
+      return '部分的に問題あり';
+    } else {
+      return '品質に課題あり';
+    }
+  }
+
+  /**
+   * 空の要約構造体作成
+   */
+  createEmptySummary() {
+    return {
+      meetingPurpose: '処理失敗により不明',
+      clientName: 'Unknown',
+      attendeesAndCompanies: [],
+      materials: [],
+      discussionsByTopic: [],
+      decisions: [],
+      nextActionsWithDueDate: [],
+      audioQuality: '処理失敗'
+    };
   }
 
   /**
