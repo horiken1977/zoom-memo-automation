@@ -501,6 +501,15 @@ ${(summaryData.nextActionsWithDueDate || summaryData.homework || summaryData.act
    * 文字起こしテキストを読みやすい形式に整形
    */
   formatTranscriptionText(transcriptionData, meetingInfo) {
+    // 【修正】データ構造統一: 文字列またはオブジェクトのtranscriptionプロパティに対応
+    const transcriptionText = typeof transcriptionData === 'string' 
+      ? transcriptionData 
+      : (transcriptionData.transcription || 'N/A');
+    
+    const transcriptionLength = typeof transcriptionData === 'string'
+      ? transcriptionData.length
+      : (transcriptionData.transcription?.length || 0);
+    
     return `# ${meetingInfo.topic} - 文字起こし
 
 ## 基本情報
@@ -508,22 +517,22 @@ ${(summaryData.nextActionsWithDueDate || summaryData.homework || summaryData.act
 - 開催日時: ${new Date(meetingInfo.startTime).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 - 時間: ${meetingInfo.duration}分
 - 主催者: ${meetingInfo.hostName || 'N/A'}
-- 文字数: ${transcriptionData.transcription?.length || 0}文字
+- 文字数: ${transcriptionLength}文字
 
 ## 文字起こし内容
 
-${transcriptionData.transcription || 'N/A'}
+${transcriptionText}
 
 ## 音声品質情報
-${transcriptionData.audioQuality ? `
+${(typeof transcriptionData === 'object' && transcriptionData.audioQuality) ? `
 - 音質: ${transcriptionData.audioQuality.clarity || 'N/A'}
 - 信頼度: ${transcriptionData.audioQuality.transcriptionConfidence || 'N/A'}
 - 問題点: ${transcriptionData.audioQuality.issues?.join(', ') || 'なし'}
 ` : '情報なし'}
 
 ## 生成情報
-- AIモデル: ${transcriptionData.model || 'N/A'}
-- 処理時間: ${transcriptionData.processingTime ? Math.round(transcriptionData.processingTime/1000) + '秒' : 'N/A'}
+- AIモデル: ${(typeof transcriptionData === 'object' && transcriptionData.model) ? transcriptionData.model : 'N/A'}
+- 処理時間: ${(typeof transcriptionData === 'object' && transcriptionData.processingTime) ? Math.round(transcriptionData.processingTime/1000) + '秒' : 'N/A'}
 - 生成日時: ${new Date().toLocaleString('ja-JP')}
 
 ---
