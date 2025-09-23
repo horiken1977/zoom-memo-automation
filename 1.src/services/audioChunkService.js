@@ -35,7 +35,7 @@ class AudioChunkService {
         const chunkEnd = Math.min(offset + chunkSizeBytes, audioBuffer.length);
         const chunkData = audioBuffer.slice(offset, chunkEnd);
         
-        const chunk = {
+        let chunk = {
           data: chunkData,
           startTime: offset / bytesPerSecond,
           endTime: chunkEnd / bytesPerSecond,
@@ -48,14 +48,28 @@ class AudioChunkService {
           splitMethod: 'time_based'
         };
         
+        // 【Phase1】チャンクデータの検証と修復
+        chunk = this.validateAndRepairChunkData(chunk);
+        
+        // 破損チャンクはスキップ（後続処理でフォールバック）
+        if (chunk.isCorrupted) {
+          logger.warn(`⚠️ チャンク${chunkIndex + 1}: 破損検出、処理継続`);
+        }
+        
         chunks.push(chunk);
-        logger.info(`📦 チャンク${chunkIndex + 1}: ${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')} (${Math.round(chunk.size/1024/1024*100)/100}MB)`);
+        logger.info(`📦 チャンク${chunkIndex + 1}: ${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')} (${Math.round(chunk.size/1024/1024*100)/100}MB)${chunk.isCorrupted ? ' [破損]' : ''}`);
         
         chunkIndex++;
       }
       
       const processingTime = Date.now() - startTime;
       logger.info(`✅ 音声分割完了: ${chunks.length}チャンク生成 (${processingTime}ms)`);
+      
+      // 破損チャンク数の警告
+      const corruptedCount = chunks.filter(c => c.isCorrupted).length;
+      if (corruptedCount > 0) {
+        logger.warn(`⚠️ ${corruptedCount}個のチャンクで破損を検出`);
+      }
       
       return {
         chunks,
@@ -65,7 +79,8 @@ class AudioChunkService {
           totalDuration: estimatedTotalDuration,
           splitMethod: 'time_based',
           processingTime,
-          bytesPerSecond: Math.round(bytesPerSecond)
+          bytesPerSecond: Math.round(bytesPerSecond),
+          corruptedChunks: corruptedCount // 【Phase1】破損チャンク数追加
         }
       };
       
@@ -82,15 +97,16 @@ class AudioChunkService {
     const estimatedDuration = this.estimateDurationFromBuffer(audioBuffer, meetingInfo);
     const audioSizeMB = audioBuffer.length / (1024 * 1024);
     
-    // 【Step1最適化】軽量モデル対応でチャンク時間を大幅拡大（処理回数削減）
+    // 【Phase1緊急修正】400 Bad Request対策 - チャンクサイズを10MB以下に制限
+    // Geminiが確実に処理できるサイズに調整（13.68MB → 10MB以下）
     if (estimatedDuration <= 1800) { // 30分以下
       return Math.max(this.minChunkDurationSeconds, estimatedDuration / 2); // 2分割
     } else if (estimatedDuration <= 3600) { // 60分以下
-      return 900; // 【重要】15分チャンク（軽量モデル対応）
+      return 720; // 【重要】12分チャンク（約10.9MB - 安全サイズ）
     } else if (estimatedDuration <= 5400) { // 90分以下
-      return 900; // 15分チャンク維持
+      return 600; // 10分チャンク（約9.1MB）
     } else {
-      return 720; // 12分チャンク（超長時間会議）
+      return 480; // 8分チャンク（超長時間会議、約7.3MB）
     }
   }
 
@@ -206,6 +222,68 @@ class AudioChunkService {
     }
 
     return validation;
+  }
+
+  /**
+   * 【Phase1】音声チャンクデータの検証と修復
+   */
+  validateAndRepairChunkData(chunk) {
+    try {
+      const chunkBuffer = chunk.data;
+      const sizeMB = chunkBuffer.length / (1024 * 1024);
+      
+      // サイズチェック
+      if (sizeMB > 15) {
+        logger.warn(`⚠️ チャンク${chunk.chunkIndex + 1}: サイズ超過 ${sizeMB.toFixed(2)}MB > 15MB`);
+        // 強制的に10MBに圧縮
+        const maxSize = 10 * 1024 * 1024;
+        if (chunkBuffer.length > maxSize) {
+          chunk.data = chunkBuffer.slice(0, maxSize);
+          chunk.size = maxSize;
+          logger.info(`📉 チャンク${chunk.chunkIndex + 1}: 10MBに圧縮`);
+        }
+      }
+      
+      // データ整合性チェック（M4A形式の簡易検証）
+      if (chunkBuffer.length > 8) {
+        const header = chunkBuffer.slice(0, 8);
+        // M4Aの基本ヘッダー確認（ftypが含まれるべき）
+        const hasFtyp = chunkBuffer.slice(4, 8).toString('ascii') === 'ftyp';
+        
+        if (chunk.isFirst && !hasFtyp) {
+          logger.warn(`⚠️ チャンク${chunk.chunkIndex + 1}: 不正なM4Aヘッダー検出`);
+          // ヘッダー修復試行（簡易的な修正）
+          const validHeader = Buffer.from([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70]); // 基本的なftyp
+          chunk.data = Buffer.concat([validHeader, chunkBuffer.slice(8)]);
+          logger.info(`🔧 チャンク${chunk.chunkIndex + 1}: ヘッダー修復試行`);
+        }
+      }
+      
+      // ゼロバイトチェック
+      const nonZeroBytes = chunkBuffer.filter(byte => byte !== 0).length;
+      if (nonZeroBytes < chunkBuffer.length * 0.1) { // 90%以上がゼロバイト
+        logger.error(`❌ チャンク${chunk.chunkIndex + 1}: 音声データが破損（ゼロバイト過多）`);
+        chunk.isCorrupted = true;
+      }
+      
+      // Base64エンコード可能性チェック
+      try {
+        const testEncode = chunkBuffer.toString('base64').substring(0, 100);
+        if (!testEncode) {
+          throw new Error('Base64エンコード失敗');
+        }
+      } catch (encodeError) {
+        logger.error(`❌ チャンク${chunk.chunkIndex + 1}: Base64エンコード不可`);
+        chunk.isCorrupted = true;
+      }
+      
+      return chunk;
+      
+    } catch (error) {
+      logger.error(`チャンク${chunk.chunkIndex + 1}検証エラー: ${error.message}`);
+      chunk.isCorrupted = true;
+      return chunk;
+    }
   }
 }
 

@@ -113,28 +113,63 @@ class AIService {
   /**
    * 文字起こし専用軽量モデルの初期化
    */
-  async ensureTranscriptionModelInitialized() {
-    if (!this.transcriptionModel) {
-      // 文字起こし専用: 軽量・高速モデルを優先
+  /**
+   * 文字起こし専用軽量モデルの初期化
+   */
+  async ensureTranscriptionModelInitialized(forceReinit = false) {
+    if (!this.transcriptionModel || forceReinit) {
+      // 【Phase1】400エラー対策 - より多様なモデルを試行
       const transcriptionModels = [
+        'gemini-1.5-flash-8b',   // 最軽量版（新追加）
         'gemini-1.5-flash',      // 軽量・高速（推奨）
-        'gemini-1.0-pro',        // 最軽量
+        'gemini-1.0-pro',        // 最軽量（代替）
         'gemini-2.0-flash',      // 代替案
-        'gemini-2.5-pro'         // フォールバック
+        'gemini-1.5-pro',        // より安定（フォールバック）
+        'gemini-2.5-pro'         // 最終手段
       ];
       
-      for (const modelName of transcriptionModels) {
-        try {
-          const testModel = this.genAI.getGenerativeModel({ model: modelName });
-          // 軽量テストで利用可能性確認
-          await testModel.generateContent('テスト');
-          this.transcriptionModel = testModel;
-          this.selectedTranscriptionModel = modelName;
-          logger.info(`文字起こし専用軽量モデル選択: ${modelName}`);
-          break;
-        } catch (error) {
-          logger.debug(`文字起こしモデル ${modelName} 利用不可:`, error.message);
-          continue;
+      // エラーカウンタ初期化
+      if (!this.transcriptionErrorCount) {
+        this.transcriptionErrorCount = 0;
+      }
+      
+      // 400エラー多発時は異なるモデルを試行
+      if (this.transcriptionErrorCount > 3 && !forceReinit) {
+        logger.warn(`文字起こしエラー多発(${this.transcriptionErrorCount}回), モデル再選択`);
+        // 前回使用モデルをスキップ
+        const currentModel = this.selectedTranscriptionModel;
+        const filteredModels = transcriptionModels.filter(m => m !== currentModel);
+        
+        for (const modelName of filteredModels) {
+          try {
+            const testModel = this.genAI.getGenerativeModel({ model: modelName });
+            // 軽量テストで利用可能性確認
+            await testModel.generateContent('test');
+            this.transcriptionModel = testModel;
+            this.selectedTranscriptionModel = modelName;
+            this.transcriptionErrorCount = 0; // リセット
+            logger.info(`文字起こしモデル切り替え成功: ${currentModel} → ${modelName}`);
+            break;
+          } catch (error) {
+            logger.debug(`文字起こしモデル ${modelName} 利用不可:`, error.message);
+            continue;
+          }
+        }
+      } else {
+        // 通常の初期化
+        for (const modelName of transcriptionModels) {
+          try {
+            const testModel = this.genAI.getGenerativeModel({ model: modelName });
+            // 軽量テストで利用可能性確認
+            await testModel.generateContent('テスト');
+            this.transcriptionModel = testModel;
+            this.selectedTranscriptionModel = modelName;
+            logger.info(`文字起こし専用軽量モデル選択: ${modelName}`);
+            break;
+          } catch (error) {
+            logger.debug(`文字起こしモデル ${modelName} 利用不可:`, error.message);
+            continue;
+          }
         }
       }
       
@@ -971,6 +1006,7 @@ ${transcription}`;
     const maxRetries = options.maxRetries || 5;
     const isBuffer = Buffer.isBuffer(audioInput);
     let lastError = null;
+    let consecutiveBadRequests = 0; // 【Phase1】400エラーカウンタ
     
     logger.info(`Starting transcription-only processing for: ${meetingInfo.topic}`);
     
@@ -1011,8 +1047,10 @@ ${transcription}`;
       // リトライループ
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          // 【重要】文字起こし専用軽量モデルを使用
-          await this.ensureTranscriptionModelInitialized();
+          // 【Phase1】400エラー対策 - モデル初期化時にエラー履歴考慮
+          const forceReinit = consecutiveBadRequests >= 2; // 2回連続400エラーで強制切り替え
+          await this.ensureTranscriptionModelInitialized(forceReinit);
+          
           logger.info(`Transcription attempt ${attempt}/${maxRetries} for: ${meetingInfo.topic}`);
 
           const result = await this.transcriptionModel.generateContent([
@@ -1044,6 +1082,10 @@ ${transcription}`;
           const processingTime = Date.now() - startTime;
           logger.info(`Transcription successful on attempt ${attempt} (${processingTime}ms): ${transcriptionText.length} characters`);
           
+          // 成功時はエラーカウンタリセット
+          this.transcriptionErrorCount = 0;
+          consecutiveBadRequests = 0;
+          
           return {
             transcription: transcriptionText,
             processingTime,
@@ -1055,10 +1097,39 @@ ${transcription}`;
           
         } catch (attemptError) {
           lastError = attemptError;
+          
+          // 【Phase1】400エラー検出と対策
+          if (attemptError.message.includes('400 Bad Request')) {
+            consecutiveBadRequests++;
+            this.transcriptionErrorCount = (this.transcriptionErrorCount || 0) + 1;
+            
+            logger.warn(`400 Bad Request検出 (連続${consecutiveBadRequests}回, 累計${this.transcriptionErrorCount}回)`);
+            
+            // 音声データ再処理
+            if (consecutiveBadRequests >= 2 && isBuffer) {
+              logger.warn('音声データ再圧縮実施（より強力な圧縮）');
+              const recompressedBuffer = await this.compressAudioBuffer(audioInput, 10); // 10MBに制限
+              audioData = recompressedBuffer.toString('base64');
+              compressionInfo.processedSize = `${(recompressedBuffer.length / 1024 / 1024).toFixed(2)}MB`;
+            }
+            
+            // MIMEタイプ変更試行
+            if (consecutiveBadRequests >= 3) {
+              const altMimeTypes = ['audio/mp4', 'audio/mpeg', 'audio/wav'];
+              mimeType = altMimeTypes[attempt % altMimeTypes.length];
+              logger.warn(`MIMEタイプ変更: ${mimeType}`);
+            }
+          } else {
+            consecutiveBadRequests = 0; // 400以外のエラーでリセット
+          }
+          
           logger.warn(`Transcription attempt ${attempt}/${maxRetries} failed: ${attemptError.message}`);
           
           if (attempt < maxRetries) {
-            const waitTime = Math.min(2000 * attempt, 10000);
+            // 【Phase1】400エラー時は待機時間延長
+            const waitTime = attemptError.message.includes('400 Bad Request') 
+              ? Math.min(3000 * attempt, 15000) // 400エラー時は長めに待機
+              : Math.min(2000 * attempt, 10000);
             logger.info(`Waiting ${waitTime}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
           }
