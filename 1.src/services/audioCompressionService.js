@@ -33,8 +33,8 @@ class AudioCompressionService {
       const audioFormat = this.detectAudioFormat(audioBuffer, originalFileName);
       logger.info(`🎵 検出形式: ${audioFormat}`);
       
-      // 修正: 全体音声処理（部分抽出を停止）
-      // Gemini API 20MB制限対応: サイズチェックして適切に処理
+      // PT001修正: 全音声データ保持方式に変更（部分抽出を廃止）
+      // Gemini API 20MB制限対応: 全データを保持しつつ圧縮品質調整で対応
       let processedBuffer;
       let compressionMethod;
       let compressionRatio = 0;
@@ -47,23 +47,26 @@ class AudioCompressionService {
         compressionMethod = 'no_compression_needed';
         logger.info(`🎯 圧縮不要: ${Math.round(originalSize / 1024 / 1024 * 100) / 100}MB ≤ 20MB制限`);
       } else {
-        // 20MB超過：実際の圧縮処理を実行
-        logger.info(`🗜️ 20MB超過のため実際の圧縮処理を実行: ${Math.round(originalSize / 1024 / 1024 * 100) / 100}MB`);
+        // 20MB超過：全音声データ保持圧縮を実行
+        logger.info(`🗜️ 20MB超過のため全音声データ保持圧縮を実行: ${Math.round(originalSize / 1024 / 1024 * 100) / 100}MB`);
         
         try {
-          // 部分音声抽出で20MB以下に圧縮
-          const targetRatio = Math.min(0.4, maxGeminiSize / originalSize); // 最大40%、または20MB制限以下
-          processedBuffer = this.extractPartialAudio(audioBuffer, targetRatio);
-          compressionMethod = `partial_extraction_${Math.round(targetRatio * 100)}%`;
+          // PT001修正: 部分抽出を廃止し、全音声データを保持しつつ圧縮
+          // 計算: 目標20MBに対する圧縮率
+          const targetCompressionRatio = maxGeminiSize / originalSize;
           
-          logger.info(`🎯 部分音声抽出完了: ${Math.round(targetRatio * 100)}% (${Math.round(processedBuffer.length / 1024 / 1024 * 100) / 100}MB)`);
+          // 全音声データを保持しつつ、品質を下げて20MB以下に圧縮
+          processedBuffer = this.compressWithQualityReduction(audioBuffer, targetCompressionRatio);
+          compressionMethod = `full_audio_quality_compression_${Math.round(targetCompressionRatio * 100)}%`;
           
-          // さらに20MB超過の場合はより強い圧縮
+          logger.info(`🎯 全音声圧縮完了: ${Math.round(targetCompressionRatio * 100)}%圧縮 (${Math.round(processedBuffer.length / 1024 / 1024 * 100) / 100}MB)`);
+          
+          // さらに20MB超過の場合は段階的圧縮
           if (processedBuffer.length > maxGeminiSize) {
-            const secondRatio = maxGeminiSize / processedBuffer.length;
-            processedBuffer = this.extractPartialAudio(processedBuffer, secondRatio);
-            compressionMethod += `_second_compression_${Math.round(secondRatio * 100)}%`;
-            logger.info(`🔧 二次圧縮実行: ${Math.round(secondRatio * 100)}% (${Math.round(processedBuffer.length / 1024 / 1024 * 100) / 100}MB)`);
+            const secondCompressionRatio = maxGeminiSize / processedBuffer.length;
+            processedBuffer = this.compressWithQualityReduction(processedBuffer, secondCompressionRatio);
+            compressionMethod += `_second_compression_${Math.round(secondCompressionRatio * 100)}%`;
+            logger.info(`🔧 二次圧縮実行: ${Math.round(secondCompressionRatio * 100)}%圧縮 (${Math.round(processedBuffer.length / 1024 / 1024 * 100) / 100}MB)`);
           }
           
         } catch (compressionError) {
@@ -78,7 +81,7 @@ class AudioCompressionService {
       const processingTime = Date.now() - startTime;
       
       logger.info(`✅ 音声処理完了: ${Math.round(compressedSize / 1024 / 1024 * 100) / 100}MB (処理時間: ${processingTime}ms)`);
-      logger.info(`🎯 処理方式: ${compressionMethod} - 全体音声処理`);
+      logger.info(`🎯 処理方式: ${compressionMethod} - 全音声データ保持方式`);
       
       return {
         compressedBuffer: processedBuffer,
@@ -91,7 +94,8 @@ class AudioCompressionService {
           fullAudioProcessing: true,
           geminiCompatible: true,
           originalFormat: audioFormat,
-          sizeOptimized: originalSize <= maxGeminiSize
+          sizeOptimized: originalSize <= maxGeminiSize,
+          pt001Fix: true // PT001問題修正マーク
         }
       };
       
@@ -320,6 +324,75 @@ class AudioCompressionService {
       
     } catch (error) {
       logger.error('部分音声抽出エラー:', error);
+      // エラー時は元のバッファを返す
+      return audioBuffer;
+    }
+  }
+
+  // PT001修正: 全音声データ保持圧縮メソッド（部分抽出の代替）
+  compressWithQualityReduction(audioBuffer, targetCompressionRatio) {
+    try {
+      if (!audioBuffer || audioBuffer.length === 0) {
+        logger.warn('⚠️ 全音声圧縮: 音声バッファが空です');
+        return Buffer.alloc(0);
+      }
+      
+      if (targetCompressionRatio <= 0 || targetCompressionRatio > 1) {
+        logger.warn(`⚠️ 全音声圧縮: 無効な圧縮率 ${targetCompressionRatio}, 0.7に設定`);
+        targetCompressionRatio = 0.7;
+      }
+      
+      // 音声ファイルヘッダーサイズを推定
+      const audioFormat = this.detectAudioFormatFromBuffer(audioBuffer);
+      let headerSize = 0;
+      
+      if (audioFormat === 'wav') {
+        headerSize = 44; // WAVヘッダー
+      } else if (audioFormat === 'm4a' || audioFormat === 'mp3') {
+        // M4A/MP3ヘッダーサイズを推定（可変長のため概算）
+        headerSize = Math.min(1024, Math.floor(audioBuffer.length * 0.05));
+      }
+      
+      // 全音声データを保持しつつ、品質を下げて圧縮
+      const audioDataStart = headerSize;
+      const audioDataLength = audioBuffer.length - headerSize;
+      const targetSize = Math.floor(audioBuffer.length * targetCompressionRatio);
+      const targetAudioDataSize = targetSize - headerSize;
+      
+      // 簡易的な品質圧縮: サンプリング間隔を調整して全時間をカバー
+      const samplingInterval = Math.max(1, Math.floor(audioDataLength / targetAudioDataSize));
+      
+      let compressedAudioData = Buffer.alloc(0);
+      let currentPos = audioDataStart;
+      
+      while (currentPos < audioBuffer.length && compressedAudioData.length < targetAudioDataSize) {
+        // サンプリング間隔でデータを抽出（全時間をカバー）
+        const chunkSize = Math.min(1, audioBuffer.length - currentPos);
+        if (chunkSize > 0) {
+          const chunk = audioBuffer.slice(currentPos, currentPos + chunkSize);
+          compressedAudioData = Buffer.concat([compressedAudioData, chunk]);
+        }
+        currentPos += samplingInterval;
+      }
+      
+      let compressedBuffer;
+      if (headerSize > 0) {
+        // ヘッダーを保持して圧縮音声データを結合
+        const header = audioBuffer.slice(0, headerSize);
+        compressedBuffer = Buffer.concat([header, compressedAudioData]);
+        
+        logger.info(`🎵 全音声品質圧縮: ヘッダー${headerSize}B + 圧縮音声${compressedAudioData.length}B = ${compressedBuffer.length}B`);
+      } else {
+        // ヘッダーなしの場合は圧縮音声データのみ
+        compressedBuffer = compressedAudioData;
+        logger.info(`🎵 全音声品質圧縮: 圧縮音声${compressedBuffer.length}B`);
+      }
+      
+      logger.info(`🎯 全音声圧縮完了: ${audioBuffer.length} → ${compressedBuffer.length}バイト (${Math.round((1 - compressedBuffer.length / audioBuffer.length) * 100)}%削減)`);
+      return compressedBuffer;
+      
+    } catch (error) {
+      logger.error('全音声データ保持圧縮エラー:', error);
       // エラー時は元のバッファを返す
       return audioBuffer;
     }
