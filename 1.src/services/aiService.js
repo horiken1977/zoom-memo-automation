@@ -1120,16 +1120,26 @@ ${transcription}`;
         
         logger.info(`Unified audio processing - Attempt ${attempt}/${maxRetries} for: ${meetingInfo.topic}`);
         
-        // Gemini APIに一度だけリクエスト
-        const result = await this.model.generateContent([
-          {
-            inlineData: {
-              data: audioData,
-              mimeType: mimeType
-            }
-          },
-          structuredPrompt
-        ]);
+        // Gemini APIに一度だけリクエスト（maxOutputTokens追加）
+        const result = await this.model.generateContent({
+          contents: [{
+            parts: [
+              {
+                inlineData: {
+                  data: audioData,
+                  mimeType: mimeType
+                }
+              },
+              { text: structuredPrompt }
+            ]
+          }],
+          generationConfig: {
+            maxOutputTokens: 65536,  // Gemini 2.5 Proの最大出力トークン数
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40
+          }
+        });
         
         const response = result.response.text();
         

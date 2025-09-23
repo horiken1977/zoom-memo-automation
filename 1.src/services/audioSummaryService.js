@@ -168,8 +168,8 @@ class AudioSummaryService {
       const elapsed = Date.now() - startTime;
       logger.info(`🔧 AudioSummaryService [${elapsed}ms] ${step} ${detail}`);
       
-      // Phase1: 処理時間警告システム
-      if (elapsed > 240000) { // 4分経過で警告
+      // Phase1: 処理時間警告システム（60分会議用に調整）
+      if (elapsed > 180000) { // 3分経過で警告（60分会議用調整）
         logger.warn(`⚠️ Processing time warning: ${(elapsed/1000).toFixed(1)}s - approaching timeout`);
       }
       
@@ -179,10 +179,10 @@ class AudioSummaryService {
     try {
       debugTimer('processRealAudioBuffer開始', `fileName: ${fileName}, bufferSize: ${audioBuffer.length}`);
       
-      // Phase1: Slack通知用の処理時間監視
+      // Phase1: Slack通知用の処理時間監視（60分会議用に調整）
       const shouldSendTimeoutWarning = async (currentTime) => {
         const elapsed = currentTime - startTime;
-        if (elapsed > 270000) { // 4.5分経過でSlack警告
+        if (elapsed > 210000) { // 3.5分経過でSlack警告（60分会議用調整）
           try {
             const SlackService = require('./slackService');
             const slackService = new SlackService();
@@ -245,23 +245,6 @@ class AudioSummaryService {
       const unifiedResult = await this.aiService.processAudioWithStructuredOutput(processedAudioBuffer, fileName, meetingInfo);
       debugTimer('Step 1: processAudioWithStructuredOutput完了', `transcription length: ${unifiedResult?.transcription?.length || 0}, summary generated: ${!!unifiedResult?.structuredSummary}`);
       
-      // Phase1: 処理完了後の詳細通知
-      const processingDetails = {
-        totalTime: Date.now() - startTime,
-        setupTime: debugTimer('setup', '') || 0,
-        apiTime: unifiedResult.processingTime || 0,
-        transcriptionLength: unifiedResult?.transcription?.length || 0
-      };
-      
-      // Slack処理完了通知を送信
-      try {
-        const SlackService = require('./slackService');
-        const slackService = new SlackService();
-        await slackService.sendProcessingCompleteNotification(meetingInfo, processingDetails);
-      } catch (slackError) {
-        logger.warn('Failed to send processing complete notification to Slack:', slackError.message);
-      }
-      
       // 統合結果から個別データを抽出（後方互換性のため）
       const transcriptionResult = {
         transcription: unifiedResult.transcription,
@@ -321,7 +304,7 @@ class AudioSummaryService {
         // Phase1改善情報
         phase1Improvements: {
           maxOutputTokens: 65536,
-          timeoutWarning: totalTime > 240000,
+          timeoutWarning: totalTime > 180000, // 3分に調整
           slackNotification: true
         }
       };
