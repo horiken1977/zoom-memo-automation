@@ -725,10 +725,22 @@ class AudioSummaryService {
     }
     
     // 音声品質警告
-    const qualityIssues = successfulResults.filter(r => 
-      r.data.structuredSummary?.audioQuality?.includes('低') || 
-      r.data.structuredSummary?.audioQuality?.includes('悪')
-    );
+    const qualityIssues = successfulResults.filter(r => {
+      const audioQuality = r.data.structuredSummary?.audioQuality;
+      if (!audioQuality) return false;
+      
+      // 型安全なチェック - aggregateAudioQualityと同じパターン
+      let qualityStr;
+      if (typeof audioQuality === 'string') {
+        qualityStr = audioQuality;
+      } else if (typeof audioQuality === 'object' && audioQuality !== null) {
+        qualityStr = JSON.stringify(audioQuality);
+      } else {
+        qualityStr = String(audioQuality);
+      }
+      
+      return qualityStr.includes('低') || qualityStr.includes('悪');
+    });
     
     if (qualityIssues.length > 0) {
       warnings.push(`${qualityIssues.length}チャンクで音声品質の問題が検出されました`);
