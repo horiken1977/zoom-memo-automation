@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-09-23T10:31:55.883Z",
+  "passed": true,
+  "errors": [],
+  "warnings": [
+    "⚠️ 重要ファイルが変更されました: 1.src/services/audioSummaryService.js",
+    "   既存機能への影響を確認してください"
+  ],
+  "checkResults": [
+    {
+      "phase": "post-implementation",
+      "passed": true,
+      "modifiedFiles": [
+        "1.src/services/audioSummaryService.js"
+      ],
+      "expectedBehavior": [
+        {
+          "description": "チャンク内要約生成の削除",
+          "file": "1.src/services/audioSummaryService.js",
+          "shouldNotExist": [
+            "generateSummaryFromTranscription.*chunkMeetingInfo"
+          ],
+          "shouldExist": [
+            "true-2stage-processing"
+          ]
+        }
+      ],
+      "timestamp": "2025-09-23T10:31:55.882Z"
+    }
+  ],
+  "summary": {
+    "totalChecks": 1,
+    "passedChecks": 1,
+    "errorCount": 0,
+    "warningCount": 2
+  }
+}

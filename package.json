@@ -15,7 +15,10 @@
     "test-integration": "node test-integration.js",
     "claude-monitor": "node 3.operations/src/claude-monitor-standalone.js",
     "update-docs": "node 3.operations/src/update-design-docs.js",
-    "save-conversation": "node 3.operations/src/save-conversation.js"
+    "save-conversation": "node 3.operations/src/save-conversation.js",
+    "verify-requirements-pre": "node 3.operations/verify-requirements.js pre-check",
+    "verify-requirements-post": "node 3.operations/verify-requirements.js post-check",
+    "verify-requirements": "node 3.operations/verify-requirements.js"
   },
   "keywords": [
     "zoom",

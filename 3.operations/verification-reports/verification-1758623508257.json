@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-09-23T10:31:48.257Z",
+  "passed": true,
+  "errors": [],
+  "warnings": [],
+  "checkResults": [
+    {
+      "phase": "pre-implementation",
+      "passed": true,
+      "userRequirement": "完全文字起こし処理→文字起こし完了後に要約",
+      "implementationPlan": {
+        "method": "真の2段階フロー",
+        "steps": [
+          "全チャンク文字起こし",
+          "完了後一括要約"
+        ],
+        "targetFiles": [
+          "1.src/services/audioSummaryService.js"
+        ]
+      },
+      "timestamp": "2025-09-23T10:31:48.256Z"
+    }
+  ],
+  "summary": {
+    "totalChecks": 1,
+    "passedChecks": 1,
+    "errorCount": 0,
+    "warningCount": 0
+  }
+}
