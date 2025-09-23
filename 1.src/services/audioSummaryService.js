@@ -763,8 +763,22 @@ class AudioSummaryService {
     
     if (qualityReports.length === 0) return '品質情報なし';
     
-    const goodQuality = qualityReports.filter(q => q.includes('良好') || q.includes('良')).length;
-    const totalReports = qualityReports.length;
+    // 緊急修正: オブジェクト型の場合の対処
+    const normalizedReports = qualityReports.map(q => {
+      if (typeof q === 'string') {
+        return q;
+      } else if (typeof q === 'object' && q !== null) {
+        // オブジェクトの場合は文字列化して処理
+        return JSON.stringify(q);
+      } else {
+        return String(q || '不明');
+      }
+    });
+    
+    const goodQuality = normalizedReports.filter(q => 
+      q.includes && (q.includes('良好') || q.includes('良'))
+    ).length;
+    const totalReports = normalizedReports.length;
     
     if (goodQuality / totalReports > 0.8) {
       return '全体的に良好';
