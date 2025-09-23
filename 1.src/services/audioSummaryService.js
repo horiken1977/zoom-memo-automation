@@ -419,9 +419,9 @@ class AudioSummaryService {
       
       debugTimer('Step 1: 音声分割完了', `${chunks.length}チャンク生成`);
       
-      // Step 2: チャンク順次処理
-      debugTimer('Step 2: チャンク処理開始');
-      const chunkResults = [];
+      // 【修正】Step 2: 全チャンクの文字起こし処理（要約なし）
+      debugTimer('Step 2: 全チャンク文字起こし開始（要約生成はStep 3で実行）');
+      const transcriptionResults = [];
       let successCount = 0;
       let failureCount = 0;
       
@@ -437,31 +437,33 @@ class AudioSummaryService {
         }
         
         try {
-          logger.info(`⚡ チャンク${i+1}/${chunks.length}処理開始: ${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')}`);
+          logger.info(`📝 チャンク${i+1}/${chunks.length}文字起こし開始: ${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')}`);
           
-          // 個別チャンク処理
-          const chunkResult = await this.processIndividualChunk(chunk, i, meetingInfo);
+          // 【重要】文字起こしのみ実行 - 要約は後で一括生成
+          const transcriptionResult = await this.processIndividualChunk(chunk, i, meetingInfo);
           
-          chunkResults.push({
+          transcriptionResults.push({
             success: true,
             chunkIndex: i,
             timeRange: [chunk.startTime, chunk.endTime],
-            data: chunkResult,
-            processingTime: Date.now() - chunkStartTime
+            transcription: transcriptionResult.transcription,
+            processingTime: Date.now() - chunkStartTime,
+            timestamp: transcriptionResult.timestamp
           });
           
           successCount++;
-          logger.info(`✅ チャンク${i+1}完了: ${Date.now() - chunkStartTime}ms`);
+          logger.info(`✅ チャンク${i+1}文字起こし完了: ${transcriptionResult.transcription.length}文字, ${Date.now() - chunkStartTime}ms`);
           
         } catch (chunkError) {
-          logger.error(`❌ チャンク${i+1}処理失敗:`, chunkError.message);
+          logger.error(`❌ チャンク${i+1}文字起こし失敗:`, chunkError.message);
           
           // フォールバック結果生成
-          chunkResults.push({
+          transcriptionResults.push({
             success: false,
             chunkIndex: i,
             timeRange: [chunk.startTime, chunk.endTime],
             error: chunkError.message,
+            transcription: '',  // 空の文字起こし
             fallback: this.createChunkFallback(chunk, i, chunkError)
           });
           
@@ -469,17 +471,69 @@ class AudioSummaryService {
         }
       }
       
-      debugTimer('Step 2: チャンク処理完了', `成功:${successCount}, 失敗:${failureCount}`);
+      debugTimer('Step 2: 全チャンク文字起こし完了', `成功:${successCount}, 失敗:${failureCount}`);
       
-      // Step 3: 結果統合
-      debugTimer('Step 3: 結果統合開始');
-      const mergedResult = await this.mergeChunkResults(chunkResults, metadata);
-      debugTimer('Step 3: 結果統合完了');
+      // 【新実装】Step 3: 完全な文字起こしから一括要約生成
+      debugTimer('Step 3: 完全文字起こしから一括要約生成開始');
+      
+      // 全チャンクの文字起こしを結合
+      const completedTranscriptions = transcriptionResults
+        .filter(result => result.success && result.transcription)
+        .map(result => `[${Math.round(result.timeRange[0]/60)}:${Math.round(result.timeRange[0]%60).toString().padStart(2,'0')}-${Math.round(result.timeRange[1]/60)}:${Math.round(result.timeRange[1]%60).toString().padStart(2,'0')}] ${result.transcription}`)
+        .join('\n\n');
+      
+      if (!completedTranscriptions || completedTranscriptions.length < 100) {
+        throw new Error(`全チャンク文字起こし失敗: 有効な文字起こしが取得できませんでした (${completedTranscriptions.length}文字)`);
+      }
+      
+      logger.info(`📋 結合された完全文字起こし: ${completedTranscriptions.length}文字`);
+      
+      // 完全な文字起こしから一括で要約生成
+      const summaryResult = await this.aiService.generateSummaryFromTranscription(
+        completedTranscriptions,
+        meetingInfo,
+        { maxRetries: meetingInfo.fastMode ? 2 : 5 }
+      );
+      
+      if (!summaryResult || !summaryResult.structuredSummary) {
+        throw new Error('一括要約生成失敗: 構造化要約が生成されませんでした');
+      }
+      
+      debugTimer('Step 3: 一括要約生成完了', `要約生成成功`);
       
       const totalTime = debugTimer('音声チャンク分割処理完了');
       
+      // 【重要】真の2段階フロー結果を返す
       return {
-        ...mergedResult,
+        status: 'success',
+        transcription: {
+          transcription: completedTranscriptions,
+          fileName: fileName,
+          timestamp: new Date().toISOString(),
+          audioBufferSize: audioBuffer.length,
+          model: transcriptionResults[0]?.model || 'gemini-2.5-pro',
+          processingTime: transcriptionResults.reduce((sum, r) => sum + r.processingTime, 0)
+        },
+        structuredSummary: summaryResult.structuredSummary,
+        analysis: summaryResult.structuredSummary,
+        audioFileName: fileName,
+        audioBufferSize: audioBuffer.length,
+        processedAt: new Date().toISOString(),
+        totalProcessingTime: totalTime,
+        // 真の2段階フロー情報
+        flowType: 'true-2stage-processing', // 全文字起こし→一括要約
+        transcriptionPhase: {
+          totalChunks: chunks.length,
+          successfulChunks: successCount,
+          failedChunks: failureCount,
+          completionRate: Math.round(successCount / chunks.length * 100),
+          totalTranscriptionTime: transcriptionResults.reduce((sum, r) => sum + r.processingTime, 0)
+        },
+        summaryPhase: {
+          summaryTime: summaryResult.processingTime,
+          inputLength: completedTranscriptions.length,
+          method: 'single-summary-from-complete-transcription'
+        },
         // Phase A+B メタデータ
         chunkedProcessing: true,
         chunkMetadata: {
@@ -490,15 +544,15 @@ class AudioSummaryService {
           totalProcessingTime: totalTime,
           ...metadata
         },
-        warnings: mergedResult.warnings || []
+        warnings: failureCount > 0 ? [`${failureCount}個のチャンクで文字起こしに失敗しました`] : []
       };
       
     } catch (error) {
       const elapsed = Date.now() - startTime;
-      logger.error(`チャンク分割処理失敗 after ${elapsed}ms:`, error.message);
+      logger.error(`真の2段階フロー処理失敗 after ${elapsed}ms:`, error.message);
       
       // 緊急フォールバック
-      throw new Error(`Chunked audio processing failed: ${error.message}`);
+      throw new Error(`True 2-stage chunked audio processing failed: ${error.message}`);
     }
   }
 
@@ -506,7 +560,7 @@ class AudioSummaryService {
    * 個別チャンク処理
    */
   async processIndividualChunk(chunk, chunkIndex, meetingInfo) {
-    // 高速モード対応（Phase A+B）
+    // 【緊急修正】2段階フロー実装: チャンクは文字起こしのみ実行、要約は全チャンク完了後に実行
     const processingOptions = {
       maxRetries: meetingInfo.fastMode ? 2 : 5,
       mimeType: 'audio/aac'
@@ -526,10 +580,10 @@ class AudioSummaryService {
       }
     };
     
-    // 【修正】2段階フロー強制実装：文字起こし失敗時は要約生成を停止
     try {
-      // Step 1: チャンク文字起こし（必須・失敗時は即中断）
-      logger.info(`Starting transcription-only processing for: ${chunkMeetingInfo.topic}`);
+      // 【修正】文字起こしのみ実行 - 要約は全チャンク完了後に別途実行
+      logger.info(`🔤 チャンク${chunkIndex + 1}: 文字起こし専用処理開始 (${Math.round(chunk.size/1024/1024*100)/100}MB)`);
+      
       const transcriptionResult = await this.aiService.processAudioTranscription(
         chunk.data, 
         chunkMeetingInfo,
@@ -541,40 +595,23 @@ class AudioSummaryService {
         throw new Error(`Chunk transcription failed or too short: ${transcriptionResult?.transcription?.length || 0} characters`);
       }
       
-      logger.info(`Transcription successful: ${transcriptionResult.transcription.length} characters`);
+      logger.info(`✅ チャンク${chunkIndex + 1}: 文字起こし完了 (${transcriptionResult.transcription.length}文字, ${transcriptionResult.processingTime}ms)`);
       
-      // Step 2: チャンク要約生成（文字起こし成功時のみ実行）
-      logger.info(`Starting summary generation from transcription (${transcriptionResult.transcription.length} chars) for: ${chunkMeetingInfo.topic}`);
-      const summaryResult = await this.aiService.generateSummaryFromTranscription(
-        transcriptionResult.transcription,
-        chunkMeetingInfo,
-        processingOptions
-      );
-      
-      // 【強制チェック】要約結果の厳密な検証
-      if (!summaryResult || !summaryResult.structuredSummary) {
-        throw new Error('Chunk summary generation failed - no structured summary returned');
-      }
-      
-      logger.info('Summary generation successful');
-      
-      // 2段階フロー結果を統合
+      // 【重要】要約生成は削除 - 全チャンク完了後に実行
       return {
         transcription: transcriptionResult.transcription,
-        structuredSummary: summaryResult.structuredSummary,
-        processingTime: transcriptionResult.processingTime + summaryResult.processingTime,
+        processingTime: transcriptionResult.processingTime,
         model: transcriptionResult.model,
-        timestamp: summaryResult.timestamp,
+        timestamp: transcriptionResult.timestamp,
         chunkIndex,
-        flowType: '2-stage-chunk-processing'
+        flowType: 'transcription-only-phase',
+        // 要約関連のプロパティは削除
+        structuredSummary: null  // 明示的にnullで要約未実行を示す
       };
       
     } catch (error) {
-      // 【修正】フォールバック削除 - 2段階フロー強制実装
-      logger.error(`チャンク${chunkIndex + 1} 2段階処理失敗 - 処理中断: ${error.message}`);
-      
-      // 文字起こし失敗時は要約生成をスキップして明確にエラーを返す
-      throw new Error(`2-stage flow failed for chunk ${chunkIndex + 1}: ${error.message}`);
+      logger.error(`❌ チャンク${chunkIndex + 1} 文字起こし失敗: ${error.message}`);
+      throw new Error(`Transcription-only processing failed for chunk ${chunkIndex + 1}: ${error.message}`);
     }
   }
 
