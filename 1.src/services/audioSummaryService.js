@@ -526,29 +526,37 @@ class AudioSummaryService {
       }
     };
     
-    // 【新】2段階フロー：チャンクでも文字起こし→要約の順序で処理
+    // 【修正】2段階フロー強制実装：文字起こし失敗時は要約生成を停止
     try {
-      // Step 1: チャンク文字起こし
+      // Step 1: チャンク文字起こし（必須・失敗時は即中断）
+      logger.info(`Starting transcription-only processing for: ${chunkMeetingInfo.topic}`);
       const transcriptionResult = await this.aiService.processAudioTranscription(
         chunk.data, 
         chunkMeetingInfo,
         processingOptions
       );
       
-      if (!transcriptionResult || !transcriptionResult.transcription) {
-        throw new Error('Chunk transcription failed');
+      // 【強制チェック】文字起こし結果の厳密な検証
+      if (!transcriptionResult || !transcriptionResult.transcription || transcriptionResult.transcription.length < 10) {
+        throw new Error(`Chunk transcription failed or too short: ${transcriptionResult?.transcription?.length || 0} characters`);
       }
       
-      // Step 2: チャンク要約生成
+      logger.info(`Transcription successful: ${transcriptionResult.transcription.length} characters`);
+      
+      // Step 2: チャンク要約生成（文字起こし成功時のみ実行）
+      logger.info(`Starting summary generation from transcription (${transcriptionResult.transcription.length} chars) for: ${chunkMeetingInfo.topic}`);
       const summaryResult = await this.aiService.generateSummaryFromTranscription(
         transcriptionResult.transcription,
         chunkMeetingInfo,
         processingOptions
       );
       
+      // 【強制チェック】要約結果の厳密な検証
       if (!summaryResult || !summaryResult.structuredSummary) {
-        throw new Error('Chunk summary generation failed');
+        throw new Error('Chunk summary generation failed - no structured summary returned');
       }
+      
+      logger.info('Summary generation successful');
       
       // 2段階フロー結果を統合
       return {
@@ -562,11 +570,11 @@ class AudioSummaryService {
       };
       
     } catch (error) {
-      // エラー時は旧メソッドでフォールバック（一時的措置）
-      logger.warn(`チャンク${chunkIndex + 1} 2段階処理失敗、フォールバック実行: ${error.message}`);
+      // 【修正】フォールバック削除 - 2段階フロー強制実装
+      logger.error(`チャンク${chunkIndex + 1} 2段階処理失敗 - 処理中断: ${error.message}`);
       
-      // TODO: フォールバック実装が必要な場合
-      throw error;
+      // 文字起こし失敗時は要約生成をスキップして明確にエラーを返す
+      throw new Error(`2-stage flow failed for chunk ${chunkIndex + 1}: ${error.message}`);
     }
   }
 
