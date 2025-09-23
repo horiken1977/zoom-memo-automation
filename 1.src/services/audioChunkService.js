@@ -101,10 +101,11 @@ class AudioChunkService {
     // 【デバッグ】meetingInfo.duration確認
     logger.info(`🔍 AudioChunk: meetingInfo.duration=${meetingInfo.duration}, bufferSize=${Math.round(audioBuffer.length/1024/1024)}MB`);
     
-    // meetingInfoから時間が取得できる場合はそれを使用
+    // meetingInfoから時間が取得できる場合はそれを使用（分→秒変換）
     if (meetingInfo.duration && meetingInfo.duration > 0) {
-      logger.info(`🔍 AudioChunk: meetingInfo.durationを使用: ${meetingInfo.duration}秒`);
-      return meetingInfo.duration;
+      const durationInSeconds = meetingInfo.duration * 60; // 分→秒変換
+      logger.info(`🔍 AudioChunk: meetingInfo.duration使用: ${meetingInfo.duration}分(${durationInSeconds}秒)`);
+      return durationInSeconds;
     }
     
     // ファイルサイズからの推定（M4A: 約1MB/分、品質により変動）
