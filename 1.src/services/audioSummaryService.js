@@ -181,7 +181,7 @@ class AudioSummaryService {
       
       // 【Phase A+B統合】タイムアウト検出システム：大容量音声の自動チャンク分割
       const audioSizeMB = audioBuffer.length / (1024 * 1024);
-      const estimatedDuration = meetingInfo.duration || (audioSizeMB * 60); // 1MB≈1分と仮定
+      const estimatedDuration = meetingInfo.duration || (audioSizeMB * 60); // 1MB≒1分と仮定
       
       // チャンク分割条件判定（複数条件でチェック）
       const shouldUseChunking = 
@@ -255,30 +255,49 @@ class AudioSummaryService {
       // Phase1: タイムアウト警告チェック
       await shouldSendTimeoutWarning(Date.now());
       
-      // 1. 統合AI処理（文字起こし＋構造化要約を1回のAPI呼び出しで実行、5回リトライ付き）
-      debugTimer('Step 1: processAudioWithStructuredOutput開始（統合AI処理）');
-      logger.info('Starting unified audio processing with Gemini (transcription + structured summary)...');
+      // 【新】2段階フロー Step 1: 音声→文字起こし
+      debugTimer('Step 1: processAudioTranscription開始（音声→文字起こし）');
+      logger.info('Starting transcription-only processing with Gemini...');
       
-      const unifiedResult = await this.aiService.processAudioWithStructuredOutput(processedAudioBuffer, fileName, meetingInfo);
-      debugTimer('Step 1: processAudioWithStructuredOutput完了', `transcription length: ${unifiedResult?.transcription?.length || 0}, summary generated: ${!!unifiedResult?.structuredSummary}`);
+      const transcriptionResult = await this.aiService.processAudioTranscription(processedAudioBuffer, meetingInfo);
+      debugTimer('Step 1: processAudioTranscription完了', `transcription length: ${transcriptionResult?.transcription?.length || 0}`);
       
-      // 統合結果から個別データを抽出（後方互換性のため）
-      const transcriptionResult = {
-        transcription: unifiedResult.transcription,
-        meetingInfo: unifiedResult.meetingInfo,
-        fileName: fileName,
-        timestamp: unifiedResult.timestamp,
-        audioBufferSize: unifiedResult.audioBufferSize,
-        model: unifiedResult.model,
-        attempt: unifiedResult.attempt
-      };
-      
-      const structuredSummary = unifiedResult.structuredSummary;
+      // 文字起こし結果の検証
+      if (!transcriptionResult || !transcriptionResult.transcription || transcriptionResult.transcription.length < 50) {
+        throw new Error('Transcription failed or too short');
+      }
 
-      // 2. 結果の検証
-      debugTimer('Step 2: validateProcessingResult開始');
-      this.validateProcessingResult({ transcription: transcriptionResult, structuredSummary: structuredSummary });
-      debugTimer('Step 2: validateProcessingResult完了');
+      // Phase2: タイムアウト警告チェック
+      await shouldSendTimeoutWarning(Date.now());
+      
+      // 【新】2段階フロー Step 2: 文字起こし→要約
+      debugTimer('Step 2: generateSummaryFromTranscription開始（文字起こし→要約）');
+      logger.info('Starting summary generation from transcription...');
+      
+      const summaryResult = await this.aiService.generateSummaryFromTranscription(
+        transcriptionResult.transcription, 
+        meetingInfo
+      );
+      debugTimer('Step 2: generateSummaryFromTranscription完了', `summary generated: ${!!summaryResult?.structuredSummary}`);
+
+      // 要約結果の検証
+      if (!summaryResult || !summaryResult.structuredSummary) {
+        throw new Error('Summary generation failed');
+      }
+
+      const structuredSummary = summaryResult.structuredSummary;
+
+      // 3. 結果の検証
+      debugTimer('Step 3: validateProcessingResult開始');
+      this.validateProcessingResult({ 
+        transcription: {
+          transcription: transcriptionResult.transcription,
+          fileName: fileName,
+          timestamp: transcriptionResult.timestamp
+        }, 
+        structuredSummary: structuredSummary 
+      });
+      debugTimer('Step 3: validateProcessingResult完了');
       
       const totalTime = debugTimer('processRealAudioBuffer完了');
       
@@ -302,7 +321,15 @@ class AudioSummaryService {
       
       return {
         status: 'success',
-        transcription: transcriptionResult,
+        transcription: {
+          transcription: transcriptionResult.transcription,
+          meetingInfo: transcriptionResult.meetingInfo,
+          fileName: fileName,
+          timestamp: transcriptionResult.timestamp,
+          audioBufferSize: audioBuffer.length,
+          model: transcriptionResult.model,
+          processingTime: transcriptionResult.processingTime
+        },
         structuredSummary: structuredSummary, // TC203で期待される構造
         analysis: structuredSummary,
         audioFileName: fileName,
@@ -314,10 +341,11 @@ class AudioSummaryService {
         meetingInfo: meetingInfo,
         processedAt: new Date().toISOString(),
         totalProcessingTime: totalTime,
-        // 統合AI処理の追加情報
-        apiCallReduction: '50%', // 2回→1回のAPI呼び出し削減
-        retryCapability: '5回リトライ対応',
-        unifiedProcessing: true,
+        // 2段階AI処理の追加情報
+        flowType: '2-stage-processing', // 1回→2回のAPI呼び出し分離
+        transcriptionTime: transcriptionResult.processingTime,
+        summaryTime: summaryResult.processingTime,
+        separatedProcessing: true,
         // Phase A+B改善情報
         phaseABImprovements: {
           maxOutputTokens: 65536,
@@ -498,11 +526,48 @@ class AudioSummaryService {
       }
     };
     
-    return await this.aiService.processAudioWithStructuredOutput(
-      chunk.data, 
-      chunkMeetingInfo, 
-      processingOptions
-    );
+    // 【新】2段階フロー：チャンクでも文字起こし→要約の順序で処理
+    try {
+      // Step 1: チャンク文字起こし
+      const transcriptionResult = await this.aiService.processAudioTranscription(
+        chunk.data, 
+        chunkMeetingInfo,
+        processingOptions
+      );
+      
+      if (!transcriptionResult || !transcriptionResult.transcription) {
+        throw new Error('Chunk transcription failed');
+      }
+      
+      // Step 2: チャンク要約生成
+      const summaryResult = await this.aiService.generateSummaryFromTranscription(
+        transcriptionResult.transcription,
+        chunkMeetingInfo,
+        processingOptions
+      );
+      
+      if (!summaryResult || !summaryResult.structuredSummary) {
+        throw new Error('Chunk summary generation failed');
+      }
+      
+      // 2段階フロー結果を統合
+      return {
+        transcription: transcriptionResult.transcription,
+        structuredSummary: summaryResult.structuredSummary,
+        processingTime: transcriptionResult.processingTime + summaryResult.processingTime,
+        model: transcriptionResult.model,
+        timestamp: summaryResult.timestamp,
+        chunkIndex,
+        flowType: '2-stage-chunk-processing'
+      };
+      
+    } catch (error) {
+      // エラー時は旧メソッドでフォールバック（一時的措置）
+      logger.warn(`チャンク${chunkIndex + 1} 2段階処理失敗、フォールバック実行: ${error.message}`);
+      
+      // TODO: フォールバック実装が必要な場合
+      throw error;
+    }
   }
 
   /**
@@ -621,10 +686,28 @@ class AudioSummaryService {
     );
     
     for (const result of allResults) {
-      if (result.success && result.data?.transcription) {
-        // 成功チャンクの文字起こし
-        const timeStamp = this.formatTimeRange(result.timeRange);
-        transcriptionParts.push(`\n--- ${timeStamp} ---\n${result.data.transcription}`);
+      if (result.success && result.data) {
+        // 【修正】2段階フロー対応: データ構造を確認
+        let transcriptionText = null;
+        
+        // 新フロー: result.data.transcription (文字列)
+        if (typeof result.data.transcription === 'string') {
+          transcriptionText = result.data.transcription;
+        }
+        // 旧フロー: result.data.transcription.transcription (オブジェクト)
+        else if (result.data.transcription?.transcription) {
+          transcriptionText = result.data.transcription.transcription;
+        }
+        
+        if (transcriptionText && transcriptionText.length > 0) {
+          const timeStamp = this.formatTimeRange(result.timeRange);
+          transcriptionParts.push(`\n--- ${timeStamp} ---\n${transcriptionText}`);
+          logger.info(`📝 チャンク${result.chunkIndex + 1}: ${transcriptionText.length}文字取得`);
+        } else {
+          logger.warn(`⚠️ チャンク${result.chunkIndex + 1}: 文字起こしテキストが空`);
+          const timeStamp = this.formatTimeRange(result.timeRange);
+          transcriptionParts.push(`\n--- ${timeStamp} ---\n[文字起こしデータが空]`);
+        }
       } else if (result.fallback?.transcription) {
         // 失敗チャンクのフォールバック
         transcriptionParts.push(`\n${result.fallback.transcription}`);

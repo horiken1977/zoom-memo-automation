@@ -918,7 +918,193 @@ ${transcription}`;
   }
 
   /**
-   * 音声データから構造化された会議要約を一度に生成（統合版）
+   * 【新】2段階フロー: 第1段階 - 音声から文字起こしのみ
+   * @param {Buffer|string} audioInput - 音声バッファまたはファイルパス
+   * @param {Object} meetingInfo - 会議情報
+   * @param {Object} options - オプション設定
+   * @returns {Promise<Object>} 文字起こし結果
+   */
+  async processAudioTranscription(audioInput, meetingInfo, options = {}) {
+    const startTime = Date.now();
+    const maxRetries = options.maxRetries || 5;
+    const isBuffer = Buffer.isBuffer(audioInput);
+    let lastError = null;
+    
+    logger.info(`Starting transcription-only processing for: ${meetingInfo.topic}`);
+    
+    // 音声データの準備と圧縮処理
+    let audioData;
+    let mimeType;
+    let compressionInfo = { applied: false };
+    
+    try {
+      if (isBuffer) {
+        // バッファの圧縮処理
+        const compressedBuffer = await this.compressAudioBuffer(audioInput, 18);
+        audioData = compressedBuffer.toString('base64');
+        mimeType = options.mimeType || 'audio/aac';
+        compressionInfo = {
+          applied: compressedBuffer.length !== audioInput.length,
+          originalSize: `${(audioInput.length / 1024 / 1024).toFixed(2)}MB`,
+          processedSize: `${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`
+        };
+        logger.info(`Processing audio from buffer: ${compressionInfo.originalSize} -> ${compressionInfo.processedSize}`);
+      } else {
+        // ファイルパスの場合
+        const fileBuffer = await fs.readFile(audioInput);
+        const compressedBuffer = await this.compressAudioBuffer(fileBuffer, 18);
+        audioData = compressedBuffer.toString('base64');
+        mimeType = this.getMimeType(audioInput);
+        compressionInfo = {
+          applied: compressedBuffer.length !== fileBuffer.length,
+          originalSize: `${(fileBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+          processedSize: `${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`
+        };
+        logger.info(`Processing audio from file: ${compressionInfo.originalSize} -> ${compressionInfo.processedSize}`);
+      }
+
+      // 文字起こし専用プロンプト
+      const transcriptionPrompt = this.buildTranscriptionOnlyPrompt(meetingInfo);
+
+      // リトライループ
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          await this.ensureModelInitialized();
+          logger.info(`Transcription attempt ${attempt}/${maxRetries} for: ${meetingInfo.topic}`);
+
+          const result = await this.model.generateContent([
+            transcriptionPrompt,
+            {
+              inlineData: {
+                data: audioData,
+                mimeType: mimeType
+              }
+            }
+          ], {
+            generationConfig: {
+              maxOutputTokens: 65536,
+              temperature: 0.1,
+              topP: 0.8,
+              topK: 40
+            }
+          });
+          
+          const response = result.response.text();
+          
+          // 文字起こしテキストの抽出と検証
+          const transcriptionText = this.extractTranscriptionText(response);
+          
+          if (!transcriptionText || transcriptionText.length < 50) {
+            throw new Error('Transcription too short or missing');
+          }
+
+          const processingTime = Date.now() - startTime;
+          logger.info(`Transcription successful on attempt ${attempt} (${processingTime}ms): ${transcriptionText.length} characters`);
+          
+          return {
+            transcription: transcriptionText,
+            processingTime,
+            compressionInfo,
+            meetingInfo,
+            model: this.selectedModel,
+            timestamp: new Date().toISOString()
+          };
+          
+        } catch (attemptError) {
+          lastError = attemptError;
+          logger.warn(`Transcription attempt ${attempt}/${maxRetries} failed: ${attemptError.message}`);
+          
+          if (attempt < maxRetries) {
+            const waitTime = Math.min(2000 * attempt, 10000);
+            logger.info(`Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+      }
+      
+      throw new Error(`Transcription failed after ${maxRetries} attempts: ${lastError?.message}`);
+      
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      logger.error(`Transcription processing failed after ${processingTime}ms:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 【新】2段階フロー: 第2段階 - 文字起こしから要約生成
+   * @param {string} transcriptionText - 文字起こしテキスト
+   * @param {Object} meetingInfo - 会議情報
+   * @param {Object} options - オプション設定
+   * @returns {Promise<Object>} 構造化要約結果
+   */
+  async generateSummaryFromTranscription(transcriptionText, meetingInfo, options = {}) {
+    const startTime = Date.now();
+    const maxRetries = options.maxRetries || 5;
+    let lastError = null;
+    
+    logger.info(`Starting summary generation from transcription (${transcriptionText.length} chars) for: ${meetingInfo.topic}`);
+    
+    // 文字起こしテキストの最小長チェック
+    if (!transcriptionText || transcriptionText.length < 100) {
+      throw new Error(`Transcription too short for summary generation: ${transcriptionText.length} characters`);
+    }
+
+    // 要約専用プロンプト（文字起こしテキストを入力として使用）
+    const summaryPrompt = this.buildSummaryFromTranscriptionPrompt(transcriptionText, meetingInfo);
+
+    // リトライループ
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.ensureModelInitialized();
+        logger.info(`Summary generation attempt ${attempt}/${maxRetries} for: ${meetingInfo.topic}`);
+
+        const result = await this.model.generateContent([summaryPrompt], {
+          generationConfig: {
+            maxOutputTokens: 65536,
+            temperature: 0.1,
+            topP: 0.8,
+            topK: 40
+          }
+        });
+        
+        const response = result.response.text();
+        
+        // 要約JSONの解析
+        const summaryResult = this.parseSummaryResponse(response);
+        
+        if (!summaryResult || !summaryResult.meetingPurpose) {
+          throw new Error('Summary parsing failed or missing required fields');
+        }
+
+        const processingTime = Date.now() - startTime;
+        logger.info(`Summary generation successful on attempt ${attempt} (${processingTime}ms)`);
+        
+        return {
+          structuredSummary: summaryResult,
+          processingTime,
+          meetingInfo,
+          model: this.selectedModel,
+          timestamp: new Date().toISOString()
+        };
+        
+      } catch (attemptError) {
+        lastError = attemptError;
+        logger.warn(`Summary generation attempt ${attempt}/${maxRetries} failed: ${attemptError.message}`);
+        
+        if (attempt < maxRetries) {
+          const waitTime = Math.min(2000 * attempt, 10000);
+          logger.info(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    throw new Error(`Summary generation failed after ${maxRetries} attempts: ${lastError?.message}`);
+  }
+
+  /**
+   * 【更新】音声データから構造化された会議要約を生成（2段階フロー対応）
    * @param {Buffer|string} audioInput - 音声バッファまたはファイルパス
    * @param {Object} meetingInfo - 会議情報
    * @param {Object} options - オプション設定
@@ -926,17 +1112,234 @@ ${transcription}`;
    */
   async processAudioWithStructuredOutput(audioInput, meetingInfo, options = {}) {
     const startTime = Date.now();
-    const maxRetries = options.maxRetries || 5;
-    const isBuffer = Buffer.isBuffer(audioInput);
-    let lastError = null;
     
-    logger.info(`Starting unified audio processing for: ${meetingInfo.topic}`);
-    // 音声データの準備と圧縮処理
-    let audioData;
-    let mimeType;
-    let compressionInfo = { applied: false };
+    logger.info(`Starting 2-stage audio processing for: ${meetingInfo.topic}`);
     
     try {
+      // 【第1段階】音声から文字起こし
+      logger.info('🔸 Stage 1: Transcription from audio');
+      const transcriptionResult = await this.processAudioTranscription(audioInput, meetingInfo, options);
+      
+      // 【第2段階】文字起こしから要約生成
+      logger.info('🔸 Stage 2: Summary from transcription');
+      const summaryResult = await this.generateSummaryFromTranscription(
+        transcriptionResult.transcription, 
+        meetingInfo, 
+        options
+      );
+      
+      // 【結果統合】後方互換性のため既存の戻り値構造に合わせる
+      const totalProcessingTime = Date.now() - startTime;
+      logger.info(`2-stage processing completed (${totalProcessingTime}ms): ${transcriptionResult.transcription.length} chars transcription + structured summary`);
+      
+      return {
+        success: true,
+        qualityScore: 85, // 2段階フローなので高品質
+        meetingInfo: transcriptionResult.meetingInfo,
+        transcription: transcriptionResult.transcription,
+        structuredSummary: summaryResult.structuredSummary,
+        
+        // 後方互換性のための既存フィールド
+        summary: summaryResult.structuredSummary.overview || '',
+        participants: summaryResult.structuredSummary.attendees || [],
+        actionItems: summaryResult.structuredSummary.actionItems || [],
+        decisions: summaryResult.structuredSummary.decisions || [],
+        
+        // メタ情報
+        model: transcriptionResult.model,
+        timestamp: transcriptionResult.timestamp,
+        processingTime: totalProcessingTime,
+        compressionInfo: transcriptionResult.compressionInfo,
+        
+        // 2段階フロー情報
+        twoStageProcessing: true,
+        transcriptionTime: transcriptionResult.processingTime,
+        summaryTime: summaryResult.processingTime
+      };
+      
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      logger.error(`2-stage audio processing failed after ${processingTime}ms:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 文字起こし専用プロンプトを構築
+   */
+  buildTranscriptionOnlyPrompt(meetingInfo) {
+    return `あなたは会議の音声文字起こし専門家です。音声ファイルから正確で詳細な文字起こしを生成してください。
+
+**会議情報:**
+- 会議名: ${meetingInfo.topic}
+- 開催日時: ${meetingInfo.startTime}
+- 時間: ${meetingInfo.duration}分
+- 主催者: ${meetingInfo.hostName}
+
+**文字起こしルール:**
+1. 話者は「話者A」「話者B」のように区別してください
+2. 発言のタイムスタンプを [MM:SS] 形式で含めてください
+3. 音声が不明瞭な箇所は [聞き取り困難] と記載
+4. 重要な間、笑い声、咳なども [間] [笑い] [咳] として記録
+5. 全ての発言を漏れなく文字起こししてください
+
+**出力形式:**
+プレーンテキスト形式で、以下のような構造で出力してください：
+
+[00:00] 話者A: 会議を開始します。今日は...
+[00:15] 話者B: はい、よろしくお願いします...
+[00:32] 話者A: まず最初に...
+
+音声品質に関する情報や聞き取り困難だった部分があれば最後に記載してください。`;
+  }
+
+  /**
+   * 文字起こしから要約生成用プロンプトを構築
+   */
+  buildSummaryFromTranscriptionPrompt(transcriptionText, meetingInfo) {
+    return `あなたは会議要約の専門家です。以下の文字起こしテキストから構造化された会議要約を生成してください。
+
+**会議情報:**
+- 会議名: ${meetingInfo.topic}
+- 開催日時: ${meetingInfo.startTime}
+- 時間: ${meetingInfo.duration}分
+- 主催者: ${meetingInfo.hostName}
+
+**文字起こしテキスト:**
+${transcriptionText}
+
+**出力JSON構造:**
+以下の構造で正確にJSONを生成してください：
+
+{
+  "meetingPurpose": "この会議の目的（概要や結論ではなく、なぜこの会議を開催したのかの目的のみ）",
+  "clientName": "相手企業名（「○○株式会社」「○○様」「○○社」など、実際の会話から抽出）",
+  "attendeesAndCompanies": [
+    {
+      "name": "参加者の氏名",
+      "company": "所属会社名",
+      "role": "役職名"
+    }
+  ],
+  "materials": [
+    {
+      "materialName": "資料名",
+      "description": "資料の内容・説明",
+      "mentionedBy": "言及した発言者",
+      "timestamp": "MM:SS"
+    }
+  ],
+  "discussionsByTopic": [
+    {
+      "topicTitle": "論点・議論テーマ（具体的で詳細な論点名）",
+      "timeRange": {
+        "startTime": "MM:SS",
+        "endTime": "MM:SS"
+      },
+      "discussionFlow": {
+        "backgroundContext": "この論点が出た背景・きっかけ",
+        "keyArguments": [
+          {
+            "speaker": "発言者名",
+            "company": "所属会社",
+            "timestamp": "MM:SS",
+            "argument": "発言内容・主張",
+            "reasoning": "その主張の根拠・理由",
+            "reactionFromOthers": "他の参加者からの反応・反論"
+          }
+        ],
+        "logicalProgression": "議論がどのような論理展開で進行したか（発言→反応→反論→合意/対立の流れ）",
+        "decisionProcess": "どのような過程で決定に至ったか、または未解決で終わったか"
+      },
+      "outcome": "この論点の結論・合意事項・未解決事項"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "決定された事項",
+      "decidedBy": "決定者・決定過程",
+      "reason": "決定に至った理由",
+      "implementationDate": "実施時期（YYYY/MM/DD）",
+      "relatedTopic": "関連する論点"
+    }
+  ],
+  "nextActionsWithDueDate": [
+    {
+      "action": "具体的なNext Action",
+      "assignee": "担当者名",
+      "dueDate": "YYYY/MM/DD",
+      "priority": "high/medium/low",
+      "relatedDecision": "関連する決定事項"
+    }
+  ],
+  "audioQuality": {
+    "clarity": "excellent/good/fair/poor",
+    "issues": ["音声品質の問題があれば記載"],
+    "transcriptionConfidence": "high/medium/low"
+  }
+}
+
+**重要な指示:**
+- 文字起こしテキストの内容のみに基づいて要約を作成してください
+- 推測や想像で情報を追加しないでください
+- 時間表記は文字起こしの [MM:SS] 形式に従ってください`;
+  }
+
+  /**
+   * 文字起こしテキストを抽出
+   */
+  extractTranscriptionText(response) {
+    // シンプルにレスポンス全体を文字起こしとして扱う
+    // マークダウンブロックがあれば除去
+    let transcription = response;
+    
+    // ```で囲まれた部分があれば除去
+    transcription = transcription.replace(/```[^`]*```/g, '');
+    
+    // 不要な前置きテキストを除去
+    transcription = transcription.replace(/^[^[]*(?=\[)/, ''); // [MM:SS]より前のテキストを除去
+    
+    return transcription.trim();
+  }
+
+  /**
+   * 要約レスポンスを解析
+   */
+  parseSummaryResponse(response) {
+    // 既存のJSON解析ロジックを再利用
+    try {
+      // 手法1: レスポンス全体をJSONとしてパース
+      const parsed = JSON.parse(response);
+      logger.info('Summary JSON parsing success with direct parse');
+      return parsed;
+    } catch (parseError1) {
+      try {
+        // 手法2: マークダウンブロックを除去してパース
+        const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[1].trim());
+          logger.info('Summary JSON parsing success with markdown block removal');
+          return parsed;
+        } else {
+          throw new Error('No JSON markdown block found');
+        }
+      } catch (parseError2) {
+        // 手法3: 最初の { から最後の } までを抽出してパース
+        const jsonStart = response.indexOf('{');
+        const jsonEnd = response.lastIndexOf('}');
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          const jsonContent = response.substring(jsonStart, jsonEnd + 1);
+          const parsed = JSON.parse(jsonContent);
+          logger.info('Summary JSON parsing success with bracket extraction');
+          return parsed;
+        } else {
+          throw new Error('Summary JSON parsing failed - no valid JSON structure found');
+        }
+      }
+    }
+  }
+
+  // 既存メソッドは維持...
       if (isBuffer) {
         // バッファの圧縮処理
         const compressedBuffer = await this.compressAudioBuffer(audioInput, 18);

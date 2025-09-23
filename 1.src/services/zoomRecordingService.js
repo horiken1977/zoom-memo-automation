@@ -417,6 +417,9 @@ class ZoomRecordingService {
         const hasVideoFile = recording.recording_files?.some(file => file.file_type === 'MP4');
         meetingInfo.hasVideoFile = hasVideoFile;
         
+        // 【デバッグ】meetingInfo.duration値確認
+        logger.info(`🔍 meetingInfo確認: duration=${meetingInfo.duration}分, topic=${meetingInfo.topic}`);
+        
         // Gemini AIで文字起こし・要約処理
         const analysisResult = await this.audioSummaryService.processRealAudioBuffer(
           audioBuffer,
@@ -424,21 +427,40 @@ class ZoomRecordingService {
           meetingInfo
         );
         
+        // 【修正】文字起こし文字数取得を改善
+        let transcriptionLength = 0;
+        let transcriptionData = null;
+        
+        if (analysisResult.transcription) {
+          // チャンク処理の場合: 文字列として統合済み
+          if (typeof analysisResult.transcription === 'string') {
+            transcriptionLength = analysisResult.transcription.length;
+            transcriptionData = analysisResult.transcription;
+          }
+          // 通常処理の場合: オブジェクト構造
+          else if (analysisResult.transcription.transcription) {
+            transcriptionLength = analysisResult.transcription.transcription.length;
+            transcriptionData = analysisResult.transcription;
+          } else {
+            logger.warn('⚠️ 予期しない文字起こしデータ構造:', typeof analysisResult.transcription);
+          }
+        }
+        
         if (executionLogger) {
           executionLogger.completeStep('AUDIO_PROCESSING', {
             fileName: audioFileName,
             fileSize: audioFile.file_size,
-            transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
+            transcriptionLength: transcriptionLength,
             summaryGenerated: !!analysisResult.structuredSummary
           });
         }
         
-        logger.info(`音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+        logger.info(`音声処理完了: 文字起こし${transcriptionLength}文字`);
         
         return {
           success: true,
           fileName: audioFile.file_name,
-          transcription: analysisResult.transcription,
+          transcription: transcriptionData,
           summary: analysisResult.structuredSummary,
           processingTime: analysisResult.processingTime || 0
         };
@@ -478,7 +500,7 @@ class ZoomRecordingService {
         });
       }
       
-      logger.info(`動画から音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+      logger.info(`動画から音声処理完了: 文字起こし${analysisResult.transcription?.length || 0}文字`);
       
       return {
         success: true,
@@ -535,12 +557,12 @@ class ZoomRecordingService {
           fileName: videoFileName,
           fileSize: videoFile.file_size,
           processedAs: 'video',
-          transcriptionLength: analysisResult.transcription?.transcription?.length || 0,
+          transcriptionLength: analysisResult.transcription?.length || 0,
           summaryGenerated: !!analysisResult.structuredSummary
         });
       }
       
-      logger.info(`動画からの音声処理完了: 文字起こし${analysisResult.transcription?.transcription?.length || 0}文字`);
+      logger.info(`動画からの音声処理完了: 文字起こし${analysisResult.transcription?.length || 0}文字`);
       
       return {
         success: true,

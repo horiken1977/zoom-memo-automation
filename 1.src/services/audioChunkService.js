@@ -98,20 +98,24 @@ class AudioChunkService {
    * 音声バッファから推定時間を計算
    */
   estimateDurationFromBuffer(audioBuffer, meetingInfo = {}) {
+    // 【デバッグ】meetingInfo.duration確認
+    logger.info(`🔍 AudioChunk: meetingInfo.duration=${meetingInfo.duration}, bufferSize=${Math.round(audioBuffer.length/1024/1024)}MB`);
+    
     // meetingInfoから時間が取得できる場合はそれを使用
     if (meetingInfo.duration && meetingInfo.duration > 0) {
+      logger.info(`🔍 AudioChunk: meetingInfo.durationを使用: ${meetingInfo.duration}秒`);
       return meetingInfo.duration;
     }
     
     // ファイルサイズからの推定（M4A: 約1MB/分、品質により変動）
     const audioSizeMB = audioBuffer.length / (1024 * 1024);
     
-    // 音声フォーマット別の推定レート
+    // 音声フォーマット別の推定レート（**修正**: より正確な値に調整）
     const estimationRates = {
-      'm4a': 0.9, // MB/分
-      'mp3': 1.2,
+      'm4a': 0.8,   // **修正**: 0.9 → 0.8 (より保守的)
+      'mp3': 1.0,   // **修正**: 1.2 → 1.0
       'wav': 10.0,
-      'default': 1.0
+      'default': 0.9  // **修正**: 1.0 → 0.9 (デフォルトも保守的に)
     };
     
     // フォーマット検出
@@ -120,6 +124,19 @@ class AudioChunkService {
     
     const estimatedMinutes = audioSizeMB / rate;
     const estimatedSeconds = Math.max(300, estimatedMinutes * 60); // 最低5分
+    
+    // **追加**: 異常値チェックと警告
+    if (estimatedSeconds < 600) { // 10分未満
+      logger.warn(`⚠️ 短時間推定: ${audioSizeMB.toFixed(1)}MB → ${Math.round(estimatedSeconds/60)}分 (要確認)`);
+    }
+    
+    if (audioSizeMB > 30 && estimatedSeconds < 1800) { // 30MB超で30分未満
+      logger.warn(`⚠️ 異常な時間推定: ${audioSizeMB.toFixed(1)}MB → ${Math.round(estimatedSeconds/60)}分 (計算確認が必要)`);
+      // **フォールバック**: 大容量ファイルの場合、より保守的な推定
+      const fallbackSeconds = Math.max(estimatedSeconds, audioSizeMB * 60); // 1MB=1分として計算
+      logger.info(`🔄 フォールバック推定適用: ${Math.round(fallbackSeconds/60)}分`);
+      return fallbackSeconds;
+    }
     
     logger.info(`📊 時間推定: ${audioSizeMB.toFixed(1)}MB (${format}) → ${Math.round(estimatedSeconds/60)}分${Math.round(estimatedSeconds%60)}秒`);
     
