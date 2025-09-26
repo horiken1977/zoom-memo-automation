@@ -118,14 +118,10 @@ class AIService {
    */
   async ensureTranscriptionModelInitialized(forceReinit = false) {
     if (!this.transcriptionModel || forceReinit) {
-      // 【Phase1】400エラー対策 - より多様なモデルを試行
+      // 【修正】文字起こし専用軽量モデル強制選択 - 最軽量モデルのみ使用
       const transcriptionModels = [
-        'gemini-1.5-flash',      // 軽量・高速（推奨）
-        'gemini-1.5-pro',        // 高性能版
-        'gemini-1.0-pro',        // 最軽量（代替）
-        'gemini-2.0-flash-exp',  // 実験版
-        'gemini-1.5-pro',        // より安定（フォールバック）
-        'gemini-2.5-pro'         // 最終手段
+        'gemini-1.5-flash',      // 文字起こし専用最軽量モデル（強制使用）
+        'gemini-1.0-pro'         // フォールバック最軽量
       ];
       
       // エラーカウンタ初期化
@@ -133,53 +129,33 @@ class AIService {
         this.transcriptionErrorCount = 0;
       }
       
-      // 400エラー多発時は異なるモデルを試行
-      if (this.transcriptionErrorCount > 3 && !forceReinit) {
-        logger.warn(`文字起こしエラー多発(${this.transcriptionErrorCount}回), モデル再選択`);
-        // 前回使用モデルをスキップ
-        const currentModel = this.selectedTranscriptionModel;
-        const filteredModels = transcriptionModels.filter(m => m !== currentModel);
-        
-        for (const modelName of filteredModels) {
-          try {
-            const testModel = this.genAI.getGenerativeModel({ model: modelName });
-            // 軽量テストで利用可能性確認
-            await testModel.generateContent('test');
-            this.transcriptionModel = testModel;
-            this.selectedTranscriptionModel = modelName;
-            this.transcriptionErrorCount = 0; // リセット
-            logger.info(`文字起こしモデル切り替え成功: ${currentModel} → ${modelName}`);
-            break;
-          } catch (error) {
-            logger.debug(`文字起こしモデル ${modelName} 利用不可:`, error.message);
-            continue;
-          }
-        }
-      } else {
-        // 通常の初期化
-        for (const modelName of transcriptionModels) {
-          try {
-            const testModel = this.genAI.getGenerativeModel({ model: modelName });
-            // 軽量テストで利用可能性確認
-            await testModel.generateContent('テスト');
-            this.transcriptionModel = testModel;
-            this.selectedTranscriptionModel = modelName;
-            logger.info(`文字起こし専用軽量モデル選択: ${modelName}`);
-            break;
-          } catch (error) {
-            logger.debug(`文字起こしモデル ${modelName} 利用不可:`, error.message);
-            continue;
-          }
+      logger.info('文字起こし専用軽量モデル強制選択開始 - Gemini 1.5-flash優先');
+      
+      // 最軽量モデルを強制使用
+      for (const modelName of transcriptionModels) {
+        try {
+          const testModel = this.genAI.getGenerativeModel({ model: modelName });
+          
+          // 軽量テストで利用可能性確認
+          logger.info(`文字起こしモデル接続テスト: ${modelName}`);
+          await testModel.generateContent('test');
+          
+          this.transcriptionModel = testModel;
+          this.selectedTranscriptionModel = modelName;
+          this.transcriptionErrorCount = 0; // リセット
+          logger.info(`✅ 文字起こし専用軽量モデル選択成功: ${modelName}`);
+          return this.transcriptionModel;
+          
+        } catch (error) {
+          logger.warn(`❌ 文字起こしモデル ${modelName} 利用不可:`, error.message);
+          continue;
         }
       }
       
-      if (!this.transcriptionModel) {
-        // フォールバック: 通常モデルを使用
-        await this.ensureModelInitialized();
-        this.transcriptionModel = this.model;
-        this.selectedTranscriptionModel = this.selectedModel;
-        logger.warn('文字起こし専用モデル取得失敗、通常モデルを使用');
-      }
+      // 【重要】軽量モデル全て失敗の場合は明示的エラー
+      const errorMessage = '文字起こし専用軽量モデルが全て利用不可です。Gemini 1.5-flash/1.0-proが必要です。';
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
     return this.transcriptionModel;
   }
