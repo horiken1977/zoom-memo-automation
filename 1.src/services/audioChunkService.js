@@ -35,9 +35,16 @@ class AudioChunkService {
         const chunkEnd = Math.min(offset + chunkSizeBytes, audioBuffer.length);
         const chunkData = audioBuffer.slice(offset, chunkEnd);
         
-        // 空チャンク（0MB）はスキップ
+        // 【ハルシネーション対策】空チャンクおよび極短チャンクはスキップ
         if (chunkData.length === 0) {
           logger.warn(`⚠️ 空チャンク検出（offset: ${offset}, end: ${chunkEnd}）、スキップ`);
+          continue;
+        }
+        
+        // 極短時間チャンク（5秒未満）の検出
+        const chunkDurationSeconds = (chunkEnd - offset) / bytesPerSecond;
+        if (chunkDurationSeconds < 5) {
+          logger.warn(`⚠️ 極短チャンク検出（${chunkDurationSeconds.toFixed(2)}秒）、品質問題の可能性でスキップ`);
           continue;
         }
         
@@ -57,9 +64,16 @@ class AudioChunkService {
         // 【Phase1】チャンクデータの検証と修復
         chunk = this.validateAndRepairChunkData(chunk);
         
-        // 破損チャンクはスキップ（後続処理でフォールバック）
-        if (chunk.isCorrupted) {
-          logger.warn(`⚠️ チャンク${chunkIndex + 1}: 破損検出、処理継続`);
+        // 【ハルシネーション対策】音声品質評価
+        const quality = this.evaluateAudioQuality(chunk);
+        chunk.qualityScore = quality.score;
+        chunk.qualityIssues = quality.issues;
+        
+        // 破損チャンクまたは品質不適合チャンクはスキップ
+        if (chunk.isCorrupted || !quality.isSuitable) {
+          const reason = chunk.isCorrupted ? '破損検出' : `品質不適合: ${quality.issues.join(', ')}`;
+          logger.warn(`⚠️ チャンク${chunkIndex + 1}: ${reason}、スキップ`);
+          continue; // スキップして次のチャンクへ
         }
         
         chunks.push(chunk);
@@ -195,6 +209,61 @@ class AudioChunkService {
     }
     
     return 'm4a'; // デフォルト（Zoomは通常M4A）
+  }
+
+  /**
+   * 【ハルシネーション対策】音声の無音判定
+   */
+  isAudioSilent(audioBuffer) {
+    if (!audioBuffer || audioBuffer.length === 0) return true;
+    
+    // 簡易的な無音判定：すべてのバイトがゼロまたは極小値
+    let nonZeroBytes = 0;
+    const threshold = 10; // 極小値の閾値
+    
+    for (let i = 0; i < audioBuffer.length; i++) {
+      if (Math.abs(audioBuffer[i]) > threshold) {
+        nonZeroBytes++;
+      }
+    }
+    
+    // 全体の1%未満しか音声らしきデータがない場合は無音と判定
+    const audioRatio = nonZeroBytes / audioBuffer.length;
+    return audioRatio < 0.01;
+  }
+
+  /**
+   * 【ハルシネーション対策】音声品質評価
+   */
+  evaluateAudioQuality(chunk) {
+    const quality = {
+      score: 1.0, // 0.0-1.0
+      issues: [],
+      isSuitable: true
+    };
+    
+    // 極短時間チェック
+    if (chunk.duration < 5) {
+      quality.score *= 0.1;
+      quality.issues.push(`極短時間: ${chunk.duration.toFixed(2)}秒`);
+      quality.isSuitable = false;
+    }
+    
+    // 無音チェック
+    if (this.isAudioSilent(chunk.data)) {
+      quality.score *= 0.1;
+      quality.issues.push('無音または極小音声');
+      quality.isSuitable = false;
+    }
+    
+    // データサイズチェック
+    const sizeMB = chunk.size / (1024 * 1024);
+    if (sizeMB < 0.1) {
+      quality.score *= 0.5;
+      quality.issues.push(`音声データサイズが小さい: ${sizeMB.toFixed(2)}MB`);
+    }
+    
+    return quality;
   }
 
   /**
