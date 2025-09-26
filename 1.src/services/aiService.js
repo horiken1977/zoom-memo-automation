@@ -120,10 +120,10 @@ class AIService {
     if (!this.transcriptionModel || forceReinit) {
       // 【Phase1】400エラー対策 - より多様なモデルを試行
       const transcriptionModels = [
-        'gemini-1.5-flash-8b',   // 最軽量版（新追加）
         'gemini-1.5-flash',      // 軽量・高速（推奨）
+        'gemini-1.5-pro',        // 高性能版
         'gemini-1.0-pro',        // 最軽量（代替）
-        'gemini-2.0-flash',      // 代替案
+        'gemini-2.0-flash-exp',  // 実験版
         'gemini-1.5-pro',        // より安定（フォールバック）
         'gemini-2.5-pro'         // 最終手段
       ];

@@ -35,6 +35,12 @@ class AudioChunkService {
         const chunkEnd = Math.min(offset + chunkSizeBytes, audioBuffer.length);
         const chunkData = audioBuffer.slice(offset, chunkEnd);
         
+        // 空チャンク（0MB）はスキップ
+        if (chunkData.length === 0) {
+          logger.warn(`⚠️ 空チャンク検出（offset: ${offset}, end: ${chunkEnd}）、スキップ`);
+          continue;
+        }
+        
         let chunk = {
           data: chunkData,
           startTime: offset / bytesPerSecond,
@@ -57,7 +63,12 @@ class AudioChunkService {
         }
         
         chunks.push(chunk);
-        logger.info(`📦 チャンク${chunkIndex + 1}: ${Math.round(chunk.startTime/60)}:${Math.round(chunk.startTime%60).toString().padStart(2,'0')}-${Math.round(chunk.endTime/60)}:${Math.round(chunk.endTime%60).toString().padStart(2,'0')} (${Math.round(chunk.size/1024/1024*100)/100}MB)${chunk.isCorrupted ? ' [破損]' : ''}`);
+        // 時間表示を正しく計算（60分を超えないように）
+        const startMinute = Math.floor(chunk.startTime/60);
+        const startSecond = Math.round(chunk.startTime%60);
+        const endMinute = Math.floor(chunk.endTime/60);
+        const endSecond = Math.round(chunk.endTime%60);
+        logger.info(`📦 チャンク${chunkIndex + 1}: ${startMinute}:${startSecond.toString().padStart(2,'0')}-${endMinute}:${endSecond.toString().padStart(2,'0')} (${Math.round(chunk.size/1024/1024*100)/100}MB)${chunk.isCorrupted ? ' [破損]' : ''}`);
         
         chunkIndex++;
       }
