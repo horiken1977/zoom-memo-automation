@@ -35,15 +35,15 @@ class AudioChunkService {
         const chunkEnd = Math.min(offset + chunkSizeBytes, audioBuffer.length);
         const chunkData = audioBuffer.slice(offset, chunkEnd);
         
-        // 【ハルシネーション対策】空チャンクおよび極短チャンクはスキップ
+        // 【ハルシネーション対策】空チャンクは完全スキップ
         if (chunkData.length === 0) {
           logger.warn(`⚠️ 空チャンク検出（offset: ${offset}, end: ${chunkEnd}）、スキップ`);
           continue;
         }
         
-        // 極短時間チャンク（5秒未満）の検出
+        // 【緊急修正】極短時間チャンク判定を1秒未満に緩和（チャンク2+出力問題対応）
         const chunkDurationSeconds = (chunkEnd - offset) / bytesPerSecond;
-        if (chunkDurationSeconds < 5) {
+        if (chunkDurationSeconds < 1) {
           logger.warn(`⚠️ 極短チャンク検出（${chunkDurationSeconds.toFixed(2)}秒）、品質問題の可能性でスキップ`);
           continue;
         }
@@ -64,16 +64,20 @@ class AudioChunkService {
         // 【Phase1】チャンクデータの検証と修復
         chunk = this.validateAndRepairChunkData(chunk);
         
-        // 【ハルシネーション対策】音声品質評価
+        // 【ハルシネーション対策】音声品質評価（緩和済み）
         const quality = this.evaluateAudioQuality(chunk);
         chunk.qualityScore = quality.score;
         chunk.qualityIssues = quality.issues;
         
-        // 破損チャンクまたは品質不適合チャンクはスキップ
-        if (chunk.isCorrupted || !quality.isSuitable) {
-          const reason = chunk.isCorrupted ? '破損検出' : `品質不適合: ${quality.issues.join(', ')}`;
-          logger.warn(`⚠️ チャンク${chunkIndex + 1}: ${reason}、スキップ`);
-          continue; // スキップして次のチャンクへ
+        // 【緊急修正】破損チャンクのみスキップ、品質警告は処理継続
+        if (chunk.isCorrupted) {
+          logger.warn(`⚠️ チャンク${chunkIndex + 1}: 破損検出、スキップ`);
+          continue;
+        }
+        
+        // 品質不適合でも警告のみで処理継続（無音以外）
+        if (!quality.isSuitable) {
+          logger.warn(`⚠️ チャンク${chunkIndex + 1}: 品質警告 (${quality.issues.join(', ')})、処理継続`);
         }
         
         chunks.push(chunk);
@@ -82,7 +86,7 @@ class AudioChunkService {
         const startSecond = Math.round(chunk.startTime%60);
         const endMinute = Math.floor(chunk.endTime/60);
         const endSecond = Math.round(chunk.endTime%60);
-        logger.info(`📦 チャンク${chunkIndex + 1}: ${startMinute}:${startSecond.toString().padStart(2,'0')}-${endMinute}:${endSecond.toString().padStart(2,'0')} (${Math.round(chunk.size/1024/1024*100)/100}MB)${chunk.isCorrupted ? ' [破損]' : ''}`);
+        logger.info(`📦 チャンク${chunkIndex + 1}: ${startMinute}:${startSecond.toString().padStart(2,'0')}-${endMinute}:${endSecond.toString().padStart(2,'0')} (${Math.round(chunk.size/1024/1024*100)/100}MB)${chunk.isCorrupted ? ' [破損]' : ''}${quality.issues.length > 0 ? ` [${quality.issues.join(',')}]` : ''}`);
         
         chunkIndex++;
       }
@@ -242,11 +246,16 @@ class AudioChunkService {
       isSuitable: true
     };
     
-    // 極短時間チェック
-    if (chunk.duration < 5) {
-      quality.score *= 0.1;
+    // 【緊急修正】極短時間チェックを1秒未満に緩和（チャンク2+出力問題対応）
+    if (chunk.duration < 1) {
+      quality.score *= 0.3;
       quality.issues.push(`極短時間: ${chunk.duration.toFixed(2)}秒`);
       quality.isSuitable = false;
+    } else if (chunk.duration < 3) {
+      // 1-3秒は警告のみ、処理は継続
+      quality.score *= 0.7;
+      quality.issues.push(`短時間: ${chunk.duration.toFixed(2)}秒`);
+      // isSuitable = true のまま
     }
     
     // 無音チェック
@@ -261,6 +270,7 @@ class AudioChunkService {
     if (sizeMB < 0.1) {
       quality.score *= 0.5;
       quality.issues.push(`音声データサイズが小さい: ${sizeMB.toFixed(2)}MB`);
+      // サイズ小でも無音でなければ処理継続
     }
     
     return quality;
