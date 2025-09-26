@@ -991,35 +991,68 @@ ${transcription}`;
     
     logger.info(`Starting transcription-only processing for: ${meetingInfo.topic}`);
     
-    // 音声データの準備と圧縮処理
+    // 【中期対応】チャンク処理時は圧縮なし戦略
     let audioData;
     let mimeType;
     let compressionInfo = { applied: false };
     
     try {
       if (isBuffer) {
-        // バッファの圧縮処理
-        const compressedBuffer = await this.compressAudioBuffer(audioInput, 18);
-        audioData = compressedBuffer.toString('base64');
-        mimeType = options.mimeType || 'audio/aac';
-        compressionInfo = {
-          applied: compressedBuffer.length !== audioInput.length,
-          originalSize: `${(audioInput.length / 1024 / 1024).toFixed(2)}MB`,
-          processedSize: `${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`
-        };
-        logger.info(`Processing audio from buffer: ${compressionInfo.originalSize} -> ${compressionInfo.processedSize}`);
+        const audioSizeMB = audioInput.length / (1024 * 1024);
+        
+        // チャンクサイズ（<20MB）なら圧縮スキップ
+        if (audioSizeMB < 20) {
+          logger.info(`🚀 チャンク処理：圧縮スキップ (${audioSizeMB.toFixed(2)}MB < 20MB)`);
+          audioData = audioInput.toString('base64');
+          mimeType = options.mimeType || 'audio/m4a'; // 元の音声形式を維持
+          compressionInfo = {
+            applied: false,
+            originalSize: `${audioSizeMB.toFixed(2)}MB`,
+            processedSize: `${audioSizeMB.toFixed(2)}MB`,
+            strategy: 'no-compression-chunked'
+          };
+          logger.info(`Audio processing without compression: ${compressionInfo.originalSize}`);
+        } else {
+          // 大容量（≥20MB）のみ圧縮実行
+          logger.info(`🗜️ 大容量音声検出：圧縮実行 (${audioSizeMB.toFixed(2)}MB ≥ 20MB)`);
+          const compressedBuffer = await this.compressAudioBuffer(audioInput, 18);
+          audioData = compressedBuffer.toString('base64');
+          mimeType = options.mimeType || 'audio/aac';
+          compressionInfo = {
+            applied: true,
+            originalSize: `${audioSizeMB.toFixed(2)}MB`,
+            processedSize: `${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+            strategy: 'single-compression'
+          };
+          logger.info(`Audio processing with compression: ${compressionInfo.originalSize} -> ${compressionInfo.processedSize}`);
+        }
       } else {
         // ファイルパスの場合
         const fileBuffer = await fs.readFile(audioInput);
-        const compressedBuffer = await this.compressAudioBuffer(fileBuffer, 18);
-        audioData = compressedBuffer.toString('base64');
-        mimeType = this.getMimeType(audioInput);
-        compressionInfo = {
-          applied: compressedBuffer.length !== fileBuffer.length,
-          originalSize: `${(fileBuffer.length / 1024 / 1024).toFixed(2)}MB`,
-          processedSize: `${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`
-        };
-        logger.info(`Processing audio from file: ${compressionInfo.originalSize} -> ${compressionInfo.processedSize}`);
+        const audioSizeMB = fileBuffer.length / (1024 * 1024);
+        
+        if (audioSizeMB < 20) {
+          audioData = fileBuffer.toString('base64');
+          mimeType = this.getMimeType(audioInput);
+          compressionInfo = {
+            applied: false,
+            originalSize: `${audioSizeMB.toFixed(2)}MB`,
+            processedSize: `${audioSizeMB.toFixed(2)}MB`,
+            strategy: 'no-compression-chunked'
+          };
+          logger.info(`File processing without compression: ${compressionInfo.originalSize}`);
+        } else {
+          const compressedBuffer = await this.compressAudioBuffer(fileBuffer, 18);
+          audioData = compressedBuffer.toString('base64');
+          mimeType = this.getMimeType(audioInput);
+          compressionInfo = {
+            applied: true,
+            originalSize: `${audioSizeMB.toFixed(2)}MB`,
+            processedSize: `${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+            strategy: 'single-compression'
+          };
+          logger.info(`File processing with compression: ${compressionInfo.originalSize} -> ${compressionInfo.processedSize}`);
+        }
       }
 
       // 文字起こし専用プロンプト
@@ -1086,12 +1119,14 @@ ${transcription}`;
             
             logger.warn(`400 Bad Request検出 (連続${consecutiveBadRequests}回, 累計${this.transcriptionErrorCount}回)`);
             
-            // 音声データ再処理
+            // 【中期対応】再圧縮を無効化 - 音声品質劣化防止
             if (consecutiveBadRequests >= 2 && isBuffer) {
-              logger.warn('音声データ再圧縮実施（より強力な圧縮）');
-              const recompressedBuffer = await this.compressAudioBuffer(audioInput, 10); // 10MBに制限
-              audioData = recompressedBuffer.toString('base64');
-              compressionInfo.processedSize = `${(recompressedBuffer.length / 1024 / 1024).toFixed(2)}MB`;
+              logger.warn('⚠️ 400エラー連続発生：再圧縮はスキップ（音声品質保護のため）');
+              logger.info('💡 代替対応：MIMEタイプ変更とモデル再初期化で対処');
+              // 再圧縮処理をコメントアウト
+              // const recompressedBuffer = await this.compressAudioBuffer(audioInput, 10);
+              // audioData = recompressedBuffer.toString('base64');
+              // compressionInfo.processedSize = `${(recompressedBuffer.length / 1024 / 1024).toFixed(2)}MB`;
             }
             
             // MIMEタイプ変更試行

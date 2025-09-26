@@ -476,14 +476,34 @@ class AudioSummaryService {
       // 【新実装】Step 3: 完全な文字起こしから一括要約生成
       debugTimer('Step 3: 完全文字起こしから一括要約生成開始');
       
+      // 【即座対応】強化されたチャンク検証ロジック実装
+      const successRate = successCount / chunks.length;
+      const hasFirstChunk = transcriptionResults.find(r => r.chunkIndex === 0 && r.success);
+      const hasLastChunk = transcriptionResults.find(r => r.chunkIndex === chunks.length-1 && r.success);
+      
+      // 品質保証: 成功率・重要チャンク・最小文字数の複合判定
+      logger.info(`🔍 チャンク品質検証: 成功率${Math.round(successRate*100)}% (${successCount}/${chunks.length}), 最初:${!!hasFirstChunk}, 最後:${!!hasLastChunk}`);
+      
+      if (successRate < 0.7) {
+        throw new Error(`❌ チャンク処理品質不足: 成功率${Math.round(successRate*100)}% < 70% (${successCount}/${chunks.length}成功)`);
+      }
+      
+      if (!hasFirstChunk) {
+        throw new Error(`❌ 重要チャンク欠損: 最初のチャンク(0番)の文字起こしに失敗しました`);
+      }
+      
+      if (chunks.length > 1 && !hasLastChunk) {
+        throw new Error(`❌ 重要チャンク欠損: 最後のチャンク(${chunks.length-1}番)の文字起こしに失敗しました`);
+      }
+      
       // 全チャンクの文字起こしを結合
       const completedTranscriptions = transcriptionResults
         .filter(result => result.success && result.transcription)
         .map(result => `[${Math.round(result.timeRange[0]/60)}:${Math.round(result.timeRange[0]%60).toString().padStart(2,'0')}-${Math.round(result.timeRange[1]/60)}:${Math.round(result.timeRange[1]%60).toString().padStart(2,'0')}] ${result.transcription}`)
         .join('\n\n');
       
-      if (!completedTranscriptions || completedTranscriptions.length < 100) {
-        throw new Error(`全チャンク文字起こし失敗: 有効な文字起こしが取得できませんでした (${completedTranscriptions.length}文字)`);
+      if (!completedTranscriptions || completedTranscriptions.length < 500) {
+        throw new Error(`❌ 全チャンク文字起こし不足: 有効な文字起こしが不十分です (${completedTranscriptions.length}文字 < 500文字)`);
       }
       
       logger.info(`📋 結合された完全文字起こし: ${completedTranscriptions.length}文字`);
