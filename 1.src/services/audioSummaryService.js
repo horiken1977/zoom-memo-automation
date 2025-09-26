@@ -183,18 +183,13 @@ class AudioSummaryService {
       const audioSizeMB = audioBuffer.length / (1024 * 1024);
       const estimatedDuration = meetingInfo.duration || (audioSizeMB * 60); // 1MB≒1分と仮定
       
-      // チャンク分割条件判定（複数条件でチェック）
-      const shouldUseChunking = 
-        audioSizeMB > 20 ||                    // 20MB超過
-        estimatedDuration > 1200 ||            // 20分超過
-        (audioSizeMB > 15 && estimatedDuration > 900); // 15MB&15分超過
+      // 【Phase1緊急対応】チャンク分割を完全停止 - 音声分割による品質劣化を回避
+      const shouldUseChunking = false; // 強制的に分割を無効化
       
-      if (shouldUseChunking) {
-        logger.info(`🎯 大容量音声検出: ${audioSizeMB.toFixed(1)}MB (推定${Math.round(estimatedDuration/60)}分) → チャンク分割処理に切り替え`);
-        return await this.processAudioInChunks(audioBuffer, fileName, meetingInfo);
-      }
+      // 旧分割条件（参考用）
+      // audioSizeMB > 20 || estimatedDuration > 1200 || (audioSizeMB > 15 && estimatedDuration > 900)
       
-      logger.info(`📦 標準処理: ${audioSizeMB.toFixed(1)}MB (推定${Math.round(estimatedDuration/60)}分) → 通常処理を実行`);
+      logger.info(`🚀 単一ファイル処理強制: ${audioSizeMB.toFixed(1)}MB (推定${Math.round(estimatedDuration/60)}分) → 分割なし・圧縮なし・Gemini2.0flash`);
       
       // Phase1: Slack通知用の処理時間監視（60分会議用に調整）
       const shouldSendTimeoutWarning = async (currentTime) => {

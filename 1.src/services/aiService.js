@@ -1000,9 +1000,9 @@ ${transcription}`;
       if (isBuffer) {
         const audioSizeMB = audioInput.length / (1024 * 1024);
         
-        // チャンクサイズ（<20MB）なら圧縮スキップ
-        if (audioSizeMB < 20) {
-          logger.info(`🚀 チャンク処理：圧縮スキップ (${audioSizeMB.toFixed(2)}MB < 20MB)`);
+        // 【Phase1緊急対応】30MB未満は圧縮スキップ（単一ファイル処理最適化）
+        if (audioSizeMB < 30) {
+          logger.info(`🚀 単一ファイル処理：圧縮スキップ (${audioSizeMB.toFixed(2)}MB < 30MB)`);
           audioData = audioInput.toString('base64');
           mimeType = options.mimeType || 'audio/m4a'; // 元の音声形式を維持
           compressionInfo = {
@@ -1031,7 +1031,7 @@ ${transcription}`;
         const fileBuffer = await fs.readFile(audioInput);
         const audioSizeMB = fileBuffer.length / (1024 * 1024);
         
-        if (audioSizeMB < 20) {
+        if (audioSizeMB < 30) {
           audioData = fileBuffer.toString('base64');
           mimeType = this.getMimeType(audioInput);
           compressionInfo = {
