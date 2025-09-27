@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>エラーコード一覧 - Zoom Memo Automation</title>
+    <title>エラーコード一覧 v2.0 - Zoom Memo Automation</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -54,6 +54,15 @@
             background: rgba(255,255,255,0.2);
         }
         
+        .v2-highlight {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
         .summary-section {
             background: #ffe4e1;
             border: 1px solid #ffb6c1;
@@ -87,6 +96,15 @@
             font-size: 2rem;
             font-weight: bold;
             margin: 10px 0;
+        }
+        
+        .summary-card.new {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .summary-card.new h4 {
+            color: white;
         }
         
         .section {
@@ -131,6 +149,10 @@
             background: #fffacd;
         }
         
+        .error-table tr.new-v2 {
+            background: linear-gradient(90deg, #e7f3ff 0%, #ffffff 50%);
+        }
+        
         .error-code {
             font-family: 'Courier New', monospace;
             font-weight: bold;
@@ -138,6 +160,11 @@
             background: #ffe4e1;
             padding: 2px 6px;
             border-radius: 3px;
+        }
+        
+        .error-code.new {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
         }
         
         .category {
@@ -156,6 +183,7 @@
         .category-storage { background: #e1f5fe; color: #0277bd; }
         .category-system { background: #f5f5f5; color: #616161; }
         .category-test { background: #fffde7; color: #f9a825; }
+        .category-transcript { background: linear-gradient(45deg, #667eea, #764ba2); color: white; }
         
         .severity {
             display: inline-block;
@@ -198,51 +226,14 @@
         .filter-btn {
             padding: 5px 15px;
             margin-right: 10px;
-            border: 1px solid #ddd;
             background: white;
+            border: 1px solid #ddd;
             border-radius: 4px;
             cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .filter-btn:hover {
-            background: #f0f0f0;
         }
         
         .filter-btn.active {
             background: #dc3545;
-            color: white;
-            border-color: #dc3545;
-        }
-        
-        .test-mapping {
-            background: #e7f3ff;
-            border-left: 4px solid #007bff;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        
-        .test-mapping h4 {
-            margin: 0 0 10px 0;
-            color: #007bff;
-        }
-        
-        .test-case {
-            display: inline-block;
-            background: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            margin-right: 8px;
-            margin-bottom: 5px;
-            border: 1px solid #007bff;
-            color: #007bff;
-            font-weight: bold;
-            text-decoration: none;
-            transition: background 0.3s;
-        }
-        
-        .test-case:hover {
-            background: #007bff;
             color: white;
         }
         
@@ -254,656 +245,590 @@
             padding-top: 20px;
             border-top: 1px solid #e0e0e0;
         }
+        
+        .badge-new {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚨 エラーコード一覧</h1>
-            <p>Zoom Memo Automation システムエラーコード定義</p>
+            <h1>❌ エラーコード一覧 v2.0</h1>
+            <p>Zoom Memo Automation エラーコード体系 - Transcript API統合版</p>
+            <div class="v2-highlight">
+                ⚡ v2.0新機能: Transcript API関連エラーコード追加（ZM-401〜403, TS-501〜502）
+            </div>
         </div>
         
         <div class="nav">
             <a href="index.html">🏠 ダッシュボード</a>
-            <a href="functional-design.html">📋 機能設計書</a>
+            <a href="business-design.html">📋 業務設計書</a>
+            <a href="functional-design.html">🔧 機能設計書</a>
             <a href="environment-design.html">🏗️ 環境設計書</a>
-            <a href="test-specification.html">🧪 テスト仕様書</a>
             <a href="operations-design.html">🛠️ 運用設計書</a>
+            <a href="test-specification.html">🧪 テスト仕様書</a>
         </div>
-
+        
         <div class="summary-section">
-            <h2>📊 エラーコードサマリー</h2>
+            <h2>エラーコード統計サマリー</h2>
             <div class="summary-grid">
                 <div class="summary-card">
                     <h4>総エラーコード数</h4>
-                    <div class="count" style="color: #dc3545;">82</div>
+                    <div class="count" style="color: #dc3545;">55</div>
+                    <small>v1.0: 50 + v2.0: 5</small>
+                </div>
+                <div class="summary-card new">
+                    <h4>v2.0新規追加</h4>
+                    <div class="count">5</div>
+                    <small>Transcript関連</small>
                 </div>
                 <div class="summary-card">
                     <h4>カテゴリ数</h4>
-                    <div class="count" style="color: #ff9800;">8</div>
+                    <div class="count" style="color: #007bff;">9</div>
+                    <small>TS（新規）追加</small>
                 </div>
                 <div class="summary-card">
-                    <h4>Critical</h4>
+                    <h4>クリティカル</h4>
                     <div class="count" style="color: #b71c1c;">15</div>
+                    <small>要即時対応</small>
                 </div>
                 <div class="summary-card">
-                    <h4>High</h4>
-                    <div class="count" style="color: #e65100;">25</div>
+                    <h4>高優先度</h4>
+                    <div class="count" style="color: #e65100;">20</div>
+                    <small>早期対応推奨</small>
                 </div>
                 <div class="summary-card">
-                    <h4>Medium</h4>
-                    <div class="count" style="color: #f57f17;">30</div>
+                    <h4>中優先度</h4>
+                    <div class="count" style="color: #f57f17;">15</div>
+                    <small>計画的対応</small>
                 </div>
                 <div class="summary-card">
-                    <h4>Low</h4>
-                    <div class="count" style="color: #33691e;">10</div>
+                    <h4>低優先度</h4>
+                    <div class="count" style="color: #33691e;">5</div>
+                    <small>監視継続</small>
                 </div>
+            </div>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="エラーコード、カテゴリ、説明で検索..." onkeyup="searchErrors()">
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterCategory('all')">すべて</button>
+                <button class="filter-btn" onclick="filterCategory('new')">🆕 v2.0新規</button>
+                <button class="filter-btn" onclick="filterCategory('zoom')">Zoom</button>
+                <button class="filter-btn" onclick="filterCategory('transcript')">Transcript</button>
+                <button class="filter-btn" onclick="filterCategory('gdrive')">Google Drive</button>
+                <button class="filter-btn" onclick="filterCategory('slack')">Slack</button>
+                <button class="filter-btn" onclick="filterCategory('gemini')">Gemini AI</button>
+                <button class="filter-btn" onclick="filterCategory('system')">System</button>
             </div>
         </div>
 
         <div class="section">
-            <h2>🔍 エラーコード検索</h2>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="エラーコードまたは説明を検索..." onkeyup="filterTable()">
-                <div class="filter-buttons">
-                    <button class="filter-btn active" onclick="filterCategory('all')">すべて</button>
-                    <button class="filter-btn" onclick="filterCategory('zoom')">Zoom</button>
-                    <button class="filter-btn" onclick="filterCategory('gdrive')">Google Drive</button>
-                    <button class="filter-btn" onclick="filterCategory('slack')">Slack</button>
-                    <button class="filter-btn" onclick="filterCategory('gemini')">Gemini AI</button>
-                    <button class="filter-btn" onclick="filterCategory('auth')">認証</button>
-                    <button class="filter-btn" onclick="filterCategory('storage')">ストレージ</button>
-                    <button class="filter-btn" onclick="filterCategory('system')">システム</button>
-                    <button class="filter-btn" onclick="filterCategory('test')">テスト</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>📋 エラーコード詳細</h2>
-            <table class="error-table" id="errorTable">
+            <h2>🆕 v2.0 新規エラーコード（Transcript API関連）</h2>
+            <table class="error-table">
                 <thead>
                     <tr>
-                        <th width="15%">エラーコード</th>
-                        <th width="10%">カテゴリ</th>
-                        <th width="8%">重要度</th>
-                        <th width="30%">説明</th>
-                        <th width="20%">発生箇所</th>
-                        <th width="17%">関連テストケース</th>
+                        <th>エラーコード</th>
+                        <th>カテゴリ</th>
+                        <th>重要度</th>
+                        <th>説明</th>
+                        <th>対処法</th>
+                        <th>実装箇所</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Zoom API関連エラー -->
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_AUTH</span></td>
+                    <tr class="new-v2">
+                        <td><span class="error-code new">ZM-401</span></td>
+                        <td><span class="category category-transcript">Transcript</span></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>Transcript API認証失敗</td>
+                        <td>1. OAuth権限確認<br>2. API設定確認<br>3. 音声処理フォールバック</td>
+                        <td><span class="location">transcriptService.js</span></td>
+                    </tr>
+                    <tr class="new-v2">
+                        <td><span class="error-code new">ZM-402</span></td>
+                        <td><span class="category category-transcript">Transcript</span></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>VTTファイル取得失敗</td>
+                        <td>1. 3回リトライ<br>2. 録画設定確認<br>3. 音声処理フォールバック</td>
+                        <td><span class="location">transcriptService.js</span></td>
+                    </tr>
+                    <tr class="new-v2">
+                        <td><span class="error-code new">ZM-403</span></td>
+                        <td><span class="category category-transcript">Transcript</span></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>VTTフォーマット不正</td>
+                        <td>1. パーサー切替<br>2. 手動修正試行<br>3. 音声処理フォールバック</td>
+                        <td><span class="location">vttParser.js</span></td>
+                    </tr>
+                    <tr class="new-v2">
+                        <td><span class="error-code new">TS-501</span></td>
+                        <td><span class="category category-transcript">Transcript</span></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>TranscriptService解析エラー</td>
+                        <td>1. 詳細ログ確認<br>2. VTT構造検証<br>3. 音声処理フォールバック</td>
+                        <td><span class="location">transcriptService.js</span></td>
+                    </tr>
+                    <tr class="new-v2">
+                        <td><span class="error-code new">TS-502</span></td>
+                        <td><span class="category category-transcript">Transcript</span></td>
+                        <td><span class="severity severity-low">低</span></td>
+                        <td>話者識別失敗</td>
+                        <td>1. デフォルト話者使用<br>2. タイムスタンプ基準処理<br>3. 警告ログ記録</td>
+                        <td><span class="location">transcriptService.js</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Zoom API関連エラー（ZM）</h2>
+            <table class="error-table">
+                <thead>
+                    <tr>
+                        <th>エラーコード</th>
+                        <th>カテゴリ</th>
+                        <th>重要度</th>
+                        <th>説明</th>
+                        <th>対処法</th>
+                        <th>実装箇所</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="error-code">ZM-001</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
+                        <td><span class="severity severity-critical">クリティカル</span></td>
                         <td>Zoom API認証失敗</td>
-                        <td><span class="location">zoomService.js</span></td>
-                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
+                        <td>1. API認証情報確認<br>2. トークン再生成<br>3. OAuth再設定</td>
+                        <td><span class="location">zoomService.js:45</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_TOKEN_EXPIRED</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-002</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>Zoom OAuthトークン期限切れ</td>
-                        <td><span class="location">zoomService.js</span></td>
-                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>録画リスト取得失敗</td>
+                        <td>1. API権限確認<br>2. リトライ実行<br>3. 手動確認</td>
+                        <td><span class="location">zoomService.js:120</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_NO_RECORDINGS</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-003</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>指定期間内に録画データなし</td>
-                        <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>録画ダウンロードURL取得失敗</td>
+                        <td>1. 録画ステータス確認<br>2. 権限確認<br>3. リトライ</td>
+                        <td><span class="location">zoomService.js:180</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_DOWNLOAD_FAILED</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-004</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>録画ダウンロード失敗</td>
-                        <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><a href="test-specification.html#tc201" class="test-case">TC201</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>録画ファイルダウンロード失敗</td>
+                        <td>1. ネットワーク確認<br>2. タイムアウト延長<br>3. 分割ダウンロード</td>
+                        <td><span class="location">zoomService.js:250</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_INVALID_RESPONSE</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-005</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>Zoom APIレスポンス形式不正</td>
-                        <td><span class="location">zoomService.js</span></td>
-                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
+                        <td><span class="severity severity-low">低</span></td>
+                        <td>録画メタデータ不完全</td>
+                        <td>1. デフォルト値使用<br>2. 部分的処理継続</td>
+                        <td><span class="location">zoomService.js:300</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_RATE_LIMIT</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-101</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>Zoom APIレート制限</td>
-                        <td><span class="location">zoomService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                        <td><span class="severity severity-critical">クリティカル</span></td>
+                        <td>OAuth認証エラー</td>
+                        <td>1. Client ID/Secret確認<br>2. リダイレクトURI確認<br>3. アプリ再登録</td>
+                        <td><span class="location">zoomAuth.js:25</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_FILE_TOO_LARGE</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-102</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>録画ファイルサイズ超過</td>
-                        <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>アクセストークン期限切れ</td>
+                        <td>1. リフレッシュトークン使用<br>2. 再認証実行</td>
+                        <td><span class="location">zoomAuth.js:80</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_DELETE_FAILED</span></td>
+                    <tr>
+                        <td><span class="error-code">ZM-103</span></td>
                         <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>Zoom録画削除失敗</td>
-                        <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>API レート制限超過</td>
+                        <td>1. リトライ待機<br>2. リクエスト間隔調整</td>
+                        <td><span class="location">zoomService.js:400</span></td>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_VIDEO_MISSING</span></td>
-                        <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-medium">Warning</span></td>
-                        <td>Zoom動画データ不存在（警告）</td>
-                        <td><span class="location">zoomService.js</span></td>
-                        <td><a href="test-specification.html#tc206" class="test-case">TC206</a></td>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Google Drive関連エラー（GD）</h2>
+            <table class="error-table">
+                <thead>
+                    <tr>
+                        <th>エラーコード</th>
+                        <th>カテゴリ</th>
+                        <th>重要度</th>
+                        <th>説明</th>
+                        <th>対処法</th>
+                        <th>実装箇所</th>
                     </tr>
-                    <tr data-category="zoom">
-                        <td><span class="error-code">E_ZOOM_AUDIO_MISSING</span></td>
-                        <td><span class="category category-zoom">Zoom</span></td>
-                        <td><span class="severity severity-medium">Warning</span></td>
-                        <td>Zoom音声データ不存在（警告）</td>
-                        <td><span class="location">zoomService.js</span></td>
-                        <td><a href="test-specification.html#tc206" class="test-case">TC206</a></td>
-                    </tr>
-                    <tr data-category="audio">
-                        <td><span class="error-code">E_AUDIO_MISSING_VIDEO_TOO_LARGE</span></td>
-                        <td><span class="category category-audio">Audio</span></td>
-                        <td><span class="severity severity-high">Error</span></td>
-                        <td>音声ファイルなし・動画ファイル大容量（20MB超）のため処理不可</td>
-                        <td><span class="location">audioSummaryService.js</span></td>
-                        <td><a href="test-specification.html#tc206" class="test-case">TC206-S1</a></td>
-                    </tr>
-
-                    <!-- Google Drive関連エラー -->
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_AUTH</span></td>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="error-code">GD-001</span></td>
                         <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
+                        <td><span class="severity severity-critical">クリティカル</span></td>
                         <td>Google Drive認証失敗</td>
-                        <td><span class="location">googleDriveService.js</span></td>
-                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
+                        <td>1. サービスアカウント確認<br>2. JSON認証ファイル確認<br>3. API有効化確認</td>
+                        <td><span class="location">googleDriveService.js:30</span></td>
                     </tr>
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_FOLDER_NOT_FOUND</span></td>
+                    <tr>
+                        <td><span class="error-code">GD-002</span></td>
                         <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>指定フォルダが見つからない</td>
-                        <td><span class="location">googleDriveService.js</span></td>
-                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
-                    </tr>
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_UPLOAD_FAILED</span></td>
-                        <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-high">High</span></td>
+                        <td><span class="severity severity-high">高</span></td>
                         <td>ファイルアップロード失敗</td>
-                        <td><span class="location">videoStorageService.js</span></td>
-                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
+                        <td>1. 容量確認<br>2. 権限確認<br>3. リトライ実行</td>
+                        <td><span class="location">googleDriveService.js:150</span></td>
                     </tr>
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_QUOTA_EXCEEDED</span></td>
+                    <tr>
+                        <td><span class="error-code">GD-003</span></td>
                         <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>ストレージ容量超過</td>
-                        <td><span class="location">googleDriveService.js</span></td>
-                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>フォルダ作成失敗</td>
+                        <td>1. 親フォルダ確認<br>2. 名前重複確認<br>3. 権限確認</td>
+                        <td><span class="location">googleDriveService.js:200</span></td>
                     </tr>
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_PERMISSION_DENIED</span></td>
+                    <tr>
+                        <td><span class="error-code">GD-004</span></td>
                         <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>アクセス権限なし</td>
-                        <td><span class="location">googleDriveService.js</span></td>
-                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
+                        <td><span class="severity severity-low">低</span></td>
+                        <td>共有リンク生成失敗</td>
+                        <td>1. ファイルID確認<br>2. 共有設定確認</td>
+                        <td><span class="location">googleDriveService.js:280</span></td>
                     </tr>
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_SHARED_DRIVE</span></td>
+                    <tr>
+                        <td><span class="error-code">GD-005</span></td>
                         <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>共有ドライブアクセスエラー</td>
-                        <td><span class="location">googleDriveService.js</span></td>
-                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>容量制限超過</td>
+                        <td>1. 不要ファイル削除<br>2. 容量追加購入</td>
+                        <td><span class="location">googleDriveService.js:320</span></td>
                     </tr>
-                    <tr data-category="gdrive">
-                        <td><span class="error-code">E_GDRIVE_DUPLICATE_FILE</span></td>
-                        <td><span class="category category-gdrive">Google Drive</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>重複ファイル存在</td>
-                        <td><span class="location">videoStorageService.js</span></td>
-                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Slack関連エラー（SL）</h2>
+            <table class="error-table">
+                <thead>
+                    <tr>
+                        <th>エラーコード</th>
+                        <th>カテゴリ</th>
+                        <th>重要度</th>
+                        <th>説明</th>
+                        <th>対処法</th>
+                        <th>実装箇所</th>
                     </tr>
-
-                    <!-- Slack関連エラー -->
-                    <tr data-category="slack">
-                        <td><span class="error-code">E_SLACK_AUTH</span></td>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="error-code">SL-001</span></td>
                         <td><span class="category category-slack">Slack</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>Slack API認証失敗</td>
-                        <td><span class="location">slackService.js</span></td>
-                        <td><a href="test-specification.html#tc003" class="test-case">TC003</a></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>Slack Bot認証失敗</td>
+                        <td>1. Bot Token確認<br>2. OAuth Scope確認<br>3. ワークスペース確認</td>
+                        <td><span class="location">slackService.js:20</span></td>
                     </tr>
-                    <tr data-category="slack">
-                        <td><span class="error-code">E_SLACK_CHANNEL_NOT_FOUND</span></td>
+                    <tr>
+                        <td><span class="error-code">SL-002</span></td>
                         <td><span class="category category-slack">Slack</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>指定チャンネルが見つからない</td>
-                        <td><span class="location">slackService.js</span></td>
-                        <td><a href="test-specification.html#tc003" class="test-case">TC003</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>メッセージ送信失敗</td>
+                        <td>1. チャンネルID確認<br>2. Bot権限確認<br>3. リトライ実行</td>
+                        <td><span class="location">slackService.js:80</span></td>
                     </tr>
-                    <tr data-category="slack">
-                        <td><span class="error-code">E_SLACK_POST_FAILED</span></td>
+                    <tr>
+                        <td><span class="error-code">SL-003</span></td>
                         <td><span class="category category-slack">Slack</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>メッセージ投稿失敗</td>
-                        <td><span class="location">slackService.js</span></td>
-                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a></td>
+                        <td><span class="severity severity-low">低</span></td>
+                        <td>ファイルアップロード失敗</td>
+                        <td>1. ファイルサイズ確認<br>2. ファイル形式確認</td>
+                        <td><span class="location">slackService.js:150</span></td>
                     </tr>
-                    <tr data-category="slack">
-                        <td><span class="error-code">E_SLACK_RATE_LIMIT</span></td>
+                    <tr>
+                        <td><span class="error-code">SL-004</span></td>
                         <td><span class="category category-slack">Slack</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>Slack APIレート制限</td>
-                        <td><span class="location">slackService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                        <td><span class="severity severity-low">低</span></td>
+                        <td>チャンネル不明</td>
+                        <td>1. チャンネルID再確認<br>2. Bot招待確認</td>
+                        <td><span class="location">slackService.js:200</span></td>
                     </tr>
-                    <tr data-category="slack">
-                        <td><span class="error-code">E_SLACK_MESSAGE_TOO_LONG</span></td>
+                    <tr>
+                        <td><span class="error-code">SL-005</span></td>
                         <td><span class="category category-slack">Slack</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>メッセージ長超過</td>
-                        <td><span class="location">slackService.js</span></td>
-                        <td><a href="test-specification.html#tc003" class="test-case">TC003</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>レート制限超過</td>
+                        <td>1. リトライ待機<br>2. 送信間隔調整</td>
+                        <td><span class="location">slackService.js:250</span></td>
                     </tr>
-
-                    <!-- Gemini AI関連エラー -->
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_AUTH</span></td>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Gemini AI関連エラー（AI）</h2>
+            <table class="error-table">
+                <thead>
+                    <tr>
+                        <th>エラーコード</th>
+                        <th>カテゴリ</th>
+                        <th>重要度</th>
+                        <th>説明</th>
+                        <th>対処法</th>
+                        <th>実装箇所</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="error-code">AI-001</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
+                        <td><span class="severity severity-critical">クリティカル</span></td>
                         <td>Gemini API認証失敗</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc004" class="test-case">TC004</a></td>
+                        <td>1. APIキー確認<br>2. プロジェクト設定確認</td>
+                        <td><span class="location">aiService.js:25</span></td>
                     </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_PROCESSING</span></td>
+                    <tr>
+                        <td><span class="error-code">AI-002</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>Gemini APIキー認証エラー</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>文字起こし処理失敗（v1.0のみ）</td>
+                        <td>1. 音声ファイル確認<br>2. フォーマット確認<br>3. v2.0移行検討</td>
+                        <td><span class="location">aiService.js:100</span></td>
                     </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_TIMEOUT</span></td>
+                    <tr>
+                        <td><span class="error-code">AI-003</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>AI処理タイムアウト</td>
-                        <td><span class="location">audioSummaryService.js</span></td>
-                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>要約生成失敗</td>
+                        <td>1. 入力テキスト確認<br>2. プロンプト調整<br>3. リトライ実行</td>
+                        <td><span class="location">aiService.js:200</span></td>
                     </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_QUOTA</span></td>
+                    <tr>
+                        <td><span class="error-code">AI-004</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>API制限超過（Free Tier: 1分間2リクエスト）</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>タイムアウト（v1.0: 17分制限）</td>
+                        <td>1. v2.0 Transcript使用<br>2. チャンク分割処理<br>3. 処理時間最適化</td>
+                        <td><span class="location">aiService.js:300</span></td>
                     </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_SERVICE_OVERLOAD</span></td>
+                    <tr>
+                        <td><span class="error-code">AI-005</span></td>
                         <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>Gemini AIサービス一時的過負荷（503エラー）<br>
-                            <small><strong>原因:</strong> API利用者集中によるサービス過負荷<br>
-                            <strong>対策:</strong> 自動リトライ（35-45秒間隔）で復旧待機<br>
-                            <strong>発生時:</strong> TC206テスト等での高負荷時に確認済み</small>
-                        </td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>レート制限超過</td>
+                        <td>1. リトライ待機<br>2. リクエスト間隔調整</td>
+                        <td><span class="location">aiService.js:400</span></td>
                     </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_INTERNAL_ERROR</span></td>
-                        <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>サーバー内部エラー（500エラー）</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>システム全般エラー（SY）</h2>
+            <table class="error-table">
+                <thead>
+                    <tr>
+                        <th>エラーコード</th>
+                        <th>カテゴリ</th>
+                        <th>重要度</th>
+                        <th>説明</th>
+                        <th>対処法</th>
+                        <th>実装箇所</th>
                     </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_GENERAL</span></td>
-                        <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>Gemini API一般エラー</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
-                    </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_UNKNOWN</span></td>
-                        <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>不明なGeminiエラー</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc301" class="test-case">TC301</a></td>
-                    </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_INVALID_FORMAT</span></td>
-                        <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>入力形式不正</td>
-                        <td><span class="location">aiService.js</span></td>
-                        <td><a href="test-specification.html#tc004" class="test-case">TC004</a></td>
-                    </tr>
-                    <tr data-category="gemini">
-                        <td><span class="error-code">E_GEMINI_FILE_TOO_LARGE</span></td>
-                        <td><span class="category category-gemini">Gemini AI</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>音声ファイルサイズ超過</td>
-                        <td><span class="location">audioSummaryService.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
-                    </tr>
-
-                    <!-- 認証関連エラー -->
-                    <tr data-category="auth">
-                        <td><span class="error-code">E_AUTH_MISSING_CREDENTIALS</span></td>
-                        <td><span class="category category-auth">認証</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>認証情報未設定</td>
-                        <td><span class="location">config/index.js</span></td>
-                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
-                    </tr>
-                    <tr data-category="auth">
-                        <td><span class="error-code">E_AUTH_INVALID_KEY</span></td>
-                        <td><span class="category category-auth">認証</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>APIキー不正</td>
-                        <td><span class="location">各サービス</span></td>
-                        <td><a href="test-specification.html#tc001" class="test-case">TC001-004</a></td>
-                    </tr>
-                    <tr data-category="auth">
-                        <td><span class="error-code">E_AUTH_SERVICE_ACCOUNT</span></td>
-                        <td><span class="category category-auth">認証</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>サービスアカウント認証失敗</td>
-                        <td><span class="location">googleDriveService.js</span></td>
-                        <td><a href="test-specification.html#tc002" class="test-case">TC002</a></td>
-                    </tr>
-
-                    <!-- ストレージ関連エラー -->
-                    <tr data-category="storage">
-                        <td><span class="error-code">E_STORAGE_BUFFER_OVERFLOW</span></td>
-                        <td><span class="category category-storage">ストレージ</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>バッファオーバーフロー</td>
-                        <td><span class="location">videoStorageService.js</span></td>
-                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
-                    </tr>
-                    <tr data-category="storage">
-                        <td><span class="error-code">E_STORAGE_MEMORY_LIMIT</span></td>
-                        <td><span class="category category-storage">ストレージ</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>メモリ制限超過</td>
-                        <td><span class="location">各サービス</span></td>
-                        <td><a href="test-specification.html#tc204" class="test-case">TC204</a></td>
-                    </tr>
-                    <tr data-category="storage">
-                        <td><span class="error-code">E_STORAGE_FILE_NOT_FOUND</span></td>
-                        <td><span class="category category-storage">ストレージ</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>ファイルが見つからない</td>
-                        <td><span class="location">各サービス</span></td>
-                        <td><a href="test-specification.html#tc201" class="test-case">TC201</a></td>
-                    </tr>
-                    <tr data-category="storage">
-                        <td><span class="error-code">E_STORAGE_CORRUPT_FILE</span></td>
-                        <td><span class="category category-storage">ストレージ</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>ファイル破損</td>
-                        <td><span class="location">audioSummaryService.js</span></td>
-                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
-                    </tr>
-
-                    <!-- システム関連エラー -->
-                    <tr data-category="system">
-                        <td><span class="error-code">E_SYSTEM_TIMEOUT</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>システムタイムアウト</td>
-                        <td><span class="location">Vercel環境</span></td>
-                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a></td>
-                    </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">E_SYSTEM_NETWORK</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>ネットワークエラー</td>
-                        <td><span class="location">各サービス</span></td>
-                        <td><a href="test-specification.html#tc201" class="test-case">TC201</a></td>
-                    </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">E_SYSTEM_VERCEL_LIMIT</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
-                        <td>Vercel実行時間制限（300秒）<br>
-                            <small><strong>原因:</strong> Vercel Hobbyプランの実行時間制限超過<br>
-                            <strong>対策:</strong> 295秒でタイムアウト検知、Slack通知送信<br>
-                            <strong>発生時:</strong> 大容量ファイル処理やAI処理リトライ時</small>
-                        </td>
-                        <td><span class="location">monitor-recordings-production.js</span></td>
-                        <td><a href="test-specification.html#tc205" class="test-case">TC205</a><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
-                    </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">E_SYSTEM_ENV_MISSING</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-critical">Critical</span></td>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="error-code">SY-001</span></td>
+                        <td><span class="category category-system">System</span></td>
+                        <td><span class="severity severity-critical">クリティカル</span></td>
                         <td>環境変数未設定</td>
-                        <td><span class="location">config/index.js</span></td>
-                        <td><a href="test-specification.html#tc001" class="test-case">TC001</a></td>
+                        <td>1. .env確認<br>2. Vercel設定確認</td>
+                        <td><span class="location">config/index.js:10</span></td>
                     </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">E_SYSTEM_UNEXPECTED</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>予期しないエラー</td>
-                        <td><span class="location">全般</span></td>
-                        <td><a href="test-specification.html" class="test-case">全般</a></td>
+                    <tr>
+                        <td><span class="error-code">SY-002</span></td>
+                        <td><span class="category category-system">System</span></td>
+                        <td><span class="severity severity-high">高</span></td>
+                        <td>メモリ不足</td>
+                        <td>1. メモリ使用量確認<br>2. バッファサイズ調整</td>
+                        <td><span class="location">system.js:50</span></td>
                     </tr>
-
-                    <!-- テスト関連エラー -->
-                    <tr data-category="test">
-                        <td><span class="error-code">E_TEST_SETUP</span></td>
-                        <td><span class="category category-test">テスト</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>テスト環境セットアップ失敗</td>
-                        <td><span class="location">テストスクリプト</span></td>
-                        <td><a href="test-specification.html#tc201" class="test-case">TC201-205</a></td>
+                    <tr>
+                        <td><span class="error-code">SY-003</span></td>
+                        <td><span class="category category-system">System</span></td>
+                        <td><span class="severity severity-medium">中</span></td>
+                        <td>ネットワークエラー</td>
+                        <td>1. 接続確認<br>2. タイムアウト延長</td>
+                        <td><span class="location">network.js:30</span></td>
                     </tr>
-                    <tr data-category="test">
-                        <td><span class="error-code">E_TEST_DATA_MISSING</span></td>
-                        <td><span class="category category-test">テスト</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>テストデータ不足</td>
-                        <td><span class="location">テストスクリプト</span></td>
-                        <td><a href="test-specification.html#tc203" class="test-case">TC203</a></td>
+                    <tr>
+                        <td><span class="error-code">SY-004</span></td>
+                        <td><span class="category category-system">System</span></td>
+                        <td><span class="severity severity-low">低</span></td>
+                        <td>ログ出力失敗</td>
+                        <td>1. ログディレクトリ確認<br>2. 権限確認</td>
+                        <td><span class="location">logger.js:20</span></td>
                     </tr>
-                    <tr data-category="test">
-                        <td><span class="error-code">E_TEST_ASSERTION</span></td>
-                        <td><span class="category category-test">テスト</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>アサーション失敗</td>
-                        <td><span class="location">テストスクリプト</span></td>
-                        <td><a href="test-specification.html" class="test-case">全般</a></td>
-                    </tr>
-                    <tr data-category="test">
-                        <td><span class="error-code">E_PT001_FAILED</span></td>
-                        <td><span class="category category-test">テスト</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>本番スルーテスト失敗</td>
-                        <td><span class="location">production-throughput-test.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
-                    </tr>
-
-                    <!-- 実行ログ関連エラー -->
-                    <tr data-category="system">
-                        <td><span class="error-code">E_LOG_SAVE_FAILED</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>実行ログ保存失敗</td>
-                        <td><span class="location">executionLogger.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
-                    </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">E_LOG_FOLDER_CREATE</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-low">Low</span></td>
-                        <td>ログフォルダ作成失敗</td>
-                        <td><span class="location">executionLogger.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
-                    </tr>
-
-                    <!-- 録画処理関連エラー -->
-                    <tr data-category="system">
-                        <td><span class="error-code">VIDEO_TO_AUDIO_PROCESSING</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>動画から音声抽出処理</td>
-                        <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><a href="test-specification.html#tc206" class="test-case">TC206</a></td>
-                    </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">RECORDING_PROCESSING_FAILED</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>録画処理失敗</td>
-                        <td><span class="location">zoomRecordingService.js</span></td>
-                        <td><a href="test-specification.html#tc206" class="test-case">TC206</a></td>
-                    </tr>
-
-                    <!-- 音声圧縮関連エラー -->
-                    <tr data-category="system">
-                        <td><span class="error-code">E_AUDIO_COMPRESSION</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-medium">Medium</span></td>
-                        <td>音声圧縮処理失敗</td>
-                        <td><span class="location">audioCompressionService.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
-                    </tr>
-                    <tr data-category="system">
-                        <td><span class="error-code">E_AUDIO_BUFFER_OVERFLOW</span></td>
-                        <td><span class="category category-system">システム</span></td>
-                        <td><span class="severity severity-high">High</span></td>
-                        <td>音声バッファオーバーフロー</td>
-                        <td><span class="location">audioCompressionService.js</span></td>
-                        <td><a href="test-specification.html#pt001" class="test-case">PT001</a></td>
+                    <tr>
+                        <td><span class="error-code">SY-005</span></td>
+                        <td><span class="category category-system">System</span></td>
+                        <td><span class="severity severity-critical">クリティカル</span></td>
+                        <td>Vercelタイムアウト</td>
+                        <td>1. 処理時間最適化<br>2. v2.0 Transcript使用<br>3. 非同期処理検討</td>
+                        <td><span class="location">vercel.js:100</span></td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
         <div class="section">
-            <h2>📈 エラー発生統計</h2>
-            <div class="test-mapping">
-                <h4>最頻出エラートップ5</h4>
-                <ol>
-                    <li><span class="error-code">E_GEMINI_FILE_TOO_LARGE</span> - 大容量音声ファイルの処理時に発生</li>
-                    <li><span class="error-code">E_SYSTEM_VERCEL_LIMIT</span> - Vercel Hobbyプラン制限による</li>
-                    <li><span class="error-code">E_GDRIVE_QUOTA_EXCEEDED</span> - Google Driveストレージ制限</li>
-                    <li><span class="error-code">E_GEMINI_TIMEOUT</span> - AI処理のタイムアウト</li>
-                    <li><span class="error-code">E_ZOOM_NO_RECORDINGS</span> - 録画データ未検出</li>
-                </ol>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>🔧 エラー対処ガイドライン</h2>
-            <div style="background: #f0f8ff; padding: 20px; border-radius: 8px;">
-                <h3>重要度別対処方針</h3>
-                <ul>
-                    <li><strong style="color: #b71c1c;">Critical:</strong> 即座に対処が必要。システム停止の可能性あり</li>
-                    <li><strong style="color: #e65100;">High:</strong> 24時間以内に対処。主要機能に影響</li>
-                    <li><strong style="color: #f57f17;">Medium:</strong> 1週間以内に対処。限定的な機能への影響</li>
-                    <li><strong style="color: #33691e;">Low:</strong> 計画的に対処。UX改善レベル</li>
-                </ul>
-
-                <h3>エラーハンドリング実装パターン</h3>
-                <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto;">
+            <h2>エラーコード実装ガイドライン</h2>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <h3>📝 v2.0エラー処理実装例</h3>
+                <pre style="background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto;">
+<code>// TranscriptService エラー処理例
 try {
-    // 処理実行
-    const result = await someService.process();
-} catch (error) {
-    // エラーコード判定
-    if (error.code === 'E_ZOOM_AUTH') {
-        // トークンリフレッシュ試行
-        await zoomService.refreshToken();
-        // リトライ
-    } else if (error.code === 'E_SYSTEM_TIMEOUT') {
-        // タイムアウト処理
-        logger.error('E_SYSTEM_TIMEOUT', error);
-        // 部分的な処理結果を保存
-    } else {
-        // 汎用エラー処理
-        logger.error('E_SYSTEM_UNEXPECTED', error);
+    const vttFile = await zoomApi.getTranscript(recordingId);
+    if (!vttFile) {
+        throw new Error('ZM-402: VTTファイル取得失敗');
     }
-}
-                </pre>
+    
+    const transcript = await parseVTT(vttFile);
+    if (!transcript.isValid) {
+        throw new Error('ZM-403: VTTフォーマット不正');
+    }
+    
+    return transcript;
+} catch (error) {
+    logger.error(error.message, {
+        recordingId,
+        fallback: 'audio-processing'
+    });
+    
+    // フォールバック処理
+    if (error.message.includes('ZM-40')) {
+        return await fallbackToAudioProcessing(recordingId);
+    }
+    
+    throw error;
+}</code></pre>
+
+                <h3>🔄 v1.0→v2.0 移行時のエラーハンドリング</h3>
+                <pre style="background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto;">
+<code>// ハイブリッド処理（v2.0優先、v1.0フォールバック）
+async function processRecording(recordingId) {
+    try {
+        // v2.0: Transcript API優先
+        return await processWithTranscript(recordingId);
+    } catch (error) {
+        if (error.code?.startsWith('ZM-40') || 
+            error.code?.startsWith('TS-')) {
+            logger.warn('v2.0処理失敗、v1.0フォールバック', error);
+            
+            // v1.0: 音声処理フォールバック
+            return await processWithAudio(recordingId);
+        }
+        throw error;
+    }
+}</code></pre>
             </div>
         </div>
-
+        
         <div class="last-updated">
-            最終更新: 2025年9月11日 | エラーコード総数: 82件
+            最終更新: <span id="lastUpdated"></span> | 
+            エラーコード数: <strong>55</strong> (v1.0: 50 + v2.0: 5) | 
+            <strong>v2.0 Transcript統合版: 2025-09-26</strong>
+            <div style="margin-top: 10px; font-weight: bold; color: #dc3545;">
+                🚀 v2.0新規: Transcript API関連エラーコード5件追加
+            </div>
         </div>
     </div>
-
+    
     <script>
-        function filterTable() {
+        // 最終更新日時を設定
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
+        
+        // 検索機能
+        function searchErrors() {
             const input = document.getElementById('searchInput');
             const filter = input.value.toUpperCase();
-            const table = document.getElementById('errorTable');
-            const tr = table.getElementsByTagName('tr');
-
-            for (let i = 1; i < tr.length; i++) {
-                const td = tr[i].getElementsByTagName('td');
-                let txtValue = '';
-                for (let j = 0; j < td.length; j++) {
-                    if (td[j]) {
-                        txtValue += td[j].textContent || td[j].innerText;
+            const tables = document.getElementsByClassName('error-table');
+            
+            for (let t of tables) {
+                const rows = t.getElementsByTagName('tr');
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    const text = row.textContent || row.innerText;
+                    if (text.toUpperCase().indexOf(filter) > -1) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
                     }
-                }
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = '';
-                } else {
-                    tr[i].style.display = 'none';
                 }
             }
         }
-
+        
+        // フィルター機能
         function filterCategory(category) {
-            const buttons = document.querySelectorAll('.filter-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            const table = document.getElementById('errorTable');
-            const tr = table.getElementsByTagName('tr');
-
-            for (let i = 1; i < tr.length; i++) {
-                if (category === 'all') {
-                    tr[i].style.display = '';
-                } else {
-                    const dataCategory = tr[i].getAttribute('data-category');
-                    if (dataCategory === category) {
-                        tr[i].style.display = '';
+            const buttons = document.getElementsByClassName('filter-btn');
+            const tables = document.getElementsByClassName('error-table');
+            
+            // ボタンのアクティブ状態を更新
+            for (let btn of buttons) {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase().includes(category) || 
+                    (category === 'all' && btn.textContent.includes('すべて')) ||
+                    (category === 'new' && btn.textContent.includes('v2.0'))) {
+                    btn.classList.add('active');
+                }
+            }
+            
+            // フィルタリング
+            for (let t of tables) {
+                const rows = t.getElementsByTagName('tr');
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (category === 'all') {
+                        row.style.display = '';
+                    } else if (category === 'new') {
+                        if (row.classList.contains('new-v2')) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
                     } else {
-                        tr[i].style.display = 'none';
+                        const categoryCell = row.querySelector('.category');
+                        if (categoryCell && categoryCell.classList.contains('category-' + category)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
                     }
                 }
             }
         }
     </script>
+
 </body>
 </html>

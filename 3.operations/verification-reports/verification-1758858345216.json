@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-09-26T03:45:45.216Z",
+  "passed": true,
+  "errors": [],
+  "warnings": [
+    "⚠️ 重要ファイルが変更されました: 1.src/services/aiService.js",
+    "   既存機能への影響を確認してください"
+  ],
+  "checkResults": [
+    {
+      "phase": "post-implementation",
+      "passed": true,
+      "modifiedFiles": [
+        "1.src/services/aiService.js",
+        "1.src/services/audioChunkService.js"
+      ],
+      "expectedBehavior": [
+        {
+          "description": "gemini-1.5-flash-8b削除",
+          "file": "1.src/services/aiService.js",
+          "shouldNotExist": [
+            "gemini-1.5-flash-8b"
+          ],
+          "shouldExist": [
+            "gemini-1.5-flash"
+          ]
+        }
+      ],
+      "timestamp": "2025-09-26T03:45:45.214Z"
+    }
+  ],
+  "summary": {
+    "totalChecks": 1,
+    "passedChecks": 1,
+    "errorCount": 0,
+    "warningCount": 2
+  }
+}

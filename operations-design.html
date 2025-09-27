@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>運用設計書 - Zoom Memo Automation</title>
+    <title>運用設計書 - Zoom Memo Automation v2.0</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -32,6 +32,16 @@
             color: #dc3545;
             font-size: 2.5rem;
             margin-bottom: 10px;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
         }
         
         .nav {
@@ -89,6 +99,11 @@
             display: block;
         }
         
+        .scenario-card.new {
+            background: linear-gradient(135deg, #ffe4e1, #ffc0cb);
+            border: 2px solid #dc3545;
+        }
+        
         .section {
             margin-bottom: 50px;
             padding: 30px;
@@ -102,50 +117,12 @@
         }
         
         .section h2 {
-            color: #dc3545;
+            color: #333;
             border-bottom: 2px solid #dc3545;
             padding-bottom: 10px;
-            margin-bottom: 25px;
-        }
-        
-        .urgency-high {
-            background: #f8d7da;
-            border-left: 5px solid #dc3545;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 5px;
-        }
-        
-        .urgency-medium {
-            background: #fff3cd;
-            border-left: 5px solid #ffc107;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 5px;
-        }
-        
-        .urgency-low {
-            background: #d4edda;
-            border-left: 5px solid #28a745;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 5px;
         }
         
         .procedure-box {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .procedure-box h4 {
-            color: #0056b3;
-            margin-top: 0;
-        }
-        
-        .checklist {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -153,2278 +130,746 @@
             margin: 20px 0;
         }
         
-        .checklist ul {
-            list-style: none;
-            padding: 0;
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
         }
         
-        .checklist li {
-            padding: 8px 0;
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .new-feature {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .performance-table {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .performance-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .performance-table th {
+            background: #dc3545;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        .performance-table td {
+            padding: 10px;
             border-bottom: 1px solid #dee2e6;
         }
         
-        .checklist li:before {
-            content: "☐ ";
-            color: #6c757d;
+        .improvement {
+            color: #00b894;
             font-weight: bold;
         }
         
         .status-indicator {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
             margin-left: 10px;
         }
         
-        .status-ok { background: #d4edda; color: #155724; }
-        .status-warning { background: #fff3cd; color: #856404; }
-        .status-error { background: #f8d7da; color: #721c24; }
+        .status-ok { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-error { background: #dc3545; }
         
-        .command-box {
-            background: #f8f9fa;
-            border: 1px solid #6c757d;
-            border-radius: 5px;
-            padding: 15px;
+        code {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
             font-family: 'Courier New', monospace;
-            margin: 15px 0;
-            position: relative;
         }
         
-        .command-box::before {
-            content: "$ ";
-            color: #28a745;
-            font-weight: bold;
+        pre {
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
         }
         
-        .error-code-table {
+        table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-            font-size: 0.9rem;
         }
         
-        .error-code-table th,
-        .error-code-table td {
-            border: 1px solid #dee2e6;
+        th, td {
+            border: 1px solid #ddd;
             padding: 12px;
             text-align: left;
         }
         
-        .error-code-table th {
+        th {
             background: #dc3545;
             color: white;
-            font-weight: bold;
         }
         
-        .error-code-table tr:nth-child(even) {
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .command-box {
             background: #f8f9fa;
-        }
-        
-        .back-to-top {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            width: 50px;
-            height: 50px;
-            cursor: pointer;
-            display: none;
-            font-size: 18px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
         }
         
         .last-updated {
             text-align: right;
             color: #666;
             font-size: 0.9rem;
-            margin-top: 40px;
+            margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e0e0e0;
         }
         
-        @media (max-width: 768px) {
-            .scenario-index {
-                grid-template-columns: 1fr;
-            }
+        .back-to-top {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: none;
+            transition: background 0.3s;
+        }
+        
+        .back-to-top:hover {
+            background: #c82333;
+        }
+        
+        .back-to-top.visible {
+            display: block;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🛠️ 運用設計書</h1>
-            <p>Zoom Memo Automation システム運用ガイド</p>
-            <p><strong>利用シーン別構成 - 必要な情報に素早くアクセス</strong></p>
+            <h1>🛠️ 運用設計書 <span class="version-badge">v2.0</span></h1>
+            <p>Zoom Memo Automation システム - Transcript API対応版</p>
         </div>
         
         <div class="nav">
             <a href="index.html">🏠 ダッシュボード</a>
             <a href="business-design.html">📋 業務設計書</a>
-            <a href="functional-design.html">🔧 機能設計書</a>
+            <a href="functional-design.html">⚙️ 機能設計書</a>
             <a href="environment-design.html">🏗️ 環境設計書</a>
             <a href="test-specification.html">🧪 テスト仕様書</a>
-            <a href="claude.md">💬 対話記録</a>
+            <a href="error-codes.html">❌ エラーコード</a>
         </div>
         
-        <!-- シナリオインデックス -->
         <div class="scenario-index">
-            <a href="#" class="scenario-card" onclick="showSection('current-status')">
-                <span class="icon">📊</span>
-                <h3>現在の運用状況を知りたいとき</h3>
-                <p>システム稼働状況、API接続状況、処理実績の確認方法</p>
+            <a href="#daily-operations" class="scenario-card" onclick="showSection('daily-operations')">
+                <span class="icon">📅</span>
+                <h3>日次運用</h3>
+                <p>日々の監視・確認・トラブルシューティング</p>
             </a>
             
-            <a href="#" class="scenario-card" onclick="showSection('error-handling')">
+            <a href="#performance-monitoring" class="scenario-card new" onclick="showSection('performance-monitoring')">
+                <span class="icon">⚡</span>
+                <h3>パフォーマンス管理 v2.0</h3>
+                <p>処理時間90%削減の効果測定と監視</p>
+            </a>
+            
+            <a href="#error-handling" class="scenario-card" onclick="showSection('error-handling')">
                 <span class="icon">🚨</span>
-                <h3>エラーの要因と対応策を知りたいとき</h3>
-                <p>エラーコード一覧、緊急度別対応、よくあるトラブル解決</p>
+                <h3>エラー対応</h3>
+                <p>エラー発生時の対応手順とフォールバック</p>
             </a>
             
-            <a href="#" class="scenario-card" onclick="showSection('maintenance')">
+            <a href="#maintenance" class="scenario-card new" onclick="showSection('maintenance')">
                 <span class="icon">🔧</span>
-                <h3>メンテナンス方法を知りたいとき</h3>
-                <p>定期メンテナンス、設定変更、システム更新手順</p>
+                <h3>メンテナンス v2.0</h3>
+                <p>Transcript API設定とVTT処理管理</p>
             </a>
             
-            <a href="#" class="scenario-card" onclick="showSection('emergency')">
-                <span class="icon">🆘</span>
-                <h3>緊急時対応を知りたいとき</h3>
-                <p>システム停止時、障害切り分け、緊急復旧手順</p>
+            <a href="#cost-management" class="scenario-card new" onclick="showSection('cost-management')">
+                <span class="icon">💰</span>
+                <h3>コスト管理 v2.0</h3>
+                <p>API使用量80%削減の効果確認</p>
             </a>
             
-            <a href="#" class="scenario-card" onclick="showSection('performance')">
-                <span class="icon">📈</span>
-                <h3>パフォーマンス問題を調査したいとき</h3>
-                <p>処理時間分析、ボトルネック特定、最適化ポイント</p>
-            </a>
-            
-            <a href="#" class="scenario-card" onclick="showSection('security')">
-                <span class="icon">🔐</span>
-                <h3>セキュリティインシデントが発生したとき</h3>
-                <p>APIキー漏洩、不正アクセス、セキュリティ監査対応</p>
-            </a>
-            
-            <a href="#" class="scenario-card" onclick="showSection('system-change')">
+            <a href="#migration" class="scenario-card new" onclick="showSection('migration')">
                 <span class="icon">🔄</span>
-                <h3>システム変更を実施したいとき</h3>
-                <p>変更管理プロセス、テスト実行、ロールバック手順</p>
-            </a>
-            
-            <a href="#" class="scenario-card" onclick="showSection('reporting')">
-                <span class="icon">📋</span>
-                <h3>運用レポートを作成したいとき</h3>
-                <p>運用実績データ取得、レポート作成、KPI分析</p>
-            </a>
-            
-            <a href="#" class="scenario-card" onclick="showSection('onboarding')">
-                <span class="icon">🆕</span>
-                <h3>新メンバーがシステムを理解したいとき</h3>
-                <p>システム概要、基本操作、学習リソース</p>
-            </a>
-            
-            <a href="#" class="scenario-card" onclick="showSection('reference')">
-                <span class="icon">📚</span>
-                <h3>詳細仕様・設定情報を確認したいとき</h3>
-                <p>システム構成、設定値、API仕様、関連ドキュメント</p>
+                <h3>v2.0移行管理</h3>
+                <p>段階的移行の進捗管理と切替操作</p>
             </a>
         </div>
-
-        <!-- 1. 現在の運用状況を知りたいとき -->
-        <div id="current-status" class="section">
-            <h2>📊 現在の運用状況を知りたいとき</h2>
+        
+        <!-- 日次運用 -->
+        <div id="daily-operations" class="section">
+            <h2>📅 日次運用</h2>
             
-            <div class="procedure-box">
-                <h4>🔍 システム稼働状況の確認手順</h4>
-                <div class="checklist">
-                    <h5>1. 基本ヘルスチェック（所要時間：2分）</h5>
-                    <ul>
-                        <li>Vercel Functions稼働確認</li>
-                        <li>API接続状況確認（Zoom/Google/Slack）</li>
-                        <li>最新の実行ログ確認</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    curl "https://zoom-memo-automation.vercel.app/api/health-check"
-                </div>
-                
-                <p><strong>期待される応答：</strong></p>
-                <div class="command-box">
-                    {"status": "healthy", "timestamp": "2025-08-08T...", "services": {...}}
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📈 処理実績・パフォーマンス確認</h4>
-                
-                <h5>実行ログの確認場所</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>ログ種別</th>
-                        <th>確認場所</th>
-                        <th>確認方法</th>
-                    </tr>
-                    <tr>
-                        <td>実行ログ</td>
-                        <td>Google Drive<br><code>99.zoom_memo_recording/{年}/{月}/logs/</code></td>
-                        <td>JSON形式、Slack通知からリンクアクセス可能</td>
-                    </tr>
-                    <tr>
-                        <td>システムログ</td>
-                        <td>Vercel Dashboard</td>
-                        <td>Functions → Logs → 最新7日間</td>
-                    </tr>
-                    <tr>
-                        <td>対話記録</td>
-                        <td>Cipher Database<br><code>data/cipher.db</code></td>
-                        <td>Claude Code MCP経由でアクセス</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>⚡ パフォーマンス指標</h4>
-                
-                <h5>正常稼働の目安</h5>
+            <div class="alert alert-success">
+                <h4>✅ v2.0での改善点</h4>
                 <ul>
-                    <li><strong>処理時間：</strong>228秒未満（300秒制限の76%以内）<span class="status-indicator status-ok">正常</span></li>
-                    <li><strong>API応答時間：</strong>各API 10秒未満<span class="status-indicator status-ok">正常</span></li>
-                    <li><strong>エラー発生率：</strong>5%未満<span class="status-indicator status-ok">正常</span></li>
-                    <li><strong>Slack通知成功率：</strong>95%以上<span class="status-indicator status-ok">正常</span></li>
-                </ul>
-                
-                <div class="urgency-medium">
-                    <strong>⚠️ 注意が必要な状況</strong>
-                    <ul>
-                        <li>処理時間が250秒を超える場合</li>
-                        <li>API接続エラーが連続3回発生</li>
-                        <li>1日に10回以上のエラー通知</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. エラーの要因と対応策を知りたいとき -->
-        <div id="error-handling" class="section">
-            <h2>🚨 エラーの要因と対応策を知りたいとき</h2>
-            
-            <div class="urgency-high">
-                <h4>🚨 緊急対応が必要なエラー（即座に対応）</h4>
-                <ul>
-                    <li><strong>ZM001:</strong> Zoom API認証失敗 → 環境変数確認</li>
-                    <li><strong>GD001:</strong> Google Drive API認証失敗 → 認証情報確認</li>
-                    <li><strong>SY002:</strong> システム処理タイムアウト → 処理時間最適化</li>
-                    <li><strong>SY003:</strong> 環境変数未設定 → Vercel環境変数確認</li>
+                    <li>処理時間が5-10分 → 30秒-1分に短縮され、監視頻度を増やせる</li>
+                    <li>17分タイムアウトが発生しないため、エラー対応が大幅削減</li>
+                    <li>Transcript取得成功率の確認が新たに追加</li>
                 </ul>
             </div>
             
             <div class="procedure-box">
-                <h4>📋 エラーコード分類システム（50種類）</h4>
-                
-                <table class="error-code-table">
-                    <tr>
-                        <th>分類</th>
-                        <th>コード範囲</th>
-                        <th>主な原因</th>
-                        <th>初期対応</th>
-                    </tr>
-                    <tr>
-                        <td><strong>ZM (Zoom API)</strong></td>
-                        <td>ZM001-ZM010</td>
-                        <td>認証エラー、レート制限、録画アクセス</td>
-                        <td>環境変数・OAuth設定確認</td>
-                    </tr>
-                    <tr>
-                        <td><strong>GD (Google Drive)</strong></td>
-                        <td>GD001-GD010</td>
-                        <td>認証エラー、容量不足、権限問題</td>
-                        <td>サービスアカウント・権限確認</td>
-                    </tr>
-                    <tr>
-                        <td><strong>AI (Gemini AI)</strong></td>
-                        <td>AI001-AI010</td>
-                        <td>レート制限、処理タイムアウト、形式エラー</td>
-                        <td>API制限・ファイル形式確認</td>
-                    </tr>
-                    <tr>
-                        <td><strong>SL (Slack API)</strong></td>
-                        <td>SL001-SL010</td>
-                        <td>Bot認証、チャンネル権限、メッセージ形式</td>
-                        <td>Bot設定・権限確認</td>
-                    </tr>
-                    <tr>
-                        <td><strong>SY (System)</strong></td>
-                        <td>SY001-SY010</td>
-                        <td>メモリ不足、タイムアウト、設定エラー</td>
-                        <td>Vercel制限・環境変数確認</td>
-                    </tr>
-                </table>
-                
-                <div style="text-align: center; margin: 20px 0;">
-                    <button onclick="toggleErrorCodeDetails()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
-                        📖 全エラーコード詳細一覧を表示/非表示
-                    </button>
-                </div>
-                
-                <!-- 詳細エラーコード一覧（初期状態：非表示） -->
-                <div id="errorCodeDetails" style="display: none;">
-                    <h4>🔍 全エラーコード詳細一覧（50コード）</h4>
-                    
-                    <!-- Zoom API Errors -->
-                    <div class="error-category">
-                        <h5 style="background: #007bff; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">🔗 Zoom API エラー (ZM001-ZM010)</h5>
-                        <div style="border: 2px solid #007bff; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
-                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
-                                <tr>
-                                    <th>コード</th>
-                                    <th>エラー内容</th>
-                                    <th>リトライ</th>
-                                    <th>Slack通知</th>
-                                    <th>対応策</th>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>ZM001</strong></td>
-                                    <td>Zoom API認証失敗</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>ZOOM_API_KEY、ZOOM_API_SECRET、ZOOM_ACCOUNT_IDを確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>ZM002</strong></td>
-                                    <td>Zoom APIレート制限超過</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>APIリクエスト頻度を下げるか、しばらく待ってからリトライしてください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>ZM003</strong></td>
-                                    <td>Zoom録画データ取得失敗</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>録画ファイルの存在とアクセス権限を確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>ZM004</strong></td>
-                                    <td>Zoom録画ファイルが存在しない</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>録画が正常に完了しているか、削除されていないか確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>ZM005</strong></td>
-                                    <td>Zoom録画ファイルの形式未対応</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>サポート形式: MP4, M4A, MP3, WAV</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>ZM006</strong></td>
-                                    <td>Zoom APIレスポンス不正</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>ZoomのAPIステータスを確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>ZM007</strong></td>
-                                    <td>Zoom API接続タイムアウト</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>ZM008</strong></td>
-                                    <td>Zoomアカウント権限不足</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>Zoomアカウントの録画アクセス権限を確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>ZM009</strong></td>
-                                    <td>Zoom録画データサイズ制限超過</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>録画ファイルサイズを確認し、分割処理を検討してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>ZM010</strong></td>
-                                    <td>Zoom録画ダウンロード失敗</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>ネットワーク状況と録画ファイルの可用性を確認してください</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Google Drive API Errors -->
-                    <div class="error-category" style="margin-top: 20px;">
-                        <h5 style="background: #28a745; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">☁️ Google Drive API エラー (GD001-GD010)</h5>
-                        <div style="border: 2px solid #28a745; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
-                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
-                                <tr>
-                                    <th>コード</th>
-                                    <th>エラー内容</th>
-                                    <th>リトライ</th>
-                                    <th>Slack通知</th>
-                                    <th>対応策</th>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>GD001</strong></td>
-                                    <td>Google Drive API認証失敗</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>GOOGLE_DRIVE_CREDENTIALSを確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>GD002</strong></td>
-                                    <td>Google Drive容量制限超過</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>Google Driveの容量を確認し、不要ファイルを削除してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>GD003</strong></td>
-                                    <td>Google Driveファイルアップロード失敗</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>ネットワーク状況とGoogle Drive APIステータスを確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>GD004</strong></td>
-                                    <td>Google Driveフォルダ作成失敗</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>親フォルダの存在と権限を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>GD005</strong></td>
-                                    <td>Google Drive共有リンク生成失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ファイルの共有設定を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>GD006</strong></td>
-                                    <td>Google Driveファイル検索失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>フォルダIDとファイル名を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>GD007</strong></td>
-                                    <td>Google Drive権限設定失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>サービスアカウントの権限設定を確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>GD008</strong></td>
-                                    <td>Google Drive APIレート制限超過</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>APIリクエスト頻度を下げてリトライしてください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>GD009</strong></td>
-                                    <td>Google Drive API接続タイムアウト</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>GD010</strong></td>
-                                    <td>Google Driveファイル削除失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ファイルの存在と削除権限を確認してください</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Gemini AI API Errors -->
-                    <div class="error-category" style="margin-top: 20px;">
-                        <h5 style="background: #6f42c1; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">🤖 Gemini AI API エラー (AI001-AI010)</h5>
-                        <div style="border: 2px solid #6f42c1; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
-                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
-                                <tr>
-                                    <th>コード</th>
-                                    <th>エラー内容</th>
-                                    <th>リトライ</th>
-                                    <th>Slack通知</th>
-                                    <th>対応策</th>
-                                </tr>
-                                <tr>
-                                    <td><strong>AI001</strong></td>
-                                    <td>Gemini APIレート制限超過</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>APIクォータを確認し、しばらく待ってからリトライしてください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>AI002</strong></td>
-                                    <td>Gemini API認証失敗</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>GOOGLE_AI_API_KEYを確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>AI003</strong></td>
-                                    <td>Gemini文字起こし失敗</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>音声ファイルの形式・品質を確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>AI004</strong></td>
-                                    <td>Gemini要約生成失敗</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>文字起こし結果の内容を確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>AI005</strong></td>
-                                    <td>Gemini処理ファイルサイズ制限超過</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>音声ファイルを分割するか、圧縮を検討してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>AI006</strong></td>
-                                    <td>Gemini音声形式未対応</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>サポート形式に変換してください: M4A, MP3, WAV</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>AI007</strong></td>
-                                    <td>Gemini処理タイムアウト</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>音声ファイルサイズを小さくするか、分割処理を検討してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>AI008</strong></td>
-                                    <td>GeminiAI応答品質不良</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>音声品質を確認し、必要に応じて手動確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>AI009</strong></td>
-                                    <td>Gemini API接続エラー</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>AI010</strong></td>
-                                    <td>Geminiモデル変更必要</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>フォールバックモデルに自動切り替えしています</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Slack API Errors -->
-                    <div class="error-category" style="margin-top: 20px;">
-                        <h5 style="background: #e91e63; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">💬 Slack API エラー (SL001-SL010)</h5>
-                        <div style="border: 2px solid #e91e63; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
-                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
-                                <tr>
-                                    <th>コード</th>
-                                    <th>エラー内容</th>
-                                    <th>リトライ</th>
-                                    <th>Slack通知</th>
-                                    <th>対応策</th>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SL001</strong></td>
-                                    <td>Slack Bot認証失敗</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>SLACK_BOT_TOKENを確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SL002</strong></td>
-                                    <td>Slackチャンネルアクセス拒否</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>Botのチャンネルアクセス権限を確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>SL003</strong></td>
-                                    <td>Slackメッセージ投稿失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>メッセージ形式とBot権限を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>SL004</strong></td>
-                                    <td>Slack APIレート制限超過</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>しばらく待ってからリトライしてください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SL005</strong></td>
-                                    <td>Slackチャンネルが存在しない</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>SLACK_CHANNEL_IDを確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SL006</strong></td>
-                                    <td>Slack Bot権限不足</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>Bot Scopesを確認してください: chat:write, files:write</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>SL007</strong></td>
-                                    <td>Slack API接続タイムアウト</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ネットワーク状況を確認してください。自動でリトライします</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SL008</strong></td>
-                                    <td>Slackメッセージ形式エラー</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>メッセージの構造とブロック形式を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>SL009</strong></td>
-                                    <td>Slackファイルアップロード失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>ファイルサイズと形式を確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SL010</strong></td>
-                                    <td>Slack通知設定無効</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>DISABLE_SLACK_NOTIFICATIONS設定を確認してください</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- System Internal Errors -->
-                    <div class="error-category" style="margin-top: 20px;">
-                        <h5 style="background: #fd7e14; color: white; padding: 10px; margin: 0; border-radius: 5px 5px 0 0;">⚙️ システム内部エラー (SY001-SY010)</h5>
-                        <div style="border: 2px solid #fd7e14; border-top: none; border-radius: 0 0 5px 5px; overflow: hidden;">
-                            <table class="error-detail-table" style="width: 100%; border-collapse: collapse; margin: 0;">
-                                <tr>
-                                    <th>コード</th>
-                                    <th>エラー内容</th>
-                                    <th>リトライ</th>
-                                    <th>Slack通知</th>
-                                    <th>対応策</th>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SY001</strong></td>
-                                    <td>システムメモリ不足</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>Vercelのメモリ制限を確認し、ファイルサイズを小さくしてください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>SY002</strong></td>
-                                    <td>システム処理タイムアウト</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>Vercel maxDuration設定を確認してください（現在300秒）</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SY003</strong></td>
-                                    <td>環境変数未設定</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>必要な環境変数がVercelに設定されているか確認してください</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SY004</strong></td>
-                                    <td>設定ファイル読み込み失敗</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>設定ファイルの存在と形式を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>SY005</strong></td>
-                                    <td>一時ファイル作成失敗</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>メモリバッファ処理に切り替えています</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SY006</strong></td>
-                                    <td>JSON解析エラー</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>データ形式を確認してください</td>
-                                </tr>
-                                <tr class="error-warning">
-                                    <td><strong>SY007</strong></td>
-                                    <td>日付フォーマットエラー</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>日付形式を確認してください: YYYY-MM-DD HH:mm:ss</td>
-                                </tr>
-                                <tr class="error-critical">
-                                    <td><strong>SY008</strong></td>
-                                    <td>バリデーションエラー</td>
-                                    <td>❌</td>
-                                    <td>✅</td>
-                                    <td>入力データの形式と必須項目を確認してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>SY009</strong></td>
-                                    <td>未知のエラー</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>ログを確認し、詳細情報を調査してください</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>SY010</strong></td>
-                                    <td>依存サービス停止</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>外部サービスのステータスを確認してください</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div style="background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
-                        <h5>📊 エラーコード統計</h5>
+                <h3>1. 朝の定期確認（9:00）</h3>
+                <ol>
+                    <li><strong>Slackチャンネル確認</strong>
                         <ul>
-                            <li><strong>総エラーコード数:</strong> 50種類</li>
-                            <li><strong>リトライ対象:</strong> 26種類（52%）</li>
-                            <li><strong>Slack通知対象:</strong> 28種類（56%）</li>
-                            <li><strong>緊急対応必須:</strong> 21種類（赤色表示）</li>
-                            <li><strong>注意監視:</strong> 11種類（黄色表示）</li>
-                            <li><strong>自動復旧期待:</strong> 18種類（リトライ可能）</li>
+                            <li>夜間処理の完了通知を確認</li>
+                            <li>エラー通知がないか確認</li>
+                            <li>処理時間が1分を超えていないか確認（v2.0基準）</li>
                         </ul>
-                    </div>
-                </div>
+                    </li>
+                    <li><strong>Google Drive確認</strong>
+                        <ul>
+                            <li>録画フォルダに新規ファイルが保存されているか</li>
+                            <li>文字起こし・要約ドキュメントが生成されているか</li>
+                        </ul>
+                    </li>
+                    <li><strong>ヘルスチェック実行</strong>
+                        <div class="command-box">
+                            curl https://your-domain.vercel.app/api/health-check
+                        </div>
+                    </li>
+                </ol>
             </div>
             
             <div class="procedure-box">
-                <h4>🔄 よくあるエラーと解決方法</h4>
-                
-                <div class="urgency-medium">
-                    <h5>ZM002: Zoom APIレート制限超過</h5>
-                    <p><strong>症状：</strong> 429 Too Many Requests エラー</p>
-                    <p><strong>対応：</strong></p>
-                    <ol>
-                        <li>15分間待機してから再実行</li>
-                        <li>監視間隔を延長（現在30分 → 60分に変更）</li>
-                        <li>複数同時処理を避ける</li>
-                    </ol>
-                    <div class="command-box">
-                        # 監視間隔変更（Vercel環境変数）
-                        CHECK_INTERVAL_MINUTES=60
-                    </div>
-                </div>
-                
-                <div class="urgency-medium">
-                    <h5>AI007: Gemini処理タイムアウト</h5>
-                    <p><strong>症状：</strong> 97秒でタイムアウト、文字起こし未完了</p>
-                    <p><strong>対応：</strong></p>
-                    <ol>
-                        <li>音声ファイルサイズ確認（推奨：100MB未満）</li>
-                        <li>録画時間確認（推奨：60分未満）</li>
-                        <li>必要に応じて音声分割処理を検討</li>
-                    </ol>
-                </div>
-                
-                <div class="urgency-low">
-                    <h5>SL003: Slackメッセージ投稿失敗</h5>
-                    <p><strong>症状：</strong> Slackにメッセージが投稿されない</p>
-                    <p><strong>対応：</strong></p>
-                    <ol>
-                        <li>Botがチャンネルに参加しているか確認</li>
-                        <li>Bot Scopesに chat:write 権限があるか確認</li>
-                        <li>チャンネルIDが正しいか確認（Cから始まる）</li>
-                    </ol>
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📞 エスカレーション判断基準</h4>
-                
-                <div class="urgency-high">
-                    <h5>🔴 即座にエスカレーション</h5>
-                    <ul>
-                        <li>システム全体が2時間以上停止</li>
-                        <li>データ損失の可能性</li>
-                        <li>セキュリティインシデントの疑い</li>
-                        <li>複数のAPIで同時認証エラー</li>
-                    </ul>
-                </div>
-                
-                <div class="urgency-medium">
-                    <h5>🟡 1営業日以内にエスカレーション</h5>
-                    <ul>
-                        <li>特定機能が24時間以上利用不可</li>
-                        <li>パフォーマンス著しく低下</li>
-                        <li>エラー発生率が20%を超過</li>
-                    </ul>
+                <h3>2. Transcript API利用状況確認</h3>
+                <div class="new-feature">
+                    <h4>🆕 v2.0新規確認項目</h4>
+                    <table>
+                        <tr>
+                            <th>確認項目</th>
+                            <th>正常値</th>
+                            <th>対応</th>
+                        </tr>
+                        <tr>
+                            <td>Transcript取得成功率</td>
+                            <td>95%以上</td>
+                            <td>低い場合はZoom設定確認</td>
+                        </tr>
+                        <tr>
+                            <td>VTT解析成功率</td>
+                            <td>99%以上</td>
+                            <td>エラーログ確認</td>
+                        </tr>
+                        <tr>
+                            <td>フォールバック発生率</td>
+                            <td>5%未満</td>
+                            <td>原因調査（古い録画等）</td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
-
-        <!-- 3. メンテナンス方法を知りたいとき -->
-        <div id="maintenance" class="section">
-            <h2>🔧 メンテナンス方法を知りたいとき</h2>
+        
+        <!-- パフォーマンス管理 -->
+        <div id="performance-monitoring" class="section">
+            <h2>⚡ パフォーマンス管理 v2.0</h2>
             
-            <div class="procedure-box">
-                <h4>📅 定期メンテナンススケジュール</h4>
-                
-                <table class="error-code-table">
+            <div class="alert alert-info">
+                <h4>🎯 v2.0パフォーマンス基準値</h4>
+                <p>Transcript API導入により、処理時間の基準値が大幅に改善されました。</p>
+            </div>
+            
+            <div class="performance-table">
+                <h3>処理時間基準（v1.0 → v2.0）</h3>
+                <table>
                     <tr>
-                        <th>頻度</th>
-                        <th>メンテナンス項目</th>
-                        <th>実施方法</th>
-                        <th>所要時間</th>
+                        <th>会議時間</th>
+                        <th>v1.0基準</th>
+                        <th>v2.0基準</th>
+                        <th>改善率</th>
+                        <th>アラート閾値</th>
                     </tr>
                     <tr>
-                        <td><strong>毎日</strong></td>
-                        <td>システム稼働確認</td>
-                        <td>ヘルスチェックAPI実行</td>
-                        <td>5分</td>
+                        <td>15分以内</td>
+                        <td>2-3分</td>
+                        <td class="improvement">15-30秒</td>
+                        <td class="improvement">90%</td>
+                        <td>1分超</td>
                     </tr>
                     <tr>
-                        <td><strong>週次</strong></td>
-                        <td>エラーログ確認・分析</td>
-                        <td>Google Drive logs フォルダ確認</td>
-                        <td>15分</td>
-                    </tr>
-                    <tr>
-                        <td><strong>月次</strong></td>
-                        <td>依存関係更新確認</td>
-                        <td>package.json 脆弱性スキャン</td>
                         <td>30分</td>
+                        <td>5-10分</td>
+                        <td class="improvement">30-60秒</td>
+                        <td class="improvement">90%</td>
+                        <td>2分超</td>
                     </tr>
                     <tr>
-                        <td><strong>四半期</strong></td>
-                        <td>API制限・料金確認</td>
-                        <td>各サービスコンソール確認</td>
                         <td>60分</td>
+                        <td>17分で失敗</td>
+                        <td class="improvement">60-120秒</td>
+                        <td class="improvement">完全対応</td>
+                        <td>3分超</td>
                     </tr>
                 </table>
             </div>
             
             <div class="procedure-box">
-                <h4>⚙️ 環境変数・設定変更手順</h4>
-                
-                <div class="checklist">
-                    <h5>Vercel環境変数の変更</h5>
-                    <ul>
-                        <li>Vercel Dashboard → Project Settings → Environment Variables</li>
-                        <li>変更対象の環境変数を特定</li>
-                        <li>新しい値を設定（本番環境：Production）</li>
-                        <li>保存後、自動的に再デプロイ実行</li>
-                        <li>変更後のヘルスチェック実施</li>
-                    </ul>
-                </div>
-                
-                <div class="urgency-medium">
-                    <strong>⚠️ 注意事項</strong>
-                    <ul>
-                        <li>APIキー変更時は事前に新キーの動作確認を実施</li>
-                        <li>変更前の値をバックアップとして記録</li>
-                        <li>営業時間外での変更を推奨</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🔄 システム更新・デプロイ手順</h4>
-                
-                <div class="checklist">
-                    <h5>通常のコード更新（所要時間：15分）</h5>
-                    <ul>
-                        <li>変更内容をGitHubにプッシュ</li>
-                        <li>Vercel自動デプロイ開始確認</li>
-                        <li>デプロイ完了確認（通常15-30秒）</li>
-                        <li>ヘルスチェックで稼働確認</li>
-                        <li>主要機能のテスト実行</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # Claude Code での標準デプロイフロー
-                    git add .
-                    git commit -m "fix: 具体的な変更内容"
-                    git push origin main
-                    sleep 30
-                    curl "https://zoom-memo-automation.vercel.app/api/health-check"
-                </div>
-                
-                <div class="checklist">
-                    <h5>重要な変更時の詳細検証</h5>
-                    <ul>
-                        <li>PT001本番スルーテスト実行</li>
-                        <li>各API接続テスト実行</li>
-                        <li>ExecutionLogger動作確認</li>
-                        <li>Slack通知テスト実行</li>
-                        <li>エラーハンドリングテスト</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # 包括的テスト実行
-                    curl "https://zoom-memo-automation.vercel.app/api/production-throughput-test"
-                    curl "https://zoom-memo-automation.vercel.app/api/test-zoom?test=auth"
-                    curl "https://zoom-memo-automation.vercel.app/api/monitor-recordings-gdrive-test?test=TC205b"
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📦 依存関係更新方法</h4>
-                
-                <div class="urgency-medium">
-                    <h5>月次パッケージ更新チェック</h5>
-                    <ol>
-                        <li>package.json の依存関係確認</li>
-                        <li>セキュリティ脆弱性スキャン実行</li>
-                        <li>メジャーバージョン更新は個別検証</li>
-                        <li>テスト環境での動作確認後に本番適用</li>
-                    </ol>
-                </div>
-                
-                <h5>主要依存関係</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>パッケージ</th>
-                        <th>現在バージョン</th>
-                        <th>更新頻度</th>
-                        <th>注意事項</th>
-                    </tr>
-                    <tr>
-                        <td>@google/generative-ai</td>
-                        <td>^0.2.0</td>
-                        <td>月次</td>
-                        <td>API変更に注意</td>
-                    </tr>
-                    <tr>
-                        <td>googleapis</td>
-                        <td>^126.0.0</td>
-                        <td>四半期</td>
-                        <td>認証方式変更に注意</td>
-                    </tr>
-                    <tr>
-                        <td>axios</td>
-                        <td>^1.6.0</td>
-                        <td>月次</td>
-                        <td>セキュリティパッチ優先</td>
-                    </tr>
-                    <tr>
-                        <td>@slack/web-api</td>
-                        <td>^6.9.0</td>
-                        <td>月次</td>
-                        <td>API変更に注意</td>
-                    </tr>
-                </table>
+                <h3>パフォーマンス監視手順</h3>
+                <ol>
+                    <li><strong>リアルタイム監視</strong>
+                        <pre>
+# 処理ログ監視
+tail -f 3.operations/logs/app.log | grep "処理時間"
+
+# v2.0専用メトリクス
+grep "Transcript取得" app.log | tail -20
+grep "VTT解析" app.log | tail -20
+                        </pre>
+                    </li>
+                    <li><strong>処理パス分析</strong>
+                        <table>
+                            <tr>
+                                <th>処理パス</th>
+                                <th>発生割合目標</th>
+                                <th>確認方法</th>
+                            </tr>
+                            <tr>
+                                <td>Transcript高速パス</td>
+                                <td>95%以上</td>
+                                <td>TranscriptService利用ログ</td>
+                            </tr>
+                            <tr>
+                                <td>音声フォールバック</td>
+                                <td>5%未満</td>
+                                <td>AudioSummaryService利用ログ</td>
+                            </tr>
+                        </table>
+                    </li>
+                    <li><strong>ボトルネック特定</strong>
+                        <ul>
+                            <li>VTTダウンロード時間（目標: 5秒以内）</li>
+                            <li>VTT解析時間（目標: 1秒以内）</li>
+                            <li>要約生成時間（目標: 10-30秒）</li>
+                        </ul>
+                    </li>
+                </ol>
             </div>
         </div>
-
-        <!-- 4. 緊急時対応を知りたいとき -->
-        <div id="emergency" class="section">
-            <h2>🆘 緊急時対応を知りたいとき</h2>
+        
+        <!-- エラー対応 -->
+        <div id="error-handling" class="section">
+            <h2>🚨 エラー対応</h2>
             
-            <div class="urgency-high">
-                <h4>🚨 システム完全停止時の対応（所要時間：10分）</h4>
+            <div class="alert alert-warning">
+                <h4>⚠️ v2.0特有のエラー対応</h4>
+                <p>Transcript API関連の新しいエラーパターンと対応方法を追加しました。</p>
+            </div>
+            
+            <div class="procedure-box">
+                <h3>Transcript関連エラー（新規）</h3>
+                <table>
+                    <tr>
+                        <th>エラーコード</th>
+                        <th>内容</th>
+                        <th>対応手順</th>
+                        <th>フォールバック</th>
+                    </tr>
+                    <tr>
+                        <td><code>TR001</code></td>
+                        <td>Transcriptファイル未検出</td>
+                        <td>
+                            1. Zoom設定で文字起こし有効確認<br>
+                            2. 録画時期確認（古い録画か）
+                        </td>
+                        <td>音声処理へ自動切替</td>
+                    </tr>
+                    <tr>
+                        <td><code>TR002</code></td>
+                        <td>VTT解析エラー</td>
+                        <td>
+                            1. VTTファイル形式確認<br>
+                            2. 文字コード確認（UTF-8か）
+                        </td>
+                        <td>音声処理へ自動切替</td>
+                    </tr>
+                    <tr>
+                        <td><code>TR003</code></td>
+                        <td>VTTダウンロード失敗</td>
+                        <td>
+                            1. Zoom API認証確認<br>
+                            2. ネットワーク状態確認
+                        </td>
+                        <td>3回リトライ後、音声処理</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="procedure-box">
+                <h3>フォールバック動作確認</h3>
+                <pre>
+# フォールバック発生状況確認
+grep "Fallback to audio processing" app.log | tail -10
+
+# フォールバック理由分析
+grep "Transcript not available" app.log | wc -l
+grep "VTT parse error" app.log | wc -l
+
+# フォールバック成功率
+grep "Fallback successful" app.log | wc -l
+                </pre>
+            </div>
+        </div>
+        
+        <!-- メンテナンス -->
+        <div id="maintenance" class="section">
+            <h2>🔧 メンテナンス v2.0</h2>
+            
+            <div class="new-feature">
+                <h4>🆕 Transcript API関連の設定管理</h4>
+                <p>v2.0で追加された設定項目と管理方法です。</p>
+            </div>
+            
+            <div class="procedure-box">
+                <h3>1. Zoom側設定確認</h3>
                 <ol>
-                    <li><strong>影響範囲確認：</strong>Vercel Dashboard でFunctions状態確認</li>
-                    <li><strong>原因切り分け：</strong>最新のデプロイメント・環境変数変更確認</li>
-                    <li><strong>緊急復旧：</strong>前回正常動作版へのロールバック</li>
-                    <li><strong>サービス復旧確認：</strong>ヘルスチェック・基本機能テスト</li>
-                    <li><strong>関係者通知：</strong>復旧状況をSlackで報告</li>
+                    <li><strong>自動文字起こし設定</strong>
+                        <ul>
+                            <li>Zoom管理画面にログイン</li>
+                            <li>「設定」→「記録」→「クラウド記録」</li>
+                            <li>「音声の文字起こし」が有効になっているか確認</li>
+                            <li>言語設定が「日本語」になっているか確認</li>
+                        </ul>
+                    </li>
+                    <li><strong>API権限確認</strong>
+                        <ul>
+                            <li>Zoom App Marketplaceで権限確認</li>
+                            <li><code>recording:read</code>スコープが有効か</li>
+                            <li>Transcriptファイルアクセス権限があるか</li>
+                        </ul>
+                    </li>
                 </ol>
             </div>
             
             <div class="procedure-box">
-                <h4>🔍 障害切り分け手順フローチャート</h4>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h5>1. 症状確認</h5>
-                    <p>□ ヘルスチェック失敗 → <strong>Vercelデプロイメント確認</strong></p>
-                    <p>□ 特定API呼び出し失敗 → <strong>個別API認証確認</strong></p>
-                    <p>□ 処理タイムアウト → <strong>パフォーマンス問題調査</strong></p>
-                    <p>□ 部分的機能停止 → <strong>機能別切り分け</strong></p>
-                    
-                    <h5>2. 原因特定</h5>
-                    <p>□ 最近のコード変更 → <strong>コミット履歴確認</strong></p>
-                    <p>□ 環境変数変更 → <strong>Vercel設定確認</strong></p>
-                    <p>□ 外部API問題 → <strong>各サービス障害情報確認</strong></p>
-                    <p>□ Vercel制限到達 → <strong>リソース使用量確認</strong></p>
-                </div>
+                <h3>2. システム側設定</h3>
+                <h4>環境変数（Vercel）</h4>
+                <table>
+                    <tr>
+                        <th>変数名</th>
+                        <th>説明</th>
+                        <th>v2.0設定値</th>
+                    </tr>
+                    <tr>
+                        <td><code>USE_TRANSCRIPT_API</code></td>
+                        <td>Transcript API使用フラグ</td>
+                        <td><code>true</code>（本番）</td>
+                    </tr>
+                    <tr>
+                        <td><code>TRANSCRIPT_FALLBACK_ENABLED</code></td>
+                        <td>音声フォールバック有効化</td>
+                        <td><code>true</code>（推奨）</td>
+                    </tr>
+                    <tr>
+                        <td><code>VTT_PARSE_TIMEOUT</code></td>
+                        <td>VTT解析タイムアウト（秒）</td>
+                        <td><code>10</code></td>
+                    </tr>
+                </table>
             </div>
             
             <div class="procedure-box">
-                <h4>⏪ 緊急復旧手順</h4>
-                
-                <div class="checklist">
-                    <h5>A. Vercelロールバック（推奨：5分）</h5>
-                    <ul>
-                        <li>Vercel Dashboard → Deployments</li>
-                        <li>前回正常動作のデプロイメント特定</li>
-                        <li>"Promote to Production" 実行</li>
-                        <li>復旧確認テスト実行</li>
-                    </ul>
-                </div>
-                
-                <div class="checklist">
-                    <h5>B. Gitロールバック（代替手段：10分）</h5>
-                    <ul>
-                        <li>前回正常コミットのハッシュ特定</li>
-                        <li>リバートコミット作成・プッシュ</li>
-                        <li>自動デプロイ完了待機</li>
-                        <li>復旧確認テスト実行</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # Gitロールバック例
-                    git log --oneline -10  # 正常コミット特定
-                    git revert [コミットハッシュ] --no-edit
-                    git push origin main
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📞 関係者連絡・報告手順</h4>
-                
-                <div class="urgency-high">
-                    <h5>🔴 緊急度：High（即座に連絡）</h5>
-                    <ul>
-                        <li>システム完全停止：2時間以上の機能停止</li>
-                        <li>データ損失・セキュリティ問題</li>
-                        <li>複数サービス同時障害</li>
-                    </ul>
-                    <p><strong>連絡先：</strong>システム部門管理者、関係者Slackチャンネル</p>
-                </div>
-                
-                <div class="urgency-medium">
-                    <h5>🟡 緊急度：Medium（4時間以内に連絡）</h5>
-                    <ul>
-                        <li>特定機能の停止</li>
-                        <li>パフォーマンス大幅低下</li>
-                        <li>頻発するエラー</li>
-                    </ul>
-                </div>
-                
-                <h5>📝 報告テンプレート</h5>
-                <div class="command-box">
-                    【システム障害報告】Zoom Memo Automation
-                    
-                    ■ 発生時刻：YYYY/MM/DD HH:mm
-                    ■ 影響範囲：[全機能停止 / 特定機能停止 / パフォーマンス低下]
-                    ■ 症状：[具体的な症状]
-                    ■ 推定原因：[デプロイ / 環境変数 / 外部API / 不明]
-                    ■ 対応状況：[実施済み対応]
-                    ■ 復旧予定：[見込み時刻]
-                    ■ 担当者：[名前]
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🔄 復旧後の確認事項</h4>
-                
-                <div class="checklist">
-                    <h5>復旧確認チェックリスト</h5>
-                    <ul>
-                        <li>ヘルスチェック成功確認</li>
-                        <li>各API接続テスト実行</li>
-                        <li>PT001本番スルーテスト実行</li>
-                        <li>最新の実行ログ確認</li>
-                        <li>Slack通知テスト実行</li>
-                        <li>24時間後の安定稼働確認</li>
-                    </ul>
-                </div>
-                
-                <div class="urgency-low">
-                    <h5>📋 事後対応（ポストモーテム）</h5>
-                    <ol>
-                        <li>障害原因の詳細分析</li>
-                        <li>再発防止策の検討・実装</li>
-                        <li>対応手順の改善</li>
-                        <li>関係者向け報告書作成</li>
-                        <li>運用手順書の更新</li>
-                    </ol>
-                </div>
+                <h3>3. 移行設定管理</h3>
+                <h4>A/Bテスト設定</h4>
+                <pre>
+# 段階的移行の割合設定
+export TRANSCRIPT_ROLLOUT_PERCENTAGE=10  # 初期10%
+export TRANSCRIPT_ROLLOUT_PERCENTAGE=50  # 50%へ増加
+export TRANSCRIPT_ROLLOUT_PERCENTAGE=100 # 完全移行
+
+# 特定ユーザーのみv2.0有効化
+export TRANSCRIPT_ENABLED_USERS="user1@example.com,user2@example.com"
+                </pre>
             </div>
         </div>
-
-        <!-- 5. パフォーマンス問題を調査したいとき -->
-        <div id="performance" class="section">
-            <h2>📈 パフォーマンス問題を調査したいとき</h2>
+        
+        <!-- コスト管理 -->
+        <div id="cost-management" class="section">
+            <h2>💰 コスト管理 v2.0</h2>
             
-            <div class="procedure-box">
-                <h4>⏱️ 処理時間分析方法</h4>
-                
-                <h5>現在のベンチマーク（PT001テスト結果）</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>処理ステップ</th>
-                        <th>正常時間</th>
-                        <th>警告しきい値</th>
-                        <th>主要ボトルネック</th>
-                    </tr>
-                    <tr>
-                        <td>Zoom API接続</td>
-                        <td>3-5秒</td>
-                        <td>10秒</td>
-                        <td>OAuth認証・ネットワーク遅延</td>
-                    </tr>
-                    <tr>
-                        <td>録画データ取得</td>
-                        <td>10-20秒</td>
-                        <td>30秒</td>
-                        <td>ファイルサイズ・ネットワーク帯域</td>
-                    </tr>
-                    <tr>
-                        <td>音声文字起こし</td>
-                        <td>60-90秒</td>
-                        <td>120秒</td>
-                        <td>Gemini AIレスポンス・音声品質</td>
-                    </tr>
-                    <tr>
-                        <td>要約生成</td>
-                        <td>5-15秒</td>
-                        <td>20秒</td>
-                        <td>文字数・AI処理負荷</td>
-                    </tr>
-                    <tr>
-                        <td>Google Drive保存</td>
-                        <td>5-10秒</td>
-                        <td>15秒</td>
-                        <td>ファイルサイズ・アップロード帯域</td>
-                    </tr>
-                    <tr>
-                        <td>Slack通知</td>
-                        <td>1-3秒</td>
-                        <td>5秒</td>
-                        <td>メッセージサイズ・API応答</td>
-                    </tr>
-                    <tr>
-                        <td><strong>全体処理時間</strong></td>
-                        <td><strong>228秒</strong></td>
-                        <td><strong>250秒</strong></td>
-                        <td><strong>Vercel 300秒制限</strong></td>
-                    </tr>
-                </table>
+            <div class="alert alert-success">
+                <h4>💵 v2.0によるコスト削減効果</h4>
+                <p>Gemini API使用量が80%削減され、月額コストが大幅に減少しました。</p>
             </div>
             
-            <div class="procedure-box">
-                <h4>🔍 ボトルネック特定手順</h4>
-                
-                <div class="checklist">
-                    <h5>1. 実行ログ分析（ExecutionLogger）</h5>
-                    <ul>
-                        <li>Google Drive logs フォルダから最新ログ確認</li>
-                        <li>各ステップの実行時間を抽出</li>
-                        <li>異常に時間がかかるステップを特定</li>
-                        <li>エラー・リトライ発生箇所を確認</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # PT001テストで詳細な時間測定実行
-                    curl "https://zoom-memo-automation.vercel.app/api/production-throughput-test"
-                    
-                    # レスポンス例（時間情報抽出）
-                    {
-                      "executionTiming": {
-                        "totalTime": "228800ms",
-                        "steps": [
-                          {"step": "Zoom API接続", "elapsed": 4200},
-                          {"step": "音声要約処理", "elapsed": 87300},
-                          ...
-                        ]
-                      }
-                    }
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>⚡ パフォーマンス最適化のポイント</h4>
-                
-                <div class="urgency-medium">
-                    <h5>🎯 優先度：高（即座に実施可能）</h5>
-                    <ul>
-                        <li><strong>音声ファイルサイズ制限：</strong>100MB未満に制限</li>
-                        <li><strong>録画時間制限：</strong>60分未満を推奨</li>
-                        <li><strong>Geminiモデル選択：</strong>処理速度重視でgemini-2.0-flashを検討</li>
-                        <li><strong>並列処理最適化：</strong>Google Drive保存とSlack通知の並列化</li>
-                    </ul>
-                </div>
-                
-                <div class="urgency-low">
-                    <h5>🔧 中長期的改善（開発が必要）</h5>
-                    <ul>
-                        <li><strong>音声分割処理：</strong>大容量ファイルの自動分割</li>
-                        <li><strong>キューシステム：</strong>長時間処理の非同期化</li>
-                        <li><strong>キャッシュ機能：</strong>重複処理の回避</li>
-                        <li><strong>Vercel Pro移行：</strong>制限緩和とパフォーマンス向上</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📊 リソース使用量確認</h4>
-                
-                <h5>Vercel制限の確認</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>制限項目</th>
-                        <th>Hobbyプラン制限</th>
-                        <th>現在使用量</th>
-                        <th>対応策</th>
-                    </tr>
-                    <tr>
-                        <td>実行時間</td>
-                        <td>300秒</td>
-                        <td>228秒（76%）</td>
-                        <td>処理最適化・分割処理</td>
-                    </tr>
-                    <tr>
-                        <td>Functions数</td>
-                        <td>12個</td>
-                        <td>7個（58%）</td>
-                        <td>統合済み・余裕あり</td>
-                    </tr>
-                    <tr>
-                        <td>メモリ使用量</td>
-                        <td>1024MB</td>
-                        <td>監視要</td>
-                        <td>バッファサイズ最適化</td>
-                    </tr>
-                    <tr>
-                        <td>帯域使用量</td>
-                        <td>100GB/月</td>
-                        <td>監視要</td>
-                        <td>ファイルサイズ制限</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        <!-- 6. セキュリティインシデントが発生したとき -->
-        <div id="security" class="section">
-            <h2>🔐 セキュリティインシデントが発生したとき</h2>
-            
-            <div class="urgency-high">
-                <h4>🚨 APIキー漏洩時の緊急対応（所要時間：20分）</h4>
-                <ol>
-                    <li><strong>影響範囲確認：</strong>漏洩したキーの種類・公開範囲を特定</li>
-                    <li><strong>即座にキー無効化：</strong>各サービスコンソールでキー削除</li>
-                    <li><strong>新キー生成：</strong>代替キーを生成・動作確認</li>
-                    <li><strong>システム更新：</strong>Vercel環境変数に新キー設定</li>
-                    <li><strong>サービス復旧確認：</strong>全機能の正常動作確認</li>
-                    <li><strong>セキュリティ監査：</strong>他のキーの安全性確認</li>
-                </ol>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🔑 APIキー管理・再生成手順</h4>
-                
-                <table class="error-code-table">
-                    <tr>
-                        <th>サービス</th>
-                        <th>キー種類</th>
-                        <th>再生成場所</th>
-                        <th>影響範囲</th>
-                        <th>復旧時間</th>
-                    </tr>
-                    <tr>
-                        <td><strong>Zoom</strong></td>
-                        <td>API Key/Secret</td>
-                        <td>Zoom Marketplace → App → Credentials</td>
-                        <td>録画取得機能停止</td>
-                        <td>10分</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Google AI</strong></td>
-                        <td>API Key</td>
-                        <td>Google AI Studio → API Keys</td>
-                        <td>文字起こし・要約停止</td>
-                        <td>5分</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Google Drive</strong></td>
-                        <td>Service Account</td>
-                        <td>Google Cloud Console → IAM</td>
-                        <td>ファイル保存・ログ記録停止</td>
-                        <td>15分</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Slack</strong></td>
-                        <td>Bot Token</td>
-                        <td>Slack App → OAuth & Permissions</td>
-                        <td>通知機能停止</td>
-                        <td>5分</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🕵️ 不正アクセス検知時の対応</h4>
-                
-                <div class="checklist">
-                    <h5>1. 初期対応（30分以内）</h5>
-                    <ul>
-                        <li>不正アクセスのログ・証跡確認</li>
-                        <li>影響を受けた可能性のあるデータ範囲特定</li>
-                        <li>関連APIキーの即座無効化</li>
-                        <li>システムアクセスログの保全</li>
-                        <li>関係者への緊急連絡</li>
-                    </ul>
-                </div>
-                
-                <div class="urgency-high">
-                    <h5>🔴 確認すべき不正アクセスの兆候</h5>
-                    <ul>
-                        <li>異常な時間帯でのAPI呼び出し</li>
-                        <li>通常と異なる地理的位置からのアクセス</li>
-                        <li>大量のAPI呼び出し（通常の10倍以上）</li>
-                        <li>認証失敗の連続発生</li>
-                        <li>未知のIPアドレスからのアクセス</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # Vercelアクセスログの確認
-                    # Vercel Dashboard → Functions → Logs → Filters
-                    
-                    # 検索キーワード例
-                    status:401 OR status:403
-                    unusual_activity
-                    rate_limit_exceeded
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🔍 セキュリティ監査の実施</h4>
-                
-                <div class="checklist">
-                    <h5>月次セキュリティチェック</h5>
-                    <ul>
-                        <li>すべてのAPIキーの最終使用日確認</li>
-                        <li>不要になったキー・トークンの削除</li>
-                        <li>アクセスログの異常パターン確認</li>
-                        <li>依存関係の脆弱性スキャン</li>
-                        <li>環境変数の設定値確認</li>
-                    </ul>
-                </div>
-                
-                <h5>セキュリティ設定チェックリスト</h5>
-                <table class="error-code-table">
+            <div class="performance-table">
+                <h3>API使用量比較（月間）</h3>
+                <table>
                     <tr>
                         <th>項目</th>
-                        <th>確認内容</th>
-                        <th>正常状態</th>
+                        <th>v1.0</th>
+                        <th>v2.0</th>
+                        <th>削減率</th>
+                        <th>コスト影響</th>
                     </tr>
                     <tr>
-                        <td>Vercel Headers</td>
-                        <td>セキュリティヘッダー設定</td>
-                        <td>X-Content-Type-Options, X-Frame-Options設定済み</td>
+                        <td>Gemini文字起こし処理</td>
+                        <td>1000回/月</td>
+                        <td class="improvement">50回/月</td>
+                        <td class="improvement">95%</td>
+                        <td>-$180/月</td>
                     </tr>
                     <tr>
-                        <td>HTTPS強制</td>
-                        <td>HTTP通信の無効化</td>
-                        <td>すべてHTTPSリダイレクト</td>
+                        <td>Gemini要約生成</td>
+                        <td>1000回/月</td>
+                        <td>1000回/月</td>
+                        <td>0%</td>
+                        <td>変更なし</td>
                     </tr>
                     <tr>
-                        <td>環境変数</td>
-                        <td>機密情報の適切な管理</td>
-                        <td>コードにベタ書きなし</td>
+                        <td>処理時間（Vercel）</td>
+                        <td>150時間/月</td>
+                        <td class="improvement">15時間/月</td>
+                        <td class="improvement">90%</td>
+                        <td>-$50/月</td>
                     </tr>
                     <tr>
-                        <td>アクセス制限</td>
-                        <td>必要最小権限の原則</td>
-                        <td>各サービスで最小権限設定</td>
+                        <td><strong>合計</strong></td>
+                        <td><strong>$300/月</strong></td>
+                        <td class="improvement"><strong>$70/月</strong></td>
+                        <td class="improvement"><strong>77%</strong></td>
+                        <td class="improvement"><strong>-$230/月</strong></td>
                     </tr>
                 </table>
             </div>
             
             <div class="procedure-box">
-                <h4>🔒 予防的セキュリティ対策</h4>
-                
-                <div class="urgency-medium">
-                    <h5>📋 定期的に実施すべき対策</h5>
-                    <ul>
-                        <li><strong>キーローテーション：</strong>四半期ごとのAPIキー更新</li>
-                        <li><strong>権限監査：</strong>各サービスの必要最小権限確認</li>
-                        <li><strong>ログ監視：</strong>異常パターンの自動検知設定</li>
-                        <li><strong>バックアップ確認：</strong>設定情報の定期バックアップ</li>
-                        <li><strong>脆弱性スキャン：</strong>依存関係の定期確認</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- 7. システム変更を実施したいとき -->
-        <div id="system-change" class="section">
-            <h2>🔄 システム変更を実施したいとき</h2>
-            
-            <div class="procedure-box">
-                <h4>📋 変更管理プロセス</h4>
-                
-                <div class="checklist">
-                    <h5>変更前の準備（所要時間：30分）</h5>
-                    <ul>
-                        <li>変更内容の詳細記録</li>
-                        <li>影響範囲の分析・評価</li>
-                        <li>ロールバック手順の準備</li>
-                        <li>テスト計画の策定</li>
-                        <li>関係者への変更通知</li>
-                    </ul>
-                </div>
-                
-                <table class="error-code-table">
-                    <tr>
-                        <th>変更タイプ</th>
-                        <th>承認レベル</th>
-                        <th>テスト要件</th>
-                        <th>実施タイミング</th>
-                    </tr>
-                    <tr>
-                        <td><strong>緊急修正</strong></td>
-                        <td>システム管理者</td>
-                        <td>基本機能確認</td>
-                        <td>即座（24時間以内報告）</td>
-                    </tr>
-                    <tr>
-                        <td><strong>機能追加</strong></td>
-                        <td>部門承認</td>
-                        <td>包括的テスト</td>
-                        <td>営業時間外</td>
-                    </tr>
-                    <tr>
-                        <td><strong>設定変更</strong></td>
-                        <td>システム管理者</td>
-                        <td>影響範囲確認</td>
-                        <td>営業時間外推奨</td>
-                    </tr>
-                    <tr>
-                        <td><strong>依存関係更新</strong></td>
-                        <td>システム管理者</td>
-                        <td>回帰テスト</td>
-                        <td>営業時間外</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🧪 テスト実行プロセス</h4>
-                
-                <div class="checklist">
-                    <h5>段階的テスト手順</h5>
-                    <ul>
-                        <li><strong>Phase 1:</strong> 基本機能テスト（ヘルスチェック）</li>
-                        <li><strong>Phase 2:</strong> API接続テスト（Zoom/Google/Slack）</li>
-                        <li><strong>Phase 3:</strong> 統合テスト（TC203-205）</li>
-                        <li><strong>Phase 4:</strong> 本番スルーテスト（PT001）</li>
-                        <li><strong>Phase 5:</strong> 24時間稼働監視</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # 段階的テスト実行スクリプト
-                    
-                    # Phase 1: ヘルスチェック
-                    curl "https://zoom-memo-automation.vercel.app/api/health-check"
-                    
-                    # Phase 2: API接続確認
-                    curl "https://zoom-memo-automation.vercel.app/api/test-zoom?test=auth"
-                    
-                    # Phase 3: 統合テスト
-                    curl "https://zoom-memo-automation.vercel.app/api/monitor-recordings-gdrive-test?test=TC205"
-                    
-                    # Phase 4: 本番スルーテスト
-                    curl "https://zoom-memo-automation.vercel.app/api/production-throughput-test"
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>⏪ ロールバック手順</h4>
-                
-                <div class="urgency-high">
-                    <h5>🚨 即座ロールバック条件</h5>
-                    <ul>
-                        <li>基本機能テスト失敗</li>
-                        <li>重大なエラーの連続発生</li>
-                        <li>パフォーマンス50%以上低下</li>
-                        <li>セキュリティ問題の発覚</li>
-                    </ul>
-                </div>
-                
-                <div class="checklist">
-                    <h5>A. Vercelデプロイメントロールバック（推奨）</h5>
-                    <ul>
-                        <li>Vercel Dashboard → Deployments</li>
-                        <li>前回正常動作版を選択</li>
-                        <li>"Promote to Production" 実行</li>
-                        <li>正常性確認テスト実行</li>
-                    </ul>
-                </div>
-                
-                <div class="checklist">
-                    <h5>B. 環境変数ロールバック</h5>
-                    <ul>
-                        <li>変更前の値をバックアップから復旧</li>
-                        <li>Vercel環境変数を更新</li>
-                        <li>自動再デプロイ完了待機</li>
-                        <li>正常性確認テスト実行</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📝 変更管理テンプレート</h4>
-                
-                <div class="command-box">
-                    【システム変更申請】Zoom Memo Automation
-                    
-                    ■ 変更予定日時：YYYY/MM/DD HH:mm - HH:mm
-                    ■ 変更タイプ：[緊急修正 / 機能追加 / 設定変更 / 依存関係更新]
-                    ■ 変更理由：[具体的な理由・背景]
-                    
-                    ■ 変更内容：
-                    - [詳細な変更内容]
-                    
-                    ■ 影響範囲：
-                    - [影響を受ける機能・システム]
-                    
-                    ■ テスト計画：
-                    - [実施予定のテスト項目]
-                    
-                    ■ ロールバック手順：
-                    - [問題発生時の戻し手順]
-                    
-                    ■ 担当者：[名前]
-                    ■ 承認者：[承認者名]
-                </div>
-            </div>
-        </div>
-
-        <!-- 8. 運用レポートを作成したいとき -->
-        <div id="reporting" class="section">
-            <h2>📋 運用レポートを作成したいとき</h2>
-            
-            <div class="procedure-box">
-                <h4>📊 運用実績データの取得方法</h4>
-                
-                <h5>データソース一覧</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>データ種類</th>
-                        <th>取得場所</th>
-                        <th>データ形式</th>
-                        <th>取得方法</th>
-                    </tr>
-                    <tr>
-                        <td><strong>実行ログ</strong></td>
-                        <td>Google Drive<br><code>99.zoom_memo_recording/*/logs/</code></td>
-                        <td>JSON</td>
-                        <td>Drive API または 手動ダウンロード</td>
-                    </tr>
-                    <tr>
-                        <td><strong>システムログ</strong></td>
-                        <td>Vercel Dashboard</td>
-                        <td>テキスト</td>
-                        <td>管理画面エクスポート</td>
-                    </tr>
-                    <tr>
-                        <td><strong>エラー統計</strong></td>
-                        <td>ExecutionLogger</td>
-                        <td>JSON（構造化）</td>
-                        <td>ログファイル集計</td>
-                    </tr>
-                    <tr>
-                        <td><strong>API使用状況</strong></td>
-                        <td>各サービスコンソール</td>
-                        <td>CSV/JSON</td>
-                        <td>使用量レポート機能</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📈 KPI・メトリクス定義</h4>
-                
-                <h5>システム可用性指標</h5>
-                <ul>
-                    <li><strong>稼働率：</strong>(正常稼働時間 / 総稼働時間) × 100</li>
-                    <li><strong>目標：</strong>99.5%以上（月間ダウンタイム 3.6時間以内）</li>
-                    <li><strong>測定方法：</strong>ヘルスチェック成功率</li>
-                </ul>
-                
-                <h5>処理パフォーマンス指標</h5>
-                <ul>
-                    <li><strong>平均処理時間：</strong>録画処理開始から完了まで</li>
-                    <li><strong>目標：</strong>240秒以内（300秒制限の80%以内）</li>
-                    <li><strong>測定方法：</strong>ExecutionLoggerの時間データ</li>
-                </ul>
-                
-                <h5>品質指標</h5>
-                <ul>
-                    <li><strong>エラー発生率：</strong>(エラー発生数 / 総処理数) × 100</li>
-                    <li><strong>目標：</strong>5%以内</li>
-                    <li><strong>測定方法：</strong>エラーログ集計</li>
-                </ul>
-                
-                <h5>利用状況指標</h5>
-                <ul>
-                    <li><strong>月間処理件数：</strong>録画処理完了数</li>
-                    <li><strong>API使用量：</strong>各サービスの使用状況</li>
-                    <li><strong>ストレージ使用量：</strong>Google Drive使用容量</li>
-                </ul>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📑 レポート作成テンプレート</h4>
-                
-                <div class="command-box">
-                    【Zoom Memo Automation 運用レポート】
-                    
-                    ■ 対象期間：YYYY/MM/DD - YYYY/MM/DD
-                    
-                    ■ 全体サマリ
-                    - システム稼働率：XX.X%
-                    - 総処理件数：XXX件
-                    - 平均処理時間：XXX秒
-                    - エラー発生率：X.X%
-                    
-                    ■ 処理実績
-                    - 録画処理成功：XXX件
-                    - 録画処理失敗：XX件
-                    - 平均ファイルサイズ：XXX MB
-                    - 最大処理時間：XXX秒
-                    
-                    ■ エラー分析
-                    - ZM（Zoom API）エラー：XX件
-                    - GD（Google Drive）エラー：XX件
-                    - AI（Gemini AI）エラー：XX件
-                    - SL（Slack API）エラー：XX件
-                    - SY（System）エラー：XX件
-                    
-                    ■ パフォーマンス分析
-                    - 処理時間分布：
-                      - 120秒未満：XXX件 (XX%)
-                      - 120-240秒：XXX件 (XX%)
-                      - 240秒以上：XX件 (X%)
-                    
-                    ■ リソース使用状況
-                    - Vercel実行時間：XXX時間/月
-                    - Google Drive容量：XX.X GB
-                    - API使用量：
-                      - Zoom API：XXX calls
-                      - Google AI：XXX requests
-                      - Slack API：XXX messages
-                    
-                    ■ 主要トピック
-                    - [重要な出来事・障害・改善事項]
-                    
-                    ■ 改善提案
-                    - [パフォーマンス改善・運用効率化の提案]
-                    
-                    ■ 次期予定
-                    - [予定されている変更・メンテナンス]
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📊 データ分析のポイント</h4>
-                
-                <div class="urgency-medium">
-                    <h5>⚠️ 注意して監視すべき傾向</h5>
-                    <ul>
-                        <li><strong>処理時間の増加傾向：</strong>240秒を超える処理の増加</li>
-                        <li><strong>特定エラーの頻発：</strong>同じエラーコードの集中発生</li>
-                        <li><strong>API制限への接近：</strong>各サービスの使用量上限</li>
-                        <li><strong>ストレージ容量：</strong>Google Drive使用量の推移</li>
-                        <li><strong>時間帯別負荷：</strong>特定時間での処理集中</li>
-                    </ul>
-                </div>
-                
-                <h5>改善提案の観点</h5>
-                <ul>
-                    <li><strong>コスト最適化：</strong>API使用量・ストレージ容量の効率化</li>
-                    <li><strong>パフォーマンス：</strong>処理時間短縮・応答性向上</li>
-                    <li><strong>信頼性：</strong>エラー発生率低下・可用性向上</li>
-                    <li><strong>運用効率：</strong>監視・メンテナンス作業の自動化</li>
-                    <li><strong>スケーラビリティ：</strong>処理能力・利用者数の拡張性</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- 9. 新メンバーがシステムを理解したいとき -->
-        <div id="onboarding" class="section">
-            <h2>🆕 新メンバーがシステムを理解したいとき</h2>
-            
-            <div class="procedure-box">
-                <h4>🎯 システム概要・運用方針</h4>
-                
-                <h5>システムの目的</h5>
-                <p><strong>Zoom Memo Automation</strong>は、Zoom会議の録画データを自動的に文字起こし・要約し、構造化された議事録として関係者に通知するシステムです。</p>
-                
-                <div style="background: #e7f3ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h5>🔄 処理フロー（5ステップ）</h5>
-                    <ol>
-                        <li><strong>監視：</strong>Zoom Cloud Recordingを定期監視（30分間隔）</li>
-                        <li><strong>取得：</strong>新しい録画データのダウンロード</li>
-                        <li><strong>処理：</strong>Google Gemini AIで文字起こし・8項目構造化要約</li>
-                        <li><strong>保存：</strong>Google Driveへファイル保存・共有リンク生成</li>
-                        <li><strong>通知：</strong>Slackで要約結果・録画リンクを共有</li>
-                    </ol>
-                </div>
-                
-                <h5>運用方針</h5>
-                <ul>
-                    <li><strong>自動化重視：</strong>手動操作を最小限に抑制</li>
-                    <li><strong>信頼性確保：</strong>エラーハンドリング・ログ記録を徹底</li>
-                    <li><strong>コスト効率：</strong>Vercel Hobbyプランでの最適運用</li>
-                    <li><strong>セキュリティ：</strong>APIキー適切管理・最小権限原則</li>
-                </ul>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🏗️ 各コンポーネントの役割</h4>
-                
-                <table class="error-code-table">
-                    <tr>
-                        <th>コンポーネント</th>
-                        <th>役割</th>
-                        <th>技術</th>
-                        <th>設定場所</th>
-                    </tr>
-                    <tr>
-                        <td><strong>Vercel Functions</strong></td>
-                        <td>サーバーレス実行環境</td>
-                        <td>Node.js 18.x</td>
-                        <td>vercel.json</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Zoom API</strong></td>
-                        <td>録画データ取得</td>
-                        <td>Server-to-Server OAuth</td>
-                        <td>Zoom Marketplace</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Google Gemini AI</strong></td>
-                        <td>文字起こし・要約生成</td>
-                        <td>Gemini 2.5 Pro</td>
-                        <td>Google AI Studio</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Google Drive</strong></td>
-                        <td>ファイル保存・共有</td>
-                        <td>Service Account</td>
-                        <td>Google Cloud Console</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Slack API</strong></td>
-                        <td>通知・結果共有</td>
-                        <td>Bot API</td>
-                        <td>Slack App Management</td>
-                    </tr>
-                    <tr>
-                        <td><strong>ExecutionLogger</strong></td>
-                        <td>実行ログ・エラー記録</td>
-                        <td>JSON構造化ログ</td>
-                        <td>1.src/utils/executionLogger.js</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🛠️ 基本的な操作方法</h4>
-                
-                <div class="checklist">
-                    <h5>1. システム状況確認（日次）</h5>
-                    <ul>
-                        <li>ヘルスチェック実行</li>
-                        <li>最新の処理ログ確認</li>
-                        <li>Slackチャンネルでの通知確認</li>
-                        <li>エラーアラートの有無確認</li>
-                    </ul>
-                </div>
-                
-                <div class="command-box">
-                    # 基本的な確認コマンド
-                    
-                    # システム稼働確認
-                    curl "https://zoom-memo-automation.vercel.app/api/health-check"
-                    
-                    # API接続確認
-                    curl "https://zoom-memo-automation.vercel.app/api/test-zoom?test=auth"
-                    
-                    # 直近の録画確認
-                    curl "https://zoom-memo-automation.vercel.app/api/test-zoom?test=recordings"
-                </div>
-                
-                <div class="checklist">
-                    <h5>2. トラブルシューティング基礎</h5>
-                    <ul>
-                        <li>エラーコードの読み方理解</li>
-                        <li>Vercelログの確認方法</li>
-                        <li>Google Drive実行ログアクセス</li>
-                        <li>基本的な解決方法の実践</li>
-                    </ul>
-                </div>
-                
-                <div class="checklist">
-                    <h5>3. 緊急時対応の基本</h5>
-                    <ul>
-                        <li>システム停止時の初動対応</li>
-                        <li>エスカレーション判断基準</li>
-                        <li>関係者連絡方法</li>
-                        <li>ロールバック操作の理解</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>📚 学習リソース一覧</h4>
-                
-                <h5>内部ドキュメント</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>ドキュメント</th>
-                        <th>内容</th>
-                        <th>優先度</th>
-                        <th>読了目安</th>
-                    </tr>
-                    <tr>
-                        <td><strong>機能設計書</strong></td>
-                        <td>システム機能・要件定義</td>
-                        <td>高</td>
-                        <td>2時間</td>
-                    </tr>
-                    <tr>
-                        <td><strong>環境設計書</strong></td>
-                        <td>システム構成・技術仕様</td>
-                        <td>高</td>
-                        <td>1.5時間</td>
-                    </tr>
-                    <tr>
-                        <td><strong>テスト仕様書</strong></td>
-                        <td>テスト方法・検証手順</td>
-                        <td>中</td>
-                        <td>1時間</td>
-                    </tr>
-                    <tr>
-                        <td><strong>CLAUDE.md</strong></td>
-                        <td>開発履歴・制約事項</td>
-                        <td>中</td>
-                        <td>30分</td>
-                    </tr>
-                </table>
-                
-                <h5>外部リソース</h5>
-                <ul>
-                    <li><strong>Vercel Documentation：</strong>Serverless Functions・デプロイメント</li>
-                    <li><strong>Zoom API Reference：</strong>Server-to-Server OAuth・Cloud Recording</li>
-                    <li><strong>Google AI Documentation：</strong>Gemini API・Audio Processing</li>
-                    <li><strong>Slack API Documentation：</strong>Bot API・Block Kit</li>
-                </ul>
-                
-                <h5>推奨学習順序</h5>
+                <h3>コスト監視手順</h3>
                 <ol>
-                    <li><strong>Week 1：</strong>システム概要理解・基本操作習得</li>
-                    <li><strong>Week 2：</strong>各コンポーネント詳細・設定理解</li>
-                    <li><strong>Week 3：</strong>トラブルシューティング・実践演習</li>
-                    <li><strong>Week 4：</strong>運用手順・メンテナンス実習</li>
+                    <li><strong>日次確認</strong>
+                        <pre>
+# API使用量確認
+curl -X GET "https://generativelanguage.googleapis.com/v1/usage" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Transcript使用率確認（コスト0）
+grep "Using Transcript API" app.log | wc -l
+grep "Fallback to Gemini" app.log | wc -l
+                        </pre>
+                    </li>
+                    <li><strong>月次レポート生成</strong>
+                        <ul>
+                            <li>Transcript API利用率: 目標95%以上</li>
+                            <li>フォールバック発生回数と原因</li>
+                            <li>Gemini API節約量の算出</li>
+                        </ul>
+                    </li>
                 </ol>
             </div>
         </div>
+        
+        <!-- 移行管理 -->
+        <div id="migration" class="section">
+            <h2>🔄 v2.0移行管理</h2>
+            
+            <div class="alert alert-info">
+                <h4>📅 移行スケジュール</h4>
+                <p>3段階の移行プロセスを2週間で完了させます。</p>
+            </div>
+            
+            <div class="procedure-box">
+                <h3>Stage 1: 並行実装（Day 1-3）</h3>
+                <ol>
+                    <li><strong>実装確認</strong>
+                        <ul>
+                            <li><code>transcriptService.js</code>の動作確認</li>
+                            <li>VTT解析処理の検証</li>
+                            <li>要約専用メソッドのテスト</li>
+                        </ul>
+                    </li>
+                    <li><strong>切替設定</strong>
+                        <pre>
+# 開発環境でv2.0有効化
+export USE_TRANSCRIPT_API=true
+export TRANSCRIPT_ROLLOUT_PERCENTAGE=0  # 本番は0%
 
-        <!-- 10. 詳細仕様・設定情報を確認したいとき -->
-        <div id="reference" class="section">
-            <h2>📚 詳細仕様・設定情報を確認したいとき</h2>
-            
-            <div class="procedure-box">
-                <h4>🏗️ システム構成詳細</h4>
-                
-                <h5>アーキテクチャ概要</h5>
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace;">
-                    <pre>
-    [GitHub Repository]
-           ↓ (Push)
-    [Vercel Auto Deploy]
-           ↓
-    [Serverless Functions] ── [Environment Variables]
-           ↓
-    [API Endpoints] 7個
-    ├── /api/health-check.js
-    ├── /api/production-throughput-test.js
-    ├── /api/monitor-recordings.js
-    ├── /api/monitor-recordings-gdrive-test.js
-    ├── /api/test-zoom.js
-    ├── /api/claude-status.js
-    └── /api/claude-webhook.js
-           ↓
-    [External APIs]
-    ├── Zoom API (Server-to-Server OAuth)
-    ├── Google Gemini AI (API Key)
-    ├── Google Drive (Service Account)
-    └── Slack API (Bot Token)
-                    </pre>
-                </div>
+# テスト実行
+npm run test:transcript
+                        </pre>
+                    </li>
+                </ol>
             </div>
             
             <div class="procedure-box">
-                <h4>⚙️ 設定値一覧</h4>
-                
-                <h5>Vercel環境変数（必須）</h5>
-                <table class="error-code-table">
+                <h3>Stage 2: A/Bテスト（Day 4-10）</h3>
+                <table>
                     <tr>
-                        <th>変数名</th>
-                        <th>説明</th>
-                        <th>形式</th>
-                        <th>例</th>
+                        <th>日程</th>
+                        <th>割合</th>
+                        <th>確認項目</th>
+                        <th>成功基準</th>
                     </tr>
                     <tr>
-                        <td>ZOOM_API_KEY</td>
-                        <td>Zoom OAuth Client ID</td>
-                        <td>英数字</td>
-                        <td>abc123def456...</td>
+                        <td>Day 4-5</td>
+                        <td>10%</td>
+                        <td>エラー率、処理時間</td>
+                        <td>エラー率1%未満</td>
                     </tr>
                     <tr>
-                        <td>ZOOM_API_SECRET</td>
-                        <td>Zoom OAuth Client Secret</td>
-                        <td>英数字</td>
-                        <td>xyz789uvw012...</td>
+                        <td>Day 6-7</td>
+                        <td>25%</td>
+                        <td>フォールバック率</td>
+                        <td>5%未満</td>
                     </tr>
                     <tr>
-                        <td>ZOOM_ACCOUNT_ID</td>
-                        <td>Zoom Account ID</td>
-                        <td>英数字</td>
-                        <td>abc-def-ghi-123</td>
+                        <td>Day 8-9</td>
+                        <td>50%</td>
+                        <td>全体パフォーマンス</td>
+                        <td>平均1分以内</td>
                     </tr>
                     <tr>
-                        <td>GOOGLE_AI_API_KEY</td>
-                        <td>Google AI Studio API Key</td>
-                        <td>文字列</td>
-                        <td>AIza...（39文字）</td>
-                    </tr>
-                    <tr>
-                        <td>SLACK_BOT_TOKEN</td>
-                        <td>Slack Bot User OAuth Token</td>
-                        <td>xoxb-で始まる</td>
-                        <td>xoxb-123-456-xyz</td>
-                    </tr>
-                    <tr>
-                        <td>SLACK_CHANNEL_ID</td>
-                        <td>Slack Channel ID</td>
-                        <td>Cで始まる</td>
-                        <td>C1234567890</td>
-                    </tr>
-                    <tr>
-                        <td>GOOGLE_DRIVE_CREDENTIALS</td>
-                        <td>Service Account JSON</td>
-                        <td>JSON文字列</td>
-                        <td>{"type":"service_account"...}</td>
-                    </tr>
-                    <tr>
-                        <td>GOOGLE_DRIVE_ORG_DOMAIN</td>
-                        <td>組織ドメイン</td>
-                        <td>ドメイン名</td>
-                        <td>grtx.jp</td>
-                    </tr>
-                </table>
-                
-                <h5>オプション設定</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>変数名</th>
-                        <th>デフォルト値</th>
-                        <th>説明</th>
-                    </tr>
-                    <tr>
-                        <td>CHECK_INTERVAL_MINUTES</td>
-                        <td>30</td>
-                        <td>録画監視間隔（分）</td>
-                    </tr>
-                    <tr>
-                        <td>MAX_PROCESS_RECORDINGS</td>
-                        <td>1</td>
-                        <td>同時処理録画数制限</td>
-                    </tr>
-                    <tr>
-                        <td>GOOGLE_AI_MODEL</td>
-                        <td>gemini-2.5-pro</td>
-                        <td>使用AIモデル</td>
-                    </tr>
-                    <tr>
-                        <td>DISABLE_SLACK_NOTIFICATIONS</td>
-                        <td>false</td>
-                        <td>Slack通知無効化</td>
+                        <td>Day 10</td>
+                        <td>75%</td>
+                        <td>安定性確認</td>
+                        <td>24時間無障害</td>
                     </tr>
                 </table>
             </div>
             
             <div class="procedure-box">
-                <h4>🔌 API仕様・制限事項</h4>
-                
-                <h5>各サービスAPI制限</h5>
-                <table class="error-code-table">
-                    <tr>
-                        <th>サービス</th>
-                        <th>制限項目</th>
-                        <th>制限値</th>
-                        <th>対応策</th>
-                    </tr>
-                    <tr>
-                        <td rowspan="3"><strong>Zoom API</strong></td>
-                        <td>レート制限</td>
-                        <td>10 requests/秒</td>
-                        <td>間隔制御・リトライ</td>
-                    </tr>
-                    <tr>
-                        <td>ファイルサイズ</td>
-                        <td>制限なし</td>
-                        <td>ダウンロード時間考慮</td>
-                    </tr>
-                    <tr>
-                        <td>保存期間</td>
-                        <td>アカウント設定依存</td>
-                        <td>定期処理で取得</td>
-                    </tr>
-                    <tr>
-                        <td rowspan="3"><strong>Google AI</strong></td>
-                        <td>レート制限</td>
-                        <td>60 requests/分</td>
-                        <td>リトライ・モデル切替</td>
-                    </tr>
-                    <tr>
-                        <td>ファイルサイズ</td>
-                        <td>2GB</td>
-                        <td>音声ファイル分割検討</td>
-                    </tr>
-                    <tr>
-                        <td>処理時間</td>
-                        <td>実質120秒程度</td>
-                        <td>タイムアウト対策</td>
-                    </tr>
-                    <tr>
-                        <td rowspan="2"><strong>Google Drive</strong></td>
-                        <td>アップロード</td>
-                        <td>5TB/日</td>
-                        <td>通常運用で問題なし</td>
-                    </tr>
-                    <tr>
-                        <td>API制限</td>
-                        <td>1000 requests/100秒</td>
-                        <td>バッチ処理最適化</td>
-                    </tr>
-                    <tr>
-                        <td rowspan="2"><strong>Slack API</strong></td>
-                        <td>メッセージ制限</td>
-                        <td>1 message/秒</td>
-                        <td>通知タイミング制御</td>
-                    </tr>
-                    <tr>
-                        <td>ファイルサイズ</td>
-                        <td>1GB</td>
-                        <td>Direct共有リンク使用</td>
-                    </tr>
-                    <tr>
-                        <td rowspan="3"><strong>Vercel</strong></td>
-                        <td>実行時間</td>
-                        <td>300秒（Hobby）</td>
-                        <td>処理時間最適化必須</td>
-                    </tr>
-                    <tr>
-                        <td>Functions数</td>
-                        <td>12個（Hobby）</td>
-                        <td>エンドポイント統合済み</td>
-                    </tr>
-                    <tr>
-                        <td>メモリ</td>
-                        <td>1024MB</td>
-                        <td>バッファ処理最適化</td>
-                    </tr>
-                </table>
+                <h3>Stage 3: 完全移行（Day 11-14）</h3>
+                <ol>
+                    <li><strong>100%切替</strong>
+                        <pre>
+# 本番環境で完全移行
+export TRANSCRIPT_ROLLOUT_PERCENTAGE=100
+
+# 確認コマンド
+curl https://your-domain.vercel.app/api/health-check | jq '.transcript_enabled'
+                        </pre>
+                    </li>
+                    <li><strong>旧コード削除準備</strong>
+                        <ul>
+                            <li>AudioSummaryServiceをフォールバック専用に変更</li>
+                            <li>不要な音声処理コードをコメントアウト</li>
+                            <li>1週間後に完全削除予定</li>
+                        </ul>
+                    </li>
+                    <li><strong>ドキュメント更新</strong>
+                        <ul>
+                            <li>運用手順書の更新完了確認</li>
+                            <li>エラーコード一覧の更新</li>
+                            <li>パフォーマンス基準値の変更</li>
+                        </ul>
+                    </li>
+                </ol>
             </div>
             
-            <div class="procedure-box">
-                <h4>📁 関連ドキュメントリンク</h4>
-                
-                <h5>内部ドキュメント</h5>
+            <div class="alert alert-success">
+                <h4>✅ 移行完了チェックリスト</h4>
                 <ul>
-                    <li><strong>機能設計書：</strong><code>0.docs/functional-design.html</code></li>
-                    <li><strong>環境設計書：</strong><code>0.docs/environment-design.html</code></li>
-                    <li><strong>テスト仕様書：</strong><code>0.docs/test-specification.html</code></li>
-                    <li><strong>開発ダッシュボード：</strong><code>0.docs/index.html</code></li>
-                    <li><strong>プロジェクトガイドライン：</strong><code>CLAUDE.md</code></li>
-                    <li><strong>Zoom設定手順：</strong><code>0.docs/zoom-marketplace-setup-detailed.md</code></li>
+                    <li>□ Transcript API利用率95%以上達成</li>
+                    <li>□ 平均処理時間1分以内達成</li>
+                    <li>□ エラー率1%未満維持</li>
+                    <li>□ コスト削減80%確認</li>
+                    <li>□ 全ドキュメント更新完了</li>
+                    <li>□ チーム全員への周知完了</li>
                 </ul>
-                
-                <h5>設定ファイル</h5>
-                <ul>
-                    <li><strong>Vercel設定：</strong><code>vercel.json</code></li>
-                    <li><strong>Node.js依存関係：</strong><code>package.json</code></li>
-                    <li><strong>システム設定：</strong><code>1.src/config/index.js</code></li>
-                    <li><strong>エラーコード定義：</strong><code>1.src/utils/errorCodes.js</code></li>
-                </ul>
-                
-                <h5>外部ドキュメント</h5>
-                <ul>
-                    <li><strong>Vercel：</strong>https://vercel.com/docs</li>
-                    <li><strong>Zoom API：</strong>https://developers.zoom.us/docs/api/</li>
-                    <li><strong>Google AI：</strong>https://ai.google.dev/docs</li>
-                    <li><strong>Google Drive API：</strong>https://developers.google.com/drive</li>
-                    <li><strong>Slack API：</strong>https://api.slack.com/</li>
-                </ul>
-            </div>
-            
-            <div class="procedure-box">
-                <h4>🗂️ ファイル・フォルダ構造</h4>
-                
-                <div class="command-box">
-                    zoom-memo-automation/
-                    ├── 0.docs/                    # ドキュメント
-                    │   ├── index.html             # ダッシュボード
-                    │   ├── functional-design.html # 機能設計書
-                    │   ├── environment-design.html # 環境設計書
-                    │   ├── operations-design.html  # 運用設計書（本書）
-                    │   └── test-specification.html # テスト仕様書
-                    │
-                    ├── 1.src/                     # ソースコード
-                    │   ├── config/index.js       # システム設定
-                    │   ├── services/              # サービス層（9ファイル）
-                    │   └── utils/                 # ユーティリティ（6ファイル）
-                    │
-                    ├── 2.tests/                   # テストデータ・ツール
-                    ├── 3.operations/              # 運用スクリプト・バックアップ
-                    ├── api/                       # Vercel Functions（7ファイル）
-                    ├── data/                      # Cipher対話記録DB
-                    │
-                    ├── package.json               # Node.js設定
-                    ├── vercel.json                # Vercel設定
-                    ├── CLAUDE.md                  # プロジェクトガイドライン
-                    └── README.md                  # プロジェクト概要
-                </div>
             </div>
         </div>
-
-        <!-- Back to Top Button -->
+        
         <button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
         
         <div class="last-updated">
-            最終更新: <span id="lastUpdated"></span> | 
-            自動更新: <span id="autoUpdate">有効</span> | 
-            <strong>利用シーン別運用ガイド完成: 2025-08-08</strong>
+            最終更新: 2025年9月26日 | v2.0運用設計 - Transcript API統合による運用効率化
         </div>
     </div>
     
     <script>
-        // セクション表示制御
+        // セクション表示切替
         function showSection(sectionId) {
-            // すべてのセクションを非表示
             const sections = document.querySelectorAll('.section');
             sections.forEach(section => {
                 section.classList.remove('active');
             });
             
-            // 指定されたセクションを表示
             const targetSection = document.getElementById(sectionId);
             if (targetSection) {
                 targetSection.classList.add('active');
-                
-                // スムーズスクロール
-                targetSection.scrollIntoView({ behavior: 'smooth' });
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-        }
-        
-        // ページトップにスクロール
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
-        // スクロール位置によってback-to-topボタンを表示/非表示
-        window.addEventListener('scroll', function() {
-            const backToTop = document.getElementById('backToTop');
-            if (window.scrollY > 300) {
-                backToTop.style.display = 'block';
-            } else {
-                backToTop.style.display = 'none';
-            }
-        });
-        
-        // 最終更新日時を設定
-        document.getElementById('lastUpdated').textContent = new Date().toLocaleString('ja-JP');
-        
-        // エラーコード詳細一覧の表示/非表示切り替え
-        function toggleErrorCodeDetails() {
-            const detailsDiv = document.getElementById('errorCodeDetails');
-            const button = event.target;
             
-            if (detailsDiv.style.display === 'none' || detailsDiv.style.display === '') {
-                detailsDiv.style.display = 'block';
-                button.innerHTML = '📖 全エラーコード詳細一覧を非表示';
-                
-                // スムーズスクロール
-                setTimeout(() => {
-                    detailsDiv.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'start' 
-                    });
-                }, 100);
-            } else {
-                detailsDiv.style.display = 'none';
-                button.innerHTML = '📖 全エラーコード詳細一覧を表示/非表示';
-            }
+            // URLハッシュ更新
+            window.location.hash = sectionId;
         }
         
-        // Claude対話記録から自動更新
-        async function checkForUpdates() {
-            try {
-                const response = await fetch('/api/claude-status');
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    const autoUpdateEl = document.getElementById('autoUpdate');
-                    if (autoUpdateEl) {
-                        autoUpdateEl.textContent = '有効 (最終確認: ' + new Date().toLocaleTimeString('ja-JP') + ')';
-                    }
-                    
-                    if (data.hasUpdates) {
-                        console.log('新しい更新を検出しました。ページを再読み込みします。');
-                        setTimeout(() => location.reload(), 2000);
-                    }
-                }
-            } catch (error) {
-                console.error('自動更新チェックエラー:', error);
-            }
-        }
-        
-        // 5分ごとに更新をチェック
-        setInterval(checkForUpdates, 5 * 60 * 1000);
-        
-        // 初回チェック
-        checkForUpdates();
-        
-        // URLハッシュに基づいてセクションを表示
-        window.addEventListener('load', function() {
+        // ページ読み込み時の処理
+        window.addEventListener('load', () => {
             const hash = window.location.hash.substring(1);
             if (hash) {
                 showSection(hash);
             }
+        });
+        
+        // トップに戻るボタン
+        window.addEventListener('scroll', () => {
+            const backToTop = document.getElementById('backToTop');
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+        
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // シナリオカードクリック時の処理
+        document.querySelectorAll('.scenario-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                e.preventDefault();
+            });
         });
     </script>
 </body>
