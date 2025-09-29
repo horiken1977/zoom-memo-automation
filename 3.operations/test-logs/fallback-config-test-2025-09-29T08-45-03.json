@@ -1,0 +1,20 @@
+{
+  "testSession": {
+    "startTime": "2025-09-29T08:45:03.357Z",
+    "testType": "fallback-config-test",
+    "totalTests": 3,
+    "passed": 3,
+    "failed": 0,
+    "success": true
+  },
+  "environment": {
+    "nodeVersion": "v22.15.0",
+    "platform": "darwin",
+    "workingDirectory": "/Users/aa479881/Library/CloudStorage/GoogleDrive-horie.kenichi@grtx.jp/共有ドライブ/103_全社共有用/社内DX/zoom-memo-automation/zoom-memo-automation"
+  },
+  "testResults": {
+    "passed": 3,
+    "failed": 0,
+    "errors": []
+  }
+}

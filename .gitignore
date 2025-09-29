@@ -66,3 +66,4 @@ out/
 # Backup files
 3.operations/backups/*.md
 !3.operations/backups/.gitkeep
+.env*.local

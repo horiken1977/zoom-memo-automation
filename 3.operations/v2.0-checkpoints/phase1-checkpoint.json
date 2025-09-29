@@ -1,0 +1,56 @@
+{
+  "phase": "Phase1",
+  "name": "影響範囲調査・分析",
+  "status": "completed",
+  "startTime": "2025-09-27T10:00:00Z",
+  "lastUpdate": "2025-09-27T08:12:59.498Z",
+  "completedSteps": [
+    {
+      "step": "実装計画策定",
+      "completed": true,
+      "timestamp": "2025-09-27T09:45:00Z"
+    },
+    {
+      "step": "影響ファイル特定",
+      "completed": true,
+      "files": [
+        "zoomRecordingService.js",
+        "audioSummaryService.js",
+        "aiService.js",
+        "zoomService.js",
+        "config/index.js",
+        "errorCodes.js",
+        "errorHandler.js"
+      ],
+      "timestamp": "2025-09-27T09:50:00Z"
+    },
+    {
+      "step": "各ファイルの詳細依存関係マップ作成",
+      "completed": true,
+      "timestamp": "2025-09-27T11:00:00Z",
+      "files": [
+        "3.operations/v2.0-analysis/dependency-map.md"
+      ]
+    },
+    {
+      "step": "TranscriptService インターフェース設計",
+      "completed": true,
+      "timestamp": "2025-09-27T11:15:00Z",
+      "files": [
+        "3.operations/v2.0-analysis/transcript-service-interface.md"
+      ]
+    }
+  ],
+  "pendingSteps": [],
+  "notes": {
+    "currentFocus": "processRecording()メソッドの詳細分析",
+    "blockers": [],
+    "decisions": []
+  },
+  "recovery": {
+    "lastCommand": "interface design",
+    "lastFile": "transcript-service-interface.md",
+    "lastLine": 1,
+    "lastAction": "Phase1分析完了"
+  }
+}

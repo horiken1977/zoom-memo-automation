@@ -197,6 +197,112 @@ class ZoomService {
     }
   }
 
+  /**
+   * Transcript APIサポート - v2.0新機能
+   * 会議のTranscriptファイルを取得
+   * @param {string} meetingId - 会議ID
+   * @returns {Promise<Object>} Transcriptファイル情報
+   */
+  async getTranscriptFiles(meetingId) {
+    try {
+      logger.info(`Getting transcript files for meeting: ${meetingId}`);
+      
+      // まず通常の録画情報を取得
+      const recordings = await this.getMeetingRecordings(meetingId);
+      
+      if (!recordings || !recordings.recording_files) {
+        return {
+          available: false,
+          files: [],
+          error: 'No recording files found'
+        };
+      }
+      
+      // Transcriptファイルをフィルタリング
+      const transcriptFiles = recordings.recording_files.filter(file =>
+        file.file_type === 'TRANSCRIPT' ||
+        file.file_type === 'VTT' ||
+        file.file_extension === 'vtt' ||
+        (file.file_name && file.file_name.toLowerCase().endsWith('.vtt'))
+      );
+      
+      if (transcriptFiles.length === 0) {
+        logger.info('No transcript files found for meeting');
+        return {
+          available: false,
+          files: [],
+          error: 'No transcript files in recording'
+        };
+      }
+      
+      return {
+        available: true,
+        files: transcriptFiles,
+        primaryFile: transcriptFiles[0]  // 最初のファイルを優先
+      };
+      
+    } catch (error) {
+      logger.error(`Failed to get transcript files for meeting ${meetingId}:`, error);
+      return {
+        available: false,
+        files: [],
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Transcript VTTファイルをダウンロード
+   * @param {Object} transcriptFile - Transcriptファイル情報
+   * @returns {Promise<Buffer>} VTTファイルのバッファ
+   */
+  async downloadTranscriptVTT(transcriptFile) {
+    try {
+      if (!transcriptFile || !transcriptFile.download_url) {
+        throw new Error('Invalid transcript file or missing download URL');
+      }
+      
+      logger.info(`Downloading transcript VTT: ${transcriptFile.file_name || 'transcript.vtt'}`);
+      
+      // 既存のdownloadFileAsBufferメソッドを活用
+      const buffer = await this.downloadFileAsBuffer(transcriptFile.download_url);
+      
+      // VTTファイル検証（最初の数バイトチェック）
+      const header = buffer.toString('utf8', 0, 6);
+      if (header !== 'WEBVTT') {
+        logger.warn('Downloaded file does not appear to be a valid VTT file');
+      }
+      
+      logger.info(`Transcript VTT downloaded successfully: ${buffer.length} bytes`);
+      return buffer;
+      
+    } catch (error) {
+      logger.error('Failed to download transcript VTT:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 録画情報にTranscript情報を含めて取得（拡張版）
+   * @param {string} meetingId - 会議ID
+   * @returns {Promise<Object>} Transcript情報を含む録画情報
+   */
+  async getMeetingRecordingsWithTranscript(meetingId) {
+    try {
+      const recordings = await this.getMeetingRecordings(meetingId);
+      const transcriptInfo = await this.getTranscriptFiles(meetingId);
+      
+      return {
+        ...recordings,
+        transcript: transcriptInfo
+      };
+      
+    } catch (error) {
+      logger.error(`Failed to get recordings with transcript for meeting ${meetingId}:`, error);
+      throw error;
+    }
+  }
+
 
   /**
    * 新しい録画を監視

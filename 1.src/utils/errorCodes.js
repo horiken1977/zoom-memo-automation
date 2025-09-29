@@ -830,6 +830,54 @@ const ERROR_CODES = {
     retryable: true,
     notifySlack: true,
     troubleshooting: '外部サービスのステータスを確認してください'
+  },
+
+  // ========================================
+  // v2.0 Transcript API関連エラーコード (ZM-4xx, TS-5xx)
+  // ========================================
+  'ZM-401': {
+    code: 'ZM-401',
+    message: 'Zoom Transcript API認証失敗',
+    messageEn: 'Zoom Transcript API authentication failed',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: 'Zoom APIの認証情報とTranscript APIアクセス権限を確認してください'
+  },
+
+  'ZM-402': {
+    code: 'ZM-402',
+    message: 'Transcriptが利用不可',
+    messageEn: 'Transcript not available for this recording',
+    retryable: false,
+    notifySlack: false,
+    troubleshooting: '録画にTranscriptが生成されていません。音声処理フォールバックを使用します'
+  },
+
+  'ZM-403': {
+    code: 'ZM-403',
+    message: 'Transcriptダウンロード失敗',
+    messageEn: 'Transcript download failed',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: 'ネットワーク接続とZoom APIの状態を確認してください'
+  },
+
+  'TS-501': {
+    code: 'TS-501',
+    message: 'VTTファイル解析失敗',
+    messageEn: 'VTT file parsing failed',
+    retryable: false,
+    notifySlack: true,
+    troubleshooting: 'VTTファイル形式が不正です。音声処理フォールバックを使用します'
+  },
+
+  'TS-502': {
+    code: 'TS-502',
+    message: 'Transcript処理タイムアウト',
+    messageEn: 'Transcript processing timeout',
+    retryable: true,
+    notifySlack: true,
+    troubleshooting: '処理がタイムアウトしました。再試行するか音声処理フォールバックを使用します'
   }
 };
 

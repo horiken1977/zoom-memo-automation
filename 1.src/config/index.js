@@ -29,6 +29,21 @@ const config = {
     model: process.env.GOOGLE_AI_MODEL || 'gemini-2.5-pro', // 最新の2.5-proを使用
     fallbackModels: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-pro'] // Rate limit対策でgemini-1.5-pro除外
   },
+  
+  // v2.0 Transcript API Configuration
+  transcriptAPI: {
+    enabled: process.env.TRANSCRIPT_API_ENABLED !== 'false', // デフォルトで有効
+    timeout: parseInt(process.env.TRANSCRIPT_TIMEOUT) || 60000, // 60秒タイムアウト
+    fallbackEnabled: process.env.TRANSCRIPT_FALLBACK_ENABLED !== 'false', // デフォルトで有効
+    maxRetries: parseInt(process.env.TRANSCRIPT_MAX_RETRIES) || 1, // リトライ回数
+    // A/Bテスト設定
+    abTest: {
+      enabled: process.env.AB_TEST_ENABLED === 'true', // デフォルトで無効
+      ratio: parseFloat(process.env.AB_TEST_RATIO) || 0.5, // 50%でTranscript使用
+      forcedMeetingIds: (process.env.AB_TEST_FORCED_TRANSCRIPT_MEETINGS || '').split(',').filter(id => id), // 強制Transcript対象会議ID
+      excludedMeetingIds: (process.env.AB_TEST_EXCLUDED_MEETINGS || '').split(',').filter(id => id) // 除外会議ID
+    }
+  },
 
   // Google Drive Configuration
   googleDrive: {

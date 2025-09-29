@@ -1,0 +1,61 @@
+{
+  "status": "completed",
+  "name": "TranscriptService単体実装",
+  "startTime": "2025-09-27T12:37:42Z",
+  "lastUpdate": "2025-09-28T10:21:53.553Z",
+  "completedSteps": [
+    {
+      "step": "TranscriptService基本クラス実装",
+      "completed": true,
+      "timestamp": "2025-09-27T12:00:00Z",
+      "files": [
+        "1.src/services/transcriptService.js"
+      ]
+    },
+    {
+      "step": "VTT解析エンジン実装",
+      "completed": true,
+      "timestamp": "2025-09-27T12:15:00Z"
+    },
+    {
+      "step": "ZoomService拡張",
+      "completed": true,
+      "timestamp": "2025-09-27T12:30:00Z",
+      "files": [
+        "1.src/services/zoomService.js"
+      ]
+    },
+    {
+      "step": "エラーハンドリング実装",
+      "completed": true,
+      "timestamp": "2025-09-27T12:45:00Z",
+      "files": [
+        "1.src/utils/errorCodes.js"
+      ]
+    },
+    {
+      "step": "単体テスト実装",
+      "completed": true,
+      "timestamp": "2025-09-27T13:00:00Z",
+      "files": [
+        "1.src/tests/services/transcriptService.test.js"
+      ]
+    },
+    {
+      "step": "統合テスト・動作確認",
+      "completed": true,
+      "timestamp": "2025-09-27T13:15:00Z",
+      "files": [
+        "1.src/tests/integration/transcriptIntegration.test.js",
+        "1.src/tests/fixtures/sample-transcript.vtt"
+      ]
+    }
+  ],
+  "pendingSteps": [],
+  "recovery": {
+    "lastCommand": "integration test",
+    "lastFile": "transcriptIntegration.test.js",
+    "lastLine": 1,
+    "lastAction": "Phase2実装完了"
+  }
+}

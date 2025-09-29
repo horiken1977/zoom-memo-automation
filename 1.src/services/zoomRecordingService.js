@@ -197,16 +197,52 @@ class ZoomRecordingService {
       // Step 1: 動画ファイル処理 (取得 → Google Drive保存)
       const videoResult = await this.processVideoFile(recording, executionLogger);
       
-      // TC206-S2対応: 動画処理が失敗/スキップされても音声処理を継続
+      // TC206-S2対応: 動画処理が失敗/スキップされても後続処理を継続
       const warnings = [];
       if (!videoResult.success && videoResult.warning) {
         warnings.push(videoResult.warning);
-        logger.info('動画処理をスキップして音声処理に進みます');
+        logger.info('動画処理をスキップして音声/Transcript処理に進みます');
       }
       
-      // Step 2: 音声ファイル処理 (取得 → AI処理 → メモリ破棄)
-      // 動画バッファを音声処理に渡してバッファリング使用（nullの場合もある）
-      const audioResult = await this.processAudioFile(recording, executionLogger, videoResult.videoBuffer);
+      // Step 2: v2.0 Transcript処理 (優先) または 音声処理 (フォールバック)
+      const meetingInfo = this.extractMeetingInfo(recording);
+      let audioResult;
+      
+      // v2.0: TranscriptService優先実行
+      const transcriptResult = await this.tryTranscriptProcessing(recording, meetingInfo, executionLogger);
+      
+      if (transcriptResult.success) {
+        // Transcript成功 - v2.0高速処理
+        audioResult = transcriptResult;
+        logger.info(`v2.0 Transcript処理成功: ${transcriptResult.processingTime}ms`);
+        
+      } else if (transcriptResult.requiresFallback) {
+        // フォールバック: v1.0音声処理
+        logger.info(`v1.0音声処理フォールバック実行 (理由: ${transcriptResult.fallbackReason})`);
+        
+        if (executionLogger) {
+          executionLogger.startStep('AUDIO_FALLBACK_PROCESSING');
+        }
+        
+        // 動画バッファを音声処理に渡してバッファリング使用（nullの場合もある）
+        audioResult = await this.processAudioFile(recording, executionLogger, videoResult.videoBuffer);
+        
+        // フォールバック情報を追加
+        audioResult.method = 'audio-fallback';
+        audioResult.fallbackReason = transcriptResult.fallbackReason;
+        audioResult.fallbackFromTranscript = true;
+        
+        if (executionLogger) {
+          executionLogger.logSuccess('AUDIO_FALLBACK_COMPLETE', {
+            fallbackReason: transcriptResult.fallbackReason,
+            processingTime: audioResult.processingTime
+          });
+        }
+        
+      } else {
+        // 完全失敗（通常発生しない）
+        throw new Error(`音声・Transcript処理ともに失敗: ${transcriptResult.error}`);
+      }
       
       // Step 3: 文書保存処理 (文字起こし・要約をGoogle Driveに保存)
       let documentResult = null;
@@ -216,8 +252,8 @@ class ZoomRecordingService {
             executionLogger.startStep('DOCUMENT_STORAGE');
           }
           
+          const DocumentStorageService = require('./documentStorageService');
           const documentStorageService = new DocumentStorageService();
-          const meetingInfo = this.extractMeetingInfo(recording);
           
           documentResult = await documentStorageService.saveDocuments(
             audioResult,
@@ -247,7 +283,7 @@ class ZoomRecordingService {
         success: true,
         meetingId: meetingId,
         meetingTopic: meetingTopic,
-        meetingInfo: this.extractMeetingInfo(recording),
+        meetingInfo: meetingInfo,
         video: videoResult.skipped ? null : videoResult,  // 動画がスキップされた場合はnull
         audio: audioResult,
         documents: documentResult,
@@ -256,11 +292,17 @@ class ZoomRecordingService {
         driveLink: videoResult.skipped ? null : videoResult.driveLink,  // 動画なしの場合はnull
         warnings: warnings.length > 0 ? warnings : undefined,  // TC206警告メッセージ
         processedAt: new Date().toISOString(),
-        // 処理方法の情報を追加
+        // v2.0追加: 処理方法の詳細情報
         processingDetails: {
+          method: audioResult.method || 'unknown',
           processedFromVideo: audioResult?.processedFromVideo || false,
           hasVideo: !!videoResult?.success,
-          hasAudio: !audioResult?.processedFromVideo
+          hasAudio: !audioResult?.processedFromVideo,
+          fallbackUsed: !!audioResult.fallbackFromTranscript,
+          fallbackReason: audioResult.fallbackReason || null,
+          processingTime: audioResult.processingTime || 0,
+          // v2.0統計情報
+          transcriptStats: audioResult.transcriptStats || null
         }
       };
       
@@ -273,12 +315,15 @@ class ZoomRecordingService {
         executionLogger.logSuccess('RECORDING_COMPLETE_PROCESSING', {
           meetingId,
           meetingTopic,
+          method: audioResult.method,
+          processingTime: audioResult.processingTime,
           videoSaved: !!videoResult.success,
-          audioProcessed: !!audioResult.success
+          audioProcessed: !!audioResult.success,
+          fallbackUsed: !!audioResult.fallbackFromTranscript
         });
       }
       
-      logger.info(`録画処理完了: ${meetingTopic}`);
+      logger.info(`録画処理完了: ${meetingTopic} (${audioResult.method}: ${audioResult.processingTime || 0}ms)`);
       return result;
       
     } catch (error) {
@@ -610,6 +655,114 @@ class ZoomRecordingService {
       month: String(startTime.getMonth() + 1).padStart(2, '0'),
       dateString: startTime.toISOString().split('T')[0]
     };
+  }
+
+  /**
+   * v2.0: TranscriptService統合処理
+   * Transcript APIを試行し、失敗時はフォールバックを指示
+   */
+  async tryTranscriptProcessing(recording, meetingInfo, executionLogger = null) {
+    try {
+      // TranscriptService初期化
+      const TranscriptService = require('./transcriptService');
+      const transcriptService = new TranscriptService({
+        aiService: this.audioSummaryService.aiService,
+        zoomService: this.zoomService,
+        fallbackEnabled: true
+      });
+
+      if (executionLogger) {
+        executionLogger.startStep('TRANSCRIPT_PROCESSING');
+      }
+
+      logger.info('v2.0 Transcript API処理開始');
+      
+      // Transcript処理実行
+      const transcriptResult = await transcriptService.processTranscript(recording, meetingInfo);
+      
+      if (transcriptResult.success) {
+        // Transcript成功時
+        if (executionLogger) {
+          executionLogger.logSuccess('TRANSCRIPT_PROCESSING_COMPLETE', {
+            method: transcriptResult.method,
+            processingTime: transcriptResult.processingStats?.totalTime,
+            participantCount: transcriptResult.transcript?.participants?.length || 0,
+            segmentCount: transcriptResult.transcript?.segments?.length || 0
+          });
+        }
+
+        logger.info(`Transcript処理成功: ${transcriptResult.processingStats?.totalTime || 0}ms`);
+        
+        // AudioSummaryServiceの戻り値形式に合わせて変換
+        return {
+          success: true,
+          method: 'transcript-api',
+          fileName: 'transcript.vtt',
+          transcription: {
+            transcription: transcriptResult.transcript.fullText,
+            meetingInfo: meetingInfo,
+            fileName: 'transcript.vtt',
+            timestamp: new Date().toISOString(),
+            participants: transcriptResult.transcript.participants,
+            segments: transcriptResult.transcript.segments,
+            processingTime: transcriptResult.processingStats?.totalTime || 0
+          },
+          summary: transcriptResult.structuredSummary,
+          processingTime: transcriptResult.processingStats?.totalTime || 0,
+          // v2.0追加情報
+          transcriptStats: transcriptResult.processingStats,
+          requiresFallback: false
+        };
+
+      } else if (transcriptResult.requiresFallback) {
+        // フォールバック必要時
+        logger.warn(`Transcript処理失敗、フォールバック実行: ${transcriptResult.reason}`);
+        
+        if (executionLogger) {
+          executionLogger.logWarning('TRANSCRIPT_FALLBACK_REQUIRED', {
+            reason: transcriptResult.reason,
+            errorCode: transcriptResult.errorCode
+          });
+        }
+
+        return {
+          success: false,
+          requiresFallback: true,
+          fallbackReason: transcriptResult.reason,
+          method: 'fallback-to-audio'
+        };
+
+      } else {
+        // その他のエラー
+        logger.error(`Transcript処理エラー: ${transcriptResult.error}`);
+        
+        if (executionLogger) {
+          executionLogger.logError('TRANSCRIPT_PROCESSING_FAILED', transcriptResult.errorCode || 'TS-999', transcriptResult.error);
+        }
+
+        return {
+          success: false,
+          requiresFallback: true,
+          fallbackReason: 'transcript_error',
+          error: transcriptResult.error
+        };
+      }
+
+    } catch (error) {
+      logger.error('TranscriptService統合エラー:', error);
+      
+      if (executionLogger) {
+        executionLogger.logError('TRANSCRIPT_INTEGRATION_ERROR', 'TS-999', error.message);
+      }
+
+      // 予期しないエラー時もフォールバック
+      return {
+        success: false,
+        requiresFallback: true,
+        fallbackReason: 'integration_error',
+        error: error.message
+      };
+    }
   }
 
   /**
