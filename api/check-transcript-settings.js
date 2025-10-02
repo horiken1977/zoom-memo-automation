@@ -1,7 +1,7 @@
 // Vercel Function: Zoom自動文字起こし設定確認API
 const axios = require('axios');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS設定
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
