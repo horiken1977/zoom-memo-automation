@@ -18,7 +18,8 @@
     "save-conversation": "node 3.operations/src/save-conversation.js",
     "verify-requirements-pre": "node 3.operations/verify-requirements.js pre-check",
     "verify-requirements-post": "node 3.operations/verify-requirements.js post-check",
-    "verify-requirements": "node 3.operations/verify-requirements.js"
+    "verify-requirements": "node 3.operations/verify-requirements.js",
+    "check-transcript-settings": "node 3.operations/src/check-zoom-transcript-settings.js"
   },
   "keywords": [
     "zoom",
