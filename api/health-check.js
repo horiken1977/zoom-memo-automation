@@ -14,8 +14,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Transcript設定確認モード
+  // Transcript設定確認モード (v2.0 Transcript API compatibility check)
   if (req.query.mode === 'transcript') {
+    console.log('🔍 Transcript mode activated');
     return await handleTranscriptCheck(req, res);
   }
 
