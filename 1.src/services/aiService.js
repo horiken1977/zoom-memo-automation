@@ -118,14 +118,15 @@ class AIService {
    */
   async ensureTranscriptionModelInitialized(forceReinit = false) {
     if (!this.transcriptionModel || forceReinit) {
-      // 【2025年9月最新】最軽量Geminiモデル優先選択（50%効率化達成）
+      // 【2025年10月更新】gemini-2.0-flash最優先（品質実績あり）
+      // gemini-2.5-flash-liteは長時間音声でタイムスタンプ異常が発生するため使用停止
       const transcriptionModels = [
-        'gemini-2.5-flash-lite',       // 🏆 最軽量：50%トークン削減（2025/9/25更新）
-        'gemini-2.0-flash',            // 🚀 高速：低遅延・コスト効率
-        'gemini-2.5-flash',            // 📊 標準：24%トークン削減
-        'gemini-2.5-flash-lite-preview-09-2025',  // プレビュー版
-        'gemini-2.0-flash-lite',       // 軽量版フォールバック
-        'gemini-2.0-flash-001'         // GA版フォールバック
+        'gemini-2.0-flash',            // 🏆 最優先：品質実績あり・正常動作確認済み
+        'gemini-2.5-flash',            // 📊 代替：標準モデル
+        'gemini-2.0-flash-001',        // 🔄 フォールバック1：GA版
+        'gemini-2.0-flash-lite',       // 🔄 フォールバック2：軽量版
+        // 'gemini-2.5-flash-lite', // ❌ 使用停止：長時間音声で**マーク異常発生
+        // 'gemini-2.5-flash-lite-preview-09-2025', // ❌ 使用停止：プレビュー版も同様の問題
       ];
       
       // エラーカウンタ初期化
@@ -133,7 +134,7 @@ class AIService {
         this.transcriptionErrorCount = 0;
       }
       
-      logger.info('🚀 2025年最新軽量Geminiモデル選択開始 - Flash-Lite優先（50%効率化）');
+      logger.info('🚀 文字起こしモデル選択開始 - gemini-2.0-flash優先（品質実績重視）');
       
       // 最新軽量モデルを優先試行
       for (const modelName of transcriptionModels) {
@@ -146,7 +147,7 @@ class AIService {
           this.transcriptionModel = testModel;
           this.selectedTranscriptionModel = modelName;
           this.transcriptionErrorCount = 0;
-          logger.info(`✅ 最軽量モデル選択成功: ${modelName}`);
+          logger.info(`✅ 文字起こしモデル選択成功: ${modelName}`);
           return this.transcriptionModel;
           
         } catch (error) {
@@ -1095,11 +1096,14 @@ ${transcription}`;
 
           const processingTime = Date.now() - startTime;
           logger.info(`Transcription successful on attempt ${attempt} (${processingTime}ms): ${transcriptionText.length} characters`);
-          
+
+          // 【2025年10月追加】タイムスタンプ整合性チェック
+          this.validateTranscriptionTimestamps(transcriptionText, meetingInfo);
+
           // 成功時はエラーカウンタリセット
           this.transcriptionErrorCount = 0;
           consecutiveBadRequests = 0;
-          
+
           return {
             transcription: transcriptionText,
             processingTime,
@@ -1431,14 +1435,70 @@ ${transcriptionText}
     // シンプルにレスポンス全体を文字起こしとして扱う
     // マークダウンブロックがあれば除去
     let transcription = response;
-    
+
     // ```で囲まれた部分があれば除去
     transcription = transcription.replace(/```[^`]*```/g, '');
-    
+
     // 不要な前置きテキストを除去
     transcription = transcription.replace(/^[^[]*(?=\[)/, ''); // [MM:SS]より前のテキストを除去
-    
+
+    // 【2025年10月追加】**マーク付きタイムスタンプの検出と警告
+    const asteriskTimestamps = (transcription.match(/\[\d+:\d+\*\*\]/g) || []);
+    if (asteriskTimestamps.length > 0) {
+      logger.warn(`⚠️ Gemini異常タイムスタンプ検出: ${asteriskTimestamps.length}個の**マーク付きタイムスタンプを発見`);
+      logger.warn(`📍 最初の異常: ${asteriskTimestamps[0]}, 最後: ${asteriskTimestamps[asteriskTimestamps.length - 1]}`);
+
+      // **マーク付きタイムスタンプ以降を削除（異常データのため）
+      const firstAsteriskMatch = transcription.match(/\[\d+:\d+\*\*\]/);
+      if (firstAsteriskMatch) {
+        const cutoffIndex = transcription.indexOf(firstAsteriskMatch[0]);
+        const originalLength = transcription.length;
+        transcription = transcription.substring(0, cutoffIndex);
+        logger.warn(`✂️ 異常部分を削除: ${originalLength}文字 → ${transcription.length}文字 (${asteriskTimestamps.length}個の**マーク削除)`);
+      }
+    }
+
     return transcription.trim();
+  }
+
+  /**
+   * タイムスタンプの整合性を検証（2025年10月追加）
+   * @param {string} transcriptionText - 文字起こしテキスト
+   * @param {object} meetingInfo - 会議情報（duration含む）
+   */
+  validateTranscriptionTimestamps(transcriptionText, meetingInfo) {
+    const timestamps = transcriptionText.match(/\[(\d+):(\d+)\]/g);
+    if (!timestamps || timestamps.length === 0) {
+      logger.warn('⚠️ タイムスタンプが見つかりません');
+      return;
+    }
+
+    // 最大タイムスタンプを取得（分:秒を秒に変換）
+    const maxTimestamp = timestamps.reduce((max, ts) => {
+      const match = ts.match(/\[(\d+):(\d+)\]/);
+      if (match) {
+        const minutes = parseInt(match[1], 10);
+        const seconds = parseInt(match[2], 10);
+        const totalSeconds = minutes * 60 + seconds;
+        return Math.max(max, totalSeconds);
+      }
+      return max;
+    }, 0);
+
+    const maxMinutes = Math.floor(maxTimestamp / 60);
+    const meetingDuration = meetingInfo.duration || 0;
+
+    logger.info(`📊 タイムスタンプ検証: 最大=${maxMinutes}分, 会議時間=${meetingDuration}分`);
+
+    // 会議時間+10%を超えている場合は警告
+    const allowedMaxMinutes = meetingDuration * 1.1;
+    if (maxMinutes > allowedMaxMinutes) {
+      logger.error(`🚨 タイムスタンプ異常: 最大タイムスタンプ(${maxMinutes}分)が会議時間(${meetingDuration}分)の110%を超過`);
+      logger.error(`📍 超過分: ${(maxMinutes - meetingDuration).toFixed(1)}分 (${((maxMinutes / meetingDuration - 1) * 100).toFixed(1)}%)`);
+      // エラーを投げずに警告のみ（**マーク削除で既に対応済みのため）
+    } else {
+      logger.info(`✅ タイムスタンプ整合性OK: ${maxMinutes}分 ≤ ${allowedMaxMinutes.toFixed(1)}分`);
+    }
   }
 
   /**
