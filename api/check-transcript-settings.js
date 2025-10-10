@@ -68,7 +68,8 @@ module.exports = async function handler(req, res) {
     // 3. 録画設定分析
     const recordingSettings = settings.recording || {};
     const cloudRecordingEnabled = recordingSettings.cloud_recording !== false;
-    const audioTranscript = recordingSettings.audio_transcript;
+    // ✅ 正しいキー名: recording_audio_transcript (audio_transcriptではない)
+    const audioTranscript = recordingSettings.recording_audio_transcript;
     const transcriptEnabled = audioTranscript === true || audioTranscript?.enable === true;
     const v2Compatible = cloudRecordingEnabled && transcriptEnabled;
 
