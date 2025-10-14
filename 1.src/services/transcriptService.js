@@ -210,25 +210,36 @@ class TranscriptService {
   async parseVTTFile(vttBuffer) {
     try {
       const vttContent = vttBuffer.toString('utf8');
-      
+
+      // 🔍 デバッグ: VTTファイル基本情報
+      logger.info(`🔍 VTT Parse Debug: File size=${vttContent.length} chars`);
+      logger.info(`🔍 VTT Parse Debug: First 200 chars=\n${vttContent.substring(0, 200)}`);
+
       // VTTヘッダー確認
       if (!vttContent.startsWith('WEBVTT')) {
         throw new Error('Invalid VTT file: missing WEBVTT header');
       }
-      
+
       // セグメントの解析
       const segments = [];
       const participants = new Map();
       let fullText = '';
-      
+
       // VTTコンテンツを行で分割し、空行でセグメントを区切る
       const blocks = vttContent.split(/\n\n+/);
+      logger.info(`🔍 VTT Parse Debug: Total blocks=${blocks.length}`);
       
+      let processedBlocks = 0;
+      let skippedBlocks = 0;
+
       for (const block of blocks) {
         if (!block || block === 'WEBVTT') continue;
 
         const lines = block.trim().split('\n');
-        if (lines.length < 2) continue;
+        if (lines.length < 2) {
+          skippedBlocks++;
+          continue;
+        }
 
         // ✅ 修正1: Zoom VTT形式対応 - セグメント番号の行をスキップ
         // Zoom形式: [番号行, タイムスタンプ行, テキスト行]
@@ -239,10 +250,17 @@ class TranscriptService {
           timestampLineIndex = 1;
         }
 
+        // 🔍 デバッグ: 最初の数ブロックをログ出力
+        if (processedBlocks < 3) {
+          logger.info(`🔍 VTT Block ${processedBlocks}: lines[0]="${lines[0]}", timestampLineIndex=${timestampLineIndex}`);
+          logger.info(`🔍 VTT Block ${processedBlocks}: lines[${timestampLineIndex}]="${lines[timestampLineIndex]}"`);
+        }
+
         // タイムスタンプの解析
         const timeMatch = lines[timestampLineIndex]?.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/);
 
         if (timeMatch) {
+          processedBlocks++;
           const startTime = timeMatch[1];
           const endTime = timeMatch[2];
 
@@ -290,14 +308,26 @@ class TranscriptService {
 
           // フルテキストに追加
           fullText += `[${this.formatTime(startTime)}] ${speaker}: ${text}\n`;
+        } else {
+          skippedBlocks++;
+          if (skippedBlocks <= 3) {
+            logger.warn(`⚠️ VTT Block skipped (no timestamp match): lines[0]="${lines[0]}"`);
+          }
         }
       }
-      
+
+      // 🔍 デバッグ: パース結果サマリー
+      logger.info(`🔍 VTT Parse Summary: processedBlocks=${processedBlocks}, skippedBlocks=${skippedBlocks}, segments=${segments.length}`);
+      logger.info(`🔍 VTT Parse Summary: fullText length=${fullText.length} chars`);
+      if (segments.length > 0) {
+        logger.info(`🔍 VTT Parse Summary: First segment speaker="${segments[0].speaker}"`);
+      }
+
       // 会議の総時間計算
-      const duration = segments.length > 0 
-        ? segments[segments.length - 1].endTime 
+      const duration = segments.length > 0
+        ? segments[segments.length - 1].endTime
         : '00:00:00.000';
-      
+
       return {
         participants: Array.from(participants.values()),
         segments,
