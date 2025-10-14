@@ -226,31 +226,49 @@ class TranscriptService {
       
       for (const block of blocks) {
         if (!block || block === 'WEBVTT') continue;
-        
+
         const lines = block.trim().split('\n');
         if (lines.length < 2) continue;
-        
+
+        // ✅ 修正1: Zoom VTT形式対応 - セグメント番号の行をスキップ
+        // Zoom形式: [番号行, タイムスタンプ行, テキスト行]
+        // 番号のみの行（セグメント番号）を検出してスキップ
+        let timestampLineIndex = 0;
+        if (lines[0].match(/^\d+$/)) {
+          // 最初の行が数字のみ = セグメント番号 → タイムスタンプは次の行
+          timestampLineIndex = 1;
+        }
+
         // タイムスタンプの解析
-        const timeMatch = lines[0].match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/);
-        
+        const timeMatch = lines[timestampLineIndex]?.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/);
+
         if (timeMatch) {
           const startTime = timeMatch[1];
           const endTime = timeMatch[2];
-          
+
           // テキスト内容の抽出（タイムスタンプ以降の行）
-          const textLines = lines.slice(1).join(' ');
-          
-          // スピーカー抽出（<v Speaker>形式）
-          const speakerMatch = textLines.match(/<v\s+([^>]+)>/);
+          const textLines = lines.slice(timestampLineIndex + 1).join(' ');
+
+          // ✅ 修正2: Zoom VTT形式のスピーカー抽出
+          // Zoom形式: "スピーカー名: テキスト" (タグなし)
+          // 従来形式: "<v スピーカー名>テキスト"
           let speaker = 'Unknown';
           let text = textLines;
-          
-          if (speakerMatch) {
-            speaker = speakerMatch[1].trim();
-            // スピーカータグを除去
+
+          // まず従来の<v>タグをチェック
+          const speakerTagMatch = textLines.match(/<v\s+([^>]+)>/);
+          if (speakerTagMatch) {
+            speaker = speakerTagMatch[1].trim();
             text = textLines.replace(/<v\s+[^>]+>/, '').trim();
+          } else {
+            // Zoom形式: "スピーカー名: テキスト"
+            const colonIndex = textLines.indexOf(': ');
+            if (colonIndex > 0 && colonIndex < 100) { // スピーカー名は100文字以内と仮定
+              speaker = textLines.substring(0, colonIndex).trim();
+              text = textLines.substring(colonIndex + 2).trim();
+            }
           }
-          
+
           // セグメント追加
           segments.push({
             startTime,
@@ -259,17 +277,17 @@ class TranscriptService {
             text,
             timestamp: this.timeToMilliseconds(startTime)
           });
-          
+
           // 参加者情報を更新
           if (!participants.has(speaker)) {
-            participants.set(speaker, { 
-              id: speaker, 
-              name: speaker, 
-              segments: 0 
+            participants.set(speaker, {
+              id: speaker,
+              name: speaker,
+              segments: 0
             });
           }
           participants.get(speaker).segments++;
-          
+
           // フルテキストに追加
           fullText += `[${this.formatTime(startTime)}] ${speaker}: ${text}\n`;
         }
