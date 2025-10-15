@@ -209,7 +209,11 @@ class TranscriptService {
    */
   async parseVTTFile(vttBuffer) {
     try {
-      const vttContent = vttBuffer.toString('utf8');
+      let vttContent = vttBuffer.toString('utf8');
+
+      // ✅ 修正: 改行コード正規化 (\r\n → \n, \r → \n)
+      // Zoom VTTファイルはWindows形式の改行コード(\r\n)を使用している可能性がある
+      vttContent = vttContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
       // 🔍 デバッグ: VTTファイル基本情報
       logger.info(`🔍 VTT Parse Debug: File size=${vttContent.length} chars`);
