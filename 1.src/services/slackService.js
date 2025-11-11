@@ -11,6 +11,74 @@ class SlackService {
   }
 
   /**
+   * Slack Block Kit の3000文字制限に対応したスマート切り詰め
+   * @param {string} content - 切り詰め対象のコンテンツ
+   * @param {Object} options - オプション
+   * @param {number} options.maxLength - 最大文字数（デフォルト: 2900）
+   * @param {string} options.truncationMessage - 切り詰め時のメッセージ
+   * @param {number} options.itemCount - アイテム総数（省略件数表示用）
+   * @param {number} options.displayedCount - 表示件数
+   * @returns {string} - 切り詰められたコンテンツ
+   */
+  smartTruncate(content, options = {}) {
+    const {
+      maxLength = 2900, // Slack制限3000文字、マージン100文字
+      truncationMessage = '\n\n...(続きは要約文書ファイルをご確認ください)',
+      itemCount = 0,
+      displayedCount = 0
+    } = options;
+
+    // 制限以内ならそのまま返す
+    if (content.length <= maxLength) {
+      return content;
+    }
+
+    // 切り詰めメッセージのサイズを考慮
+    const availableLength = maxLength - truncationMessage.length;
+
+    // 適切な区切り位置を探す（優先順位順）
+    const breakPoints = [
+      { pattern: /\n\n/, name: '段落区切り' },
+      { pattern: /\n  \d+\./, name: '箇条書き項目' },
+      { pattern: /\n/, name: '改行' },
+      { pattern: /。/, name: '句点' },
+      { pattern: /、/, name: '読点' }
+    ];
+
+    let truncated = content.substring(0, availableLength);
+    let bestBreakPoint = availableLength;
+
+    // 70%以上の位置で適切な区切りを探す
+    const minPosition = availableLength * 0.7;
+
+    for (const breakPoint of breakPoints) {
+      const matches = [...truncated.matchAll(new RegExp(breakPoint.pattern, 'g'))];
+      if (matches.length > 0) {
+        // 最後に見つかった区切り位置
+        const lastMatch = matches[matches.length - 1];
+        const position = lastMatch.index + lastMatch[0].length;
+
+        if (position >= minPosition) {
+          bestBreakPoint = position;
+          logger.debug(`SmartTruncate: Using ${breakPoint.name} at position ${position}`);
+          break;
+        }
+      }
+    }
+
+    truncated = content.substring(0, bestBreakPoint).trim();
+
+    // 省略件数情報を追加
+    let finalMessage = truncationMessage;
+    if (itemCount > 0 && displayedCount > 0 && itemCount > displayedCount) {
+      const remainingCount = itemCount - displayedCount;
+      finalMessage = `\n\n…他${remainingCount}件（詳細は要約文書を参照）\n\n---\n📋 全${itemCount}件のうち${displayedCount}件を表示\n📄 完全版: Google Driveの要約ファイルをご確認ください`;
+    }
+
+    return truncated + finalMessage;
+  }
+
+  /**
    * Phase 2: JSON混在コンテンツをサニタイズする防御メソッド
    * @param {string} value - サニタイズ対象の文字列
    * @returns {string} - JSON混在を除去した文字列
@@ -873,15 +941,15 @@ ${analysisResult.transcription}
                        analysisResult.analysis?.discussions || [];
     
     if (discussions && discussions.length > 0) {
-      // 詳細版: 論点の内容も含めて表示
-      const discussionList = discussions.slice(0, 4).map((discussion, index) => {
+      // 詳細版: 論点の内容も含めて表示（スマート切り詰め対応）
+      const allDiscussions = discussions.map((discussion, index) => {
         if (typeof discussion === 'string') {
           // 文字列の場合
           return `  ${index + 1}. ${discussion}`;
         } else {
           // オブジェクトの場合はタイトル + 内容要約 + 時間帯
           const title = discussion.topicTitle || discussion.topic || '論点';
-          
+
           // 時間帯表示
           let timeRange = '';
           if (discussion.timeRange && (discussion.timeRange.startTime || discussion.timeRange.endTime)) {
@@ -889,10 +957,10 @@ ${analysisResult.transcription}
             const end = discussion.timeRange.endTime || '';
             timeRange = end ? ` [${start}-${end}]` : ` [${start}～]`;
           }
-          
+
           // 内容の要約を取得（複数のソースから）
           let contentSummary = '';
-          
+
           // discussionFlowから背景や論理展開を取得
           if (discussion.discussionFlow) {
             if (discussion.discussionFlow.backgroundContext) {
@@ -901,7 +969,7 @@ ${analysisResult.transcription}
               contentSummary = discussion.discussionFlow.logicalProgression;
             }
           }
-          
+
           // discussionFlowがない場合、他のフィールドから取得
           if (!contentSummary) {
             if (discussion.contents && discussion.contents.length > 0) {
@@ -917,18 +985,18 @@ ${analysisResult.transcription}
               contentSummary = discussion.content;
             }
           }
-          
+
           // 長すぎる場合は切り詰め
           if (contentSummary && contentSummary.length > 80) {
             contentSummary = contentSummary.substring(0, 77) + '...';
           }
-          
+
           // 論点の詳細表示
           let discussionText = `  ${index + 1}. *${title}*${timeRange}`;
           if (contentSummary) {
             discussionText += `\n     → ${contentSummary}`;
           }
-          
+
           // 結論や成果があれば追加（outcomeフィールドも確認）
           let conclusion = discussion.outcome || discussion.conclusion;
           if (conclusion) {
@@ -937,19 +1005,34 @@ ${analysisResult.transcription}
             }
             discussionText += `\n     ✓ ${conclusion}`;
           }
-          
+
           return discussionText;
         }
-      }).join('\n\n');
-      
-      // 表示件数調整
-      const remainingCount = discussions.length > 4 ? discussions.length - 4 : 0;
-      
+      });
+
+      // まず全件で組み立ててから、スマート切り詰めで調整
+      let discussionText = `*💭 論点・議論内容*\n${allDiscussions.join('\n\n')}`;
+
+      // 3000文字を超える場合、段階的に表示件数を減らす
+      let displayedCount = allDiscussions.length;
+      while (discussionText.length > 2900 && displayedCount > 1) {
+        displayedCount--;
+        const partialList = allDiscussions.slice(0, displayedCount).join('\n\n');
+        discussionText = `*💭 論点・議論内容*\n${partialList}`;
+      }
+
+      // スマート切り詰めを適用
+      const truncatedText = this.smartTruncate(discussionText, {
+        maxLength: 2900,
+        itemCount: discussions.length,
+        displayedCount: displayedCount
+      });
+
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*💭 論点・議論内容*\n${discussionList}${remainingCount > 0 ? `\n\n  …他${remainingCount}件の論点` : ''}`
+          text: truncatedText
         }
       });
     }
@@ -1004,17 +1087,18 @@ ${analysisResult.transcription}
     });
     
     if (uniqueDecisions.length > 0) {
-      const decisionList = uniqueDecisions.slice(0, 5).map((decision, index) => {
+      // 全ての決定事項を組み立て（スマート切り詰め対応）
+      const allDecisionItems = uniqueDecisions.map((decision, index) => {
         if (typeof decision === 'string') {
           return `  ${index + 1}. ${decision}`;
         } else {
           let decisionText = `  ${index + 1}. ${decision.decision || decision.content || decision}`;
-          
+
           // 関連する論点があれば追加
           if (decision.topic) {
             decisionText += `\n     （${decision.topic}に関する決定）`;
           }
-          
+
           // 責任者や期限があれば追加
           if (decision.assignee || decision.responsible) {
             decisionText += `\n     担当: ${decision.assignee || decision.responsible}`;
@@ -1022,18 +1106,34 @@ ${analysisResult.transcription}
           if (decision.deadline || decision.dueDate) {
             decisionText += `\n     期限: ${decision.deadline || decision.dueDate}`;
           }
-          
+
           return decisionText;
         }
-      }).join('\n\n');
-      
-      const remainingCount = uniqueDecisions.length > 5 ? uniqueDecisions.length - 5 : 0;
-      
+      });
+
+      // まず全件で組み立ててから、スマート切り詰めで調整
+      let decisionText = `*✅ 決定事項・結論*\n${allDecisionItems.join('\n\n')}`;
+
+      // 3000文字を超える場合、段階的に表示件数を減らす
+      let displayedCount = allDecisionItems.length;
+      while (decisionText.length > 2900 && displayedCount > 1) {
+        displayedCount--;
+        const partialList = allDecisionItems.slice(0, displayedCount).join('\n\n');
+        decisionText = `*✅ 決定事項・結論*\n${partialList}`;
+      }
+
+      // スマート切り詰めを適用
+      const truncatedText = this.smartTruncate(decisionText, {
+        maxLength: 2900,
+        itemCount: uniqueDecisions.length,
+        displayedCount: displayedCount
+      });
+
       blocks.push({
-        type: "section", 
+        type: "section",
         text: {
           type: "mrkdwn",
-          text: `*✅ 決定事項・結論*\n${decisionList}${remainingCount > 0 ? `\n\n  …他${remainingCount}件の決定事項` : ''}`
+          text: truncatedText
         }
       });
     } else {
@@ -1057,7 +1157,8 @@ ${analysisResult.transcription}
                        analysisResult.analysis?.homework || [];
     
     if (nextActions && nextActions.length > 0) {
-      const nextActionsList = nextActions.map((item, index) => {
+      // 全てのNext Actionを組み立て（スマート切り詰め対応）
+      const allActionItems = nextActions.map((item, index) => {
         if (typeof item === 'string') {
           return `${index + 1}. ${item}`;
         } else {
@@ -1066,13 +1167,31 @@ ${analysisResult.transcription}
           if (item.dueDate) actionText += ` [期限: ${item.dueDate}]`;
           return actionText;
         }
-      }).join('\n');
-      
+      });
+
+      // まず全件で組み立ててから、スマート切り詰めで調整
+      let actionText = `*📋 Next Action・Due Date*\n${allActionItems.join('\n')}`;
+
+      // 3000文字を超える場合、段階的に表示件数を減らす
+      let displayedCount = allActionItems.length;
+      while (actionText.length > 2900 && displayedCount > 1) {
+        displayedCount--;
+        const partialList = allActionItems.slice(0, displayedCount).join('\n');
+        actionText = `*📋 Next Action・Due Date*\n${partialList}`;
+      }
+
+      // スマート切り詰めを適用
+      const truncatedText = this.smartTruncate(actionText, {
+        maxLength: 2900,
+        itemCount: nextActions.length,
+        displayedCount: displayedCount
+      });
+
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*📋 Next Action・Due Date*\n${nextActionsList}`
+          text: truncatedText
         }
       });
     }
