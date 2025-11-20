@@ -32,6 +32,8 @@ export default async function handler(req, res) {
   try {
     // Test 1: Environment Variables Check
     console.log('1️⃣ Checking environment variables...');
+    // Google Drive認証はCREDENTIALS or SERVICE_ACCOUNT_KEYのどちらかがあればOK
+    const hasDriveAuth = !!process.env.GOOGLE_DRIVE_CREDENTIALS || !!process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY;
     const envCheck = {
       ZOOM_API_KEY: !!process.env.ZOOM_API_KEY,
       ZOOM_API_SECRET: !!process.env.ZOOM_API_SECRET,
@@ -40,8 +42,7 @@ export default async function handler(req, res) {
       SLACK_BOT_TOKEN: !!process.env.SLACK_BOT_TOKEN,
       SLACK_CHANNEL_ID: !!process.env.SLACK_CHANNEL_ID,
       SLACK_SIGNING_SECRET: !!process.env.SLACK_SIGNING_SECRET,
-      GOOGLE_DRIVE_CREDENTIALS: !!process.env.GOOGLE_DRIVE_CREDENTIALS,
-      GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY: !!process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY
+      GOOGLE_DRIVE_AUTH: hasDriveAuth // CREDENTIALS or SERVICE_ACCOUNT_KEYのどちらか
     };
 
     const allEnvSet = Object.values(envCheck).every(check => check === true);
@@ -105,61 +106,39 @@ export default async function handler(req, res) {
       }
 
       const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-      
-      // Auto-select best available model
-      let model;
-      let selectedModel;
-      
-      try {
-        // Try to list available models first
-        const models = await genAI.listModels();
-        const availableModels = models.map(model => model.name.replace('models/', ''));
-        
-        // Preferred models in order of preference (Gemini 2.x priority)
-        const preferredModels = [
-          'gemini-2.5-pro',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash',
-          'gemini-1.5-pro-latest',
-          'gemini-1.5-pro',
-          'gemini-pro-latest', 
-          'gemini-pro',
-          'gemini-1.0-pro-latest',
-          'gemini-1.0-pro'
-        ];
 
-        for (const preferredModel of preferredModels) {
-          if (availableModels.includes(preferredModel)) {
-            selectedModel = preferredModel;
-            break;
-          }
-        }
+      // 2025年11月時点で利用可能なモデルを優先順位順にテスト
+      // Note: gemini-1.5系は2025年4月29日に廃止
+      const availableModels = [
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash'
+      ];
 
-        if (!selectedModel && availableModels.length > 0) {
-          selectedModel = availableModels[0];
-        }
-      } catch (listError) {
-        // Fallback to predefined models if listing fails (Gemini 2.x priority)
-        const fallbackModels = ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
-        
-        for (const fallbackModel of fallbackModels) {
-          try {
-            const testModel = genAI.getGenerativeModel({ model: fallbackModel });
-            await testModel.generateContent('test');
-            selectedModel = fallbackModel;
-            break;
-          } catch (error) {
-            continue;
-          }
+      let selectedModel = null;
+      let model = null;
+
+      for (const modelName of availableModels) {
+        try {
+          const testModel = genAI.getGenerativeModel({ model: modelName });
+          // 簡単なテストプロンプトで接続確認
+          const testResult = await testModel.generateContent('Say "OK"');
+          const testResponse = await testResult.response;
+          testResponse.text(); // エラーチェック
+          selectedModel = modelName;
+          model = testModel;
+          break;
+        } catch (modelError) {
+          console.log(`   ⚠️ Model ${modelName} not available: ${modelError.message}`);
+          continue;
         }
       }
 
       if (!selectedModel) {
-        throw new Error('No available Gemini model found');
+        throw new Error('No available Gemini model found. Tried: ' + availableModels.join(', '));
       }
 
-      model = genAI.getGenerativeModel({ model: selectedModel });
-      
+      // 本番テスト
       const testPrompt = "Hello! Please respond with exactly: 'Google AI API connection test successful'";
       const result = await model.generateContent(testPrompt);
       const response = await result.response;

@@ -3,10 +3,10 @@
 # PT001v2テスト実行スクリプト
 # 修正版zoom-memo-automationの動作確認用
 
-echo "🚀 PT001v2: 修正版テスト開始"
+echo "🚀 PT001: 本番環境スルーテスト開始"
 echo "=================================="
-echo "テスト対象: 音声圧縮・JST時刻・エラーコード修正版"
-echo "URL: https://zoom-memo-automation.vercel.app/api/production-throughput-test-v2"
+echo "テスト対象: 本番環境録画監視（録画削除なし）"
+echo "URL: https://zoom-memo-automation.vercel.app/api/test-pt001-normal"
 echo ""
 
 # Vercelデプロイ完了待機
@@ -18,8 +18,8 @@ START_TIME=$(date +%s)
 echo "📅 テスト開始時刻: $(date '+%Y-%m-%d %H:%M:%S JST')"
 echo ""
 
-# PT001v2テスト実行（タイムアウト5分30秒）
-echo "🎯 PT001v2テスト実行中..."
+# PT001テスト実行（タイムアウト5分30秒）
+echo "🎯 PT001テスト実行中..."
 echo "⚠️  注意: Vercelタイムアウト制限（300秒）により途中で終了する可能性があります"
 echo ""
 
@@ -27,7 +27,7 @@ curl -w "\n実行時間: %{time_total}秒\n" \
      --max-time 330 \
      --connect-timeout 30 \
      -v \
-     "https://zoom-memo-automation.vercel.app/api/production-throughput-test-v2?test=PT001v2" \
+     "https://zoom-memo-automation.vercel.app/api/test-pt001-normal" \
      2>&1 | tee pt001v2_test_result_$(date +%Y%m%d_%H%M%S).log
 
 # 実行結果の確認

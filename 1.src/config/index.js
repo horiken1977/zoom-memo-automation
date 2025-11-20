@@ -27,7 +27,8 @@ const config = {
   googleAI: {
     apiKey: process.env.GOOGLE_AI_API_KEY,
     model: process.env.GOOGLE_AI_MODEL || 'gemini-2.5-pro', // 最新の2.5-proを使用
-    fallbackModels: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-pro'] // Rate limit対策でgemini-1.5-pro除外
+    // Note: gemini-1.5系は2025年4月29日に廃止されたため、2.x系のみ使用
+    fallbackModels: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash']
   },
   
   // v2.0 Transcript API Configuration
