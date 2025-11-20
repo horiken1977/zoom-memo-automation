@@ -117,6 +117,7 @@ export default async function handler(req, res) {
 
       let selectedModel = null;
       let model = null;
+      const modelErrors = [];
 
       for (const modelName of availableModels) {
         try {
@@ -129,13 +130,16 @@ export default async function handler(req, res) {
           model = testModel;
           break;
         } catch (modelError) {
+          const errorDetail = `${modelName}: ${modelError.message}`;
+          modelErrors.push(errorDetail);
           console.log(`   ⚠️ Model ${modelName} not available: ${modelError.message}`);
           continue;
         }
       }
 
       if (!selectedModel) {
-        throw new Error('No available Gemini model found. Tried: ' + availableModels.join(', '));
+        const errorMsg = 'No available Gemini model found. Errors: ' + modelErrors.join(' | ');
+        throw new Error(errorMsg);
       }
 
       // 本番テスト
